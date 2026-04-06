@@ -1,6 +1,6 @@
 ## FastAPI first steps :
 
-```
+```py
 from fastapi import FastAPI
 
 app = FastAPI()
@@ -12,7 +12,7 @@ async def root():
 ```
 
 this code is the initialization of the fastapi framework . using this command :
-```
+```sh
 fastapi dev
 ```
 you can start and run the server ! ╰(*°▽°*)╯
