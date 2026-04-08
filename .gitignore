@@ -36,3 +36,4 @@ env/
 .idea/
 *.swp
 *.swo
+.envrc
