@@ -51,3 +51,7 @@ this can also be used to pass [event handlers](https://svelte.dev/tutorial/svelt
 [events](https://svelte.dev/tutorial/svelte/dom-events)
 
 [Svelte canvas](https://svelte.dev/tutorial/svelte/attach) ← This one is a drawing example that could be very helpful to create our own.
+
+[Svelte vs SvelteKit](https://sveltekit.io/blog/svelte-vs-sveltekit)
+
+[SvelteKit doc](https://svelte.dev/tutorial/kit/)
