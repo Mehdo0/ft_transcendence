@@ -48,6 +48,25 @@ This technique can be used when you want a variable returned by the url like a u
 > [!TIP]
 > The declaration ordering have it's importance in *fastapi* ; the first function declared has the priority and is going to be selected first by the program !
 
+### Forms 
+
+A form can be used to log users or register them 
+
+```py
+from typing import Annotated
+
+from fastapi import FastAPI, Form
+
+app = FastAPI()
+
+
+@app.post("/login/")
+async def login(username: Annotated[str, Form()], password: Annotated[str, Form()]):
+    return {"username": username}
+```
+
+this will bind the login page url to send an html form to the client 
+
 ### docs
 
 when you open your browser at http://127.0.0.1:8000/docs, you will see an automatic, interactive, API documentation
