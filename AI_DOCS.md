@@ -12,3 +12,25 @@ To check that the ai is correctly training on the dataset and not only perfectin
 - **The Validation Set (20%)**: You hide these from the AI during learning.
 
 The validation set will be used to check if the AI is able or not to recognize certain patterns and finally guess the drawing ! 
+
+# The Layering 
+
+Basically , we'll tell the ai to analyse the drawing in multiple steps like layers :
+
+- **Layer 1 (Convolution)**: The AI scans the 28x28 grid with a small magnifying glass, looking for basic shapes like straight lines or curves.
+
+- **Layer 2 (Pooling)**: The AI shrinks the image slightly, keeping only the most important features it found in Layer 1. This drastically increases processing speed.
+
+- **Layer 3 (Flatten)**: The grid is crushed into a single flat line of data.
+
+- **Layer 4 (Dense Output)**: The final decision-maker. It outputs a list of probabilities (e.g., 90% chance it's an apple, 10% chance it's a circle).
+
+
+
+# Repeating
+
+Now that the process is in place we can start repeating it again and again and,  hopefully, we'll see the precision of the ai on the validation set increase . 
+
+# Export 
+
+Finally we'll save it's brain and plug it into the server loop  
