@@ -1,17 +1,15 @@
-from fastapi import FastAPI, Form
-from typing import Annotated
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
+@app.get("/api/data")
+async def get_data():
+    return {"message": "Data from the Python backend"}
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+app.mount("/", StaticFiles(directory="frontend_dist", html=True), name="frontend")
 
-@app.post("/login/")
-async def login(username: Annotated[str, Form()], password: Annotated[str, Form()]):
-    return {"username": username}
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str | None = None):
-    return {"item_id": item_id, "q": q}
+@app.exception_handler(404)
+async def not_found_exception_handler(request, exc):
+    return FileResponse("frontend_dist/index.html")
