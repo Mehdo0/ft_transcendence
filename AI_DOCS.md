@@ -26,7 +26,6 @@ Basically , we'll tell the ai to analyse the drawing in multiple steps like laye
 - **Layer 4 (Dense Output)**: The final decision-maker. It outputs a list of probabilities (e.g., 90% chance it's an apple, 10% chance it's a circle).
 
 
-
 # Repeating
 
 Now that the process is in place we can start repeating it again and again and,  hopefully, we'll see the precision of the ai on the validation set increase . 
