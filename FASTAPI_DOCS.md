@@ -67,6 +67,21 @@ async def login(username: Annotated[str, Form()], password: Annotated[str, Form(
 
 this will bind the login page url to send an html form to the client 
 
+### database
+
+using the sqlite3 lib we can connect and discuss with the database. the main concern is that when you fetch a db the results are going to be plain numbers .. but we need json formated results . 
+
+this function :
+```py
+import sqlite3
+
+conn = sqlite3.connect(DB_NAME)
+conn.row_factory = sqlite3.Row
+cursor = conn.cursor()
+```
+
+row_factory is going to edit the data into json data .
+
 ### docs
 
 when you open your browser at http://127.0.0.1:8000/docs, you will see an automatic, interactive, API documentation
