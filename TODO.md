@@ -8,11 +8,13 @@
 
 - [ ] Create a container to store the frontend (dependencies, installation etc...) 
 
-- [ ] Create the database with the correct colons (user_name, user_id, elo, wins, losses, friends)
+- [X] Create the database with the correct colons (user_name, user_id, elo, wins, losses, friends)
 
-- [ ] Code a simple function in FastApi to ask specific data to the database using an ORM like SQLAlchemy
+- [X] Code a simple function in FastApi to ask specific data to the database using an ORM like SQLAlchemy
 
-- [ ] Code a FastApi function to format the db data into json response e.g: (14,5) --> {"wins": 14, "losses": 5}
+- [X] Code a FastApi function to format the db data into json response e.g: (14,5) --> {"wins": 14, "losses": 5}
+
+- [Xa] Code a function to add data into the DB
 
 - [ ] Train the ai following the instructions @AI_DOCS.md
 
