@@ -20,12 +20,9 @@ logs-front:
 logs-back:
 	$(COMPOSE) logs -f backend
 
-logs-db:
-	$(COMPOSE) logs -f db
-
 fclean: down
 	rm -rf data
 
 re: fclean up
 
-.PHONY: all up down logs logs-front logs-back logs-db fclean re
+.PHONY: all up down logs logs-front logs-back fclean re
