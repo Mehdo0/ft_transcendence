@@ -8,6 +8,9 @@ up:
 down:
 	$(COMPOSE) down
 
+ps:
+	$(COMPOSE) ps -a
+
 logs:
 	$(COMPOSE) logs -f
 
