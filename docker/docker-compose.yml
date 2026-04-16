@@ -1,20 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: trsc_db
-    restart: unless-stopped
-    env_file:
-      - ../.env
-    volumes:
-      - ../data/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - trsc_net
-
   backend:
     build:
       context: ..
@@ -23,9 +7,8 @@ services:
     restart: unless-stopped
     env_file:
       - ../.env
-    depends_on:
-      db:
-        condition: service_healthy
+    volumes:
+      - ../data/sqlite:/app/data
     ports:
       - "8000:8000"
     networks:
