@@ -59,6 +59,16 @@ def add_user(username: str):
     conn.close()
     return new_user_id #on return son id
 
+def delete_user(user_id):
+    """Drop a user, but dont reset the id."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE IF EXISTS users")
+    
+    conn.commit()
+    conn.close()
+    setup_database()
+
 def reset_database(): #debug purpose, SUPPRIMER AVANT DE RENDRE LE PROJET
     """Destroys the table entirely and rebuilds a fresh one. Resets all IDs."""
     conn = sqlite3.connect(DB_NAME)

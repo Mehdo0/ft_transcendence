@@ -38,7 +38,7 @@ async def db_add(username: str = "drawer"):
 @app.get("/destroy")
 async def destroy_db():
     reset_database()
-    return {"data": "ereased"}
+    return {"data": "erased"}
 
 
 

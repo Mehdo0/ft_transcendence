@@ -14,7 +14,7 @@
 
 - [X] Code a FastApi function to format the db data into json response e.g: (14,5) --> {"wins": 14, "losses": 5}
 
-- [Xa] Code a function to add data into the DB
+- [X] Code a function to add data into the DB
 
 - [ ] Train the ai following the instructions @AI_DOCS.md
 
@@ -28,6 +28,6 @@
 
 - [ ] Implement an authentification service
 
-- [ ] Implement a matchmaking service
+- [ ] Implement a matchmaking service 
 
 - [ ] ...
