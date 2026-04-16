@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: trsc_db
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trsc_net
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    container_name: trsc_back
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - trsc_net
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+    container_name: trsc_front
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../src:/app/src
+      - ../static:/app/static
+      - /app/node_modules
+    networks:
+      - trsc_net
+
+networks:
+  trsc_net:
+    driver: bridge
