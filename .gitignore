@@ -1,42 +1,38 @@
-node_modules
-
-# Output
-.output
-.vercel
-.netlify
-.wrangler
-/.svelte-kit
-/build
-
-# OS
-.DS_Store
-Thumbs.db
+# Node
+node_modules/
+dist/
+.vite/
 
 # Env
 .env
 .env.*
 !.env.example
-!.env.test
 
-# SQLite
-game_data.db
-
-# Vite
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
-
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
-*.pyd
-
-# Virtual environments
 .venv/
 venv/
 env/
 
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-.envrc
+
+# Vite cache
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
