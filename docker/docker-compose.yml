@@ -8,7 +8,7 @@ services:
     env_file:
       - ../.env
     volumes:
-      - ../data/sqlite:/app/data
+      - ./database_data:/app/data
     ports:
       - "8000:8000"
     networks:
