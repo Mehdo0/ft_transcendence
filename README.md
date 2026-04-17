@@ -1,6 +1,10 @@
 # ft_transcendance
 
-Stack: Svelte (Vite), FastAPI, SQLite, Docker.
+Stack:
+    Docker: two containers (one for frontend one for backend)
+    Frontend: Svelte (Vite) (TypseScript not JS)
+    Backend: FastAPI
+    DB: SQLite
 
 ## Prereqs
 
@@ -20,4 +24,4 @@ make
 
 ## Makefile
 
-`make` / `make up` | `down` | `logs` | `logs-front` | `re`
+`make` | `make up` | `down` | `logs` | `logs-front` | `re`
