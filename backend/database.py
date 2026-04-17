@@ -2,7 +2,10 @@ import os
 import sqlite3
 
 # Define the DB name as a constant so you only have to type it once
-DB_NAME = os.getenv("DB_PATH", "game_data.db")
+DB_DIR = "data"
+DB_NAME = f"{DB_DIR}/game_data.db"
+
+os.makedirs(DB_DIR, exist_ok=True)
 
 def setup_database():
     conn = sqlite3.connect(DB_NAME) # on ce connect a la db (ceci creer la db si elle n'existe pas)
