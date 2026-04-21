@@ -3,6 +3,10 @@ node_modules/
 dist/
 .vite/
 
+# SvelteKit
+.svelte-kit/
+frontend/build/
+
 # Env
 .env
 .env.*
