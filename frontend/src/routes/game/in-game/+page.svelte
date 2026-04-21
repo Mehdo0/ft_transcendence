@@ -28,8 +28,7 @@
 </label>
 
 <div>
-	<label>
-		You
+	<p>You
 	<canvas
 		bind:this={canvas}
 		onpointerdown={(e) => {
@@ -51,10 +50,10 @@
 			last = { x: e.offsetX, y: e.offsetY };
 		}}
 	></canvas>
-	</label>
-	<label>Opponent
+	</p>
+	<p>Opponent
 		<canvas></canvas>
-	</label>
+	</p>
 </div>
 
 <style>
