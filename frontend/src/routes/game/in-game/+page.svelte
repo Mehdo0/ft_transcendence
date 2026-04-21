@@ -1,9 +1,8 @@
 <script>
-	let { color, size } = $props();
-
 	let canvas = $state();
 	let context = $state();
-	let coords = $state();
+	let last = $state(/** @type {{x:number,y:number}|null} */ (null));
+	let selectedColor = $state('#000000');
 
 	$effect(() => {
 		context = canvas.getContext('2d');
@@ -11,88 +10,65 @@
 	});
 
 	function resize() {
-		const dpr = window.devicePixaelRatio || 1;
+		const dpr = window.devicePixelRatio || 1;
 
-		canvas.width = window.innerWidth * dpr;
-		canvas.height = window.innerHeight * dpr;
-
-		canvas.style.width = window.innerWidth + 'px';
-		canvas.style.height = window.innerHeight + 'px';
+		canvas.width = canvas.clientWidth * dpr;
+		canvas.height = canvas.clientHeight * dpr;
 
 		context.scale(dpr, dpr);
 	}
 </script>
 
 <svelte:window onresize={resize} />
+<h1>Draw !</h1>
+<label>
+	Select a color 
+	<input type="color" bind:value={selectedColor} />
 
-<div class="square">
+</label>
 
+<div>
+	<label>
+		You
 	<canvas
 		bind:this={canvas}
 		onpointerdown={(e) => {
-			coords = { x: e.offsetX, y: e.offsetY };
-
-			context.fillStyle = color;
-			context.beginPath();
-			context.arc(coords.x, coords.y, size / 2, 0, 2 * Math.PI);
-			context.fill();
+			last = { x: e.offsetX, y: e.offsetY };
 		}}
-		onpointerleave={() => {
-			coords = null;
-		}}
+		onpointerup={() => (last = null)}
+		onpointerleave={() => (last = null)}
 		onpointermove={(e) => {
-			const previous = coords;
+			if (e.buttons !== 1 || !last) return;
 
-			coords = { x: e.offsetX, y: e.offsetY };
+			context.strokeStyle = selectedColor;
+			context.lineWidth = 2;
+			context.lineCap = 'round';
+			context.beginPath();
+			context.moveTo(last.x, last.y);
+			context.lineTo(e.offsetX, e.offsetY);
+			context.stroke();
 
-			if (e.buttons === 1) {
-				e.preventDefault();
-
-				context.strokeStyle = color;
-				context.lineWidth = size;
-				context.lineCap = 'round';
-				context.beginPath();
-				context.moveTo(previous.x, previous.y);
-				context.lineTo(coords.x, coords.y);
-				context.stroke();
-			}
+			last = { x: e.offsetX, y: e.offsetY };
 		}}
 	></canvas>
+	</label>
+	<label>Opponent
+		<canvas></canvas>
+	</label>
 </div>
-{#if coords}
-	<div
-		class="preview"
-		style="--color: {color}; --size: {size}px; --x: {coords.x}px; --y: {coords.y}px"
-	></div>
-{/if}
 
 <style>
-	.square {
-		width: 90vw;
-		aspect-ratio: 1;
-		box-sizing: border-box;
-		border: 2px solid black;
-		position: relative;
-
-	}
 	canvas {
-		position: absolute;
-		left: 0;
-		top: 0;
-		width: 100%;
-		height: 100%;
+		width: 50vmin;
+		height: 50vmin;
+		border: 2px solid black;
 	}
-
-	.preview {
-		position: absolute;
-		left: var(--x);
-		top: var(--y);
-		width: var(--size);
-		height: var(--size);
-		transform: translate(-50%, -50%);
-		background: var(--color);
-		border-radius: 50%;
-		opacity: 0.5;
-		pointer-events: none;
+	div {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-items:  center;
+		min-height: 100vh;
+		gap: 1rem;
 	}
 </style>
