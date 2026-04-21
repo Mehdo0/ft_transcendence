@@ -3,6 +3,10 @@ node_modules/
 dist/
 .vite/
 
+# SvelteKit
+.svelte-kit/
+frontend/build/
+
 # Env
 .env
 .env.*
@@ -12,15 +16,13 @@ dist/
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
 .venv/
 venv/
 env/
 
 # SQLite
 *.db
-*.db-journal
-*.db-wal
-*.db-shm
 data/
 
 # OS
@@ -29,10 +31,4 @@ Thumbs.db
 
 # IDE
 .vscode/
-.idea/
-*.swp
-*.swo
 
-# Vite cache
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*

@@ -1,10 +1,10 @@
 # ft_transcendance
 
-Stack:
-    Docker: two containers (one for frontend one for backend)
-    Frontend: Svelte (Vite) (TypseScript not JS)
-    Backend: FastAPI
-    DB: SQLite
+## Stack:
+    - Docker: two containers (one for frontend one for backend)
+    - Frontend: Svelte (Vite) (with TypseScript not JavaScript)
+    - Backend: FastAPI
+    - DB: SQLite
 
 ## Prereqs
 
