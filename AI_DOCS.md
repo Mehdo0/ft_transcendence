@@ -32,4 +32,4 @@ Now that the process is in place we can start repeating it again and again and, 
 
 # Export 
 
-Finally we'll save it's brain and plug it into the server loop  
+Finally we'll save it's brain and plug it into the server loop
