@@ -2,7 +2,7 @@
 
 ## Stack:
     - Docker: two containers (one for frontend one for backend)
-    - Frontend: Svelte (Vite) (with TypseScript not JavaScript)
+    - Frontend: SvelteKit (with Vite for dev and TypseScript)
     - Backend: FastAPI
     - DB: SQLite
 
