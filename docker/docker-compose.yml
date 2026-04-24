@@ -8,7 +8,7 @@ services:
     env_file:
       - ../.env
     volumes:
-      - ./database_data:/app/data
+      - ../data:/app/data
     ports:
       - "8000:8000"
     networks:
@@ -16,15 +16,15 @@ services:
 
   frontend:
     build:
-      context: ..
-      dockerfile: docker/frontend.Dockerfile
+      context: ../frontend
+      dockerfile: ../docker/frontend.Dockerfile
     container_name: trsc_front
     restart: unless-stopped
     ports:
       - "5173:5173"
     volumes:
-      - ../src:/app/src
-      - ../static:/app/static
+      - ../frontend/src:/app/src
+      - ../frontend/static:/app/static
       - /app/node_modules
     networks:
       - trsc_net
