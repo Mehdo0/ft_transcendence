@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from backend.database import setup_database, fetch_user_stats, add_user, reset_database
+import random
+import os
 
 #setup variables
 setup_database()
@@ -39,6 +41,21 @@ async def db_add(username: str = "drawer"):
 async def destroy_db():
     reset_database()
     return {"data": "erased"}
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FILE_PATH = os.path.join(BASE_DIR, "list.txt")
+
+@app.get("/api/word_list/get_word/")
+async def get_random_word(num: int = 1):
+    if not os.path.exists(FILE_PATH):
+        raise HTTPException(status_code=500, detail="Word list file not found on server.")
+    with open(FILE_PATH) as inp:
+        data = inp.read().split()
+    if not data:
+        raise HTTPException(status_code=500, detail="Word list is empty.")
+    word = random.choice(data)
+    return {"word": word}
+    
 
 
 
