@@ -11,8 +11,8 @@ async def root():
     return {"message": "Hello World"}
 ```
 
-this code is the initialization of the fastapi framework . using this command :
+This code is the initialization of the fastapi framework . using this command :
 ```sh
 fastapi dev
 ```
-you can start and run the server ! ╰(*°▽°*)╯
+You can start and run the server ! ╰(*°▽°*)╯
