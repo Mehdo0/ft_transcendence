@@ -1,0 +1,11 @@
+**/__pycache__
+.git/
+.env
+.env.example
+**/node_modules/
+**/.venv/
+.vscode/
+.svelte-kit/
+data/
+./backend/ai_brain
+

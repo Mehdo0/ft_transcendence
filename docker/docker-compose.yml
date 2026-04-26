@@ -1,8 +1,8 @@
 services:
   backend:
     build:
-      context: ..
-      dockerfile: docker/backend.Dockerfile
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
     container_name: trsc_back
     restart: unless-stopped
     env_file:
