@@ -18,7 +18,6 @@
 	});
 
 	function resize() {
-
 		const dpr = window.devicePixelRatio || 1;
 
 		canvas.width = canvas.clientWidth * dpr;
@@ -75,7 +74,11 @@
 		<canvas
 			bind:this={canvas}
 			onpointerdown={(e) => {
-				stack.push({ color: selectedColor, width: lineWidth / 100, points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }] });
+				stack.push({
+					color: selectedColor,
+					width: lineWidth / 100,
+					points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }]
+				});
 				redoStack = [];
 				last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
 			}}
