@@ -1,16 +1,16 @@
 <script lang="ts">
 	type Point = { x: number; y: number };
-	type Trait = { color: string; points: Point[] };
+	type Trait = { color: string; width: number; points: Point[] };
 
 	let canvas: HTMLCanvasElement = $state()!;
+	let ratio = $state(1);
 	let context: CanvasRenderingContext2D = $state()!;
 	let last = $state<Point | null>(null);
 	let selectedColor = $state('#000000');
-
 	let stack = $state<Trait[]>([]);
 	let redoStack = $state<Trait[]>([]);
 
-	let lineWidth = $state(2);
+	let lineWidth = $state(1);
 
 	$effect(() => {
 		context = canvas.getContext('2d')!;
@@ -18,12 +18,15 @@
 	});
 
 	function resize() {
+
 		const dpr = window.devicePixelRatio || 1;
 
 		canvas.width = canvas.clientWidth * dpr;
 		canvas.height = canvas.clientHeight * dpr;
+		ratio = canvas.width;
 
 		context.scale(dpr, dpr);
+		redraw();
 	}
 
 	function redraw() {
@@ -33,12 +36,13 @@
 			if (trait.points.length === 0) continue;
 
 			context.strokeStyle = trait.color;
-			context.lineWidth = 2;
+			context.lineWidth = trait.width * canvas.clientWidth;
 			context.lineCap = 'round';
+			context.lineJoin = 'round';
 			context.beginPath();
-			context.moveTo(trait.points[0].x, trait.points[0].y);
+			context.moveTo(trait.points[0].x * ratio, trait.points[0].y * ratio);
 			for (let i = 1; i < trait.points.length; i++) {
-				context.lineTo(trait.points[i].x, trait.points[i].y);
+				context.lineTo(trait.points[i].x * ratio, trait.points[i].y * ratio);
 			}
 			context.stroke();
 		}
@@ -60,9 +64,6 @@
 	function eraser() {
 		selectedColor = '#fff';
 	}
-	function modifyLineWidth(value: number) {
-		lineWidth = value;
-	}
 </script>
 
 <svelte:window onresize={resize} />
@@ -74,9 +75,9 @@
 		<canvas
 			bind:this={canvas}
 			onpointerdown={(e) => {
-				stack.push({ color: selectedColor, points: [{ x: e.offsetX, y: e.offsetY }] });
+				stack.push({ color: selectedColor, width: lineWidth / 100, points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }] });
 				redoStack = [];
-				last = { x: e.offsetX, y: e.offsetY };
+				last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
 			}}
 			onpointerup={() => (last = null)}
 			onpointerleave={() => (last = null)}
@@ -84,15 +85,16 @@
 				if (e.buttons !== 1 || !last) return;
 
 				context.strokeStyle = selectedColor;
-				context.lineWidth = lineWidth;
+				context.lineWidth = stack[stack.length - 1].width * canvas.clientWidth;
 				context.lineCap = 'round';
+				context.lineJoin = 'round';
 				context.beginPath();
-				context.moveTo(last.x, last.y);
-				context.lineTo(e.offsetX, e.offsetY);
+				context.moveTo(last.x * ratio, last.y * ratio);
+				context.lineTo(e.offsetX * ratio, e.offsetY * ratio);
 				context.stroke();
 
-				stack[stack.length - 1].points.push({ x: e.offsetX, y: e.offsetY });
-				last = { x: e.offsetX, y: e.offsetY };
+				stack[stack.length - 1].points.push({ x: e.offsetX / ratio, y: e.offsetY / ratio });
+				last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
 			}}
 		></canvas>
 		<div class="tools">
@@ -102,7 +104,7 @@
 			</label>
 			<label>
 				Width
-				<input type="range" min="2" max="20" bind:value={lineWidth} />
+				<input type="range" min="1" max="20" step="0.5" bind:value={lineWidth} />
 			</label>
 			<button onclick={eraser}>🧹</button>
 			<button onclick={undo}>↶</button>
