@@ -1,20 +1,31 @@
+import os
+import random
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from backend.database import setup_database, fetch_user_stats, add_user, reset_database
-import random
-import os
+
+from backend.database import add_user, fetch_user_stats, reset_database, setup_database
+from backend.game import (
+    GameState,
+    GameType,
+    PlayerState,
+    Session,
+    OnlinePlayer,
+    Game,
+    create_game,
+)
 
 # setup variables
 setup_database()
 app = FastAPI()
 
+app.state.games = {}
+
 # allow SvelteKit dev server
 # we might want to switch to using SvelteKit as a proxy to avoid giving direct acces to API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://trsc_front:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
