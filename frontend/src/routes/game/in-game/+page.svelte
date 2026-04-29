@@ -84,72 +84,66 @@
 <svelte:window onresize={resize} />
 <h1>Draw !</h1>
 
-<div class="arena">
-	<div class="you">
-		<p>You</p>
-		<div class="canvas-row">
-			<canvas
-				bind:this={canvas}
-				onpointerdown={(e) => {
-					stack.push({
-						color: selectedColor,
-						width: lineWidth / 100,
-						points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }]
-					});
-
-					redoStack = [];
-					last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+<div class="game">
+	<div class="tools">
+		{#each COLORS as c}
+			<button
+				class="swatch"
+				style="background:{c}"
+				title={c}
+				onclick={() => {
+					selectedColor = c;
+					lastSelectedColor = c;
 				}}
-				onpointerup={() => (last = null)}
-				onpointerleave={() => (last = null)}
-				onpointermove={(e) => {
-					if (e.buttons !== 1 || !last) return;
+				aria-label={c}
+			></button>
+		{/each}
+		<button class:active={selectedColor !== '#ffffff'} onclick={pencil}>✏️</button>
+		<input
+			type="color"
+			bind:value={selectedColor}
+			oninput={() => (lastSelectedColor = selectedColor)}
+		/>
+		<button class:active={selectedColor === '#ffffff'} onclick={eraser}>🧹</button>
+		<input class="width" type="range" min="1" max="20" step="0.5" bind:value={lineWidth} />
+		<button onclick={undo} disabled={stack.length === 0}>↶</button>
+		<button onclick={redo} disabled={redoStack.length === 0}>↷</button>
+	</div>
 
-					context.strokeStyle = selectedColor;
-					context.lineWidth = stack[stack.length - 1].width * canvas.clientWidth;
-					context.lineCap = 'round';
-					context.lineJoin = 'round';
-					context.beginPath();
-					context.moveTo(last.x * ratio, last.y * ratio);
-					context.lineTo(e.offsetX * ratio, e.offsetY * ratio);
-					context.stroke();
+	<canvas
+		bind:this={canvas}
+		onpointerdown={(e) => {
+			stack.push({
+				color: selectedColor,
+				width: lineWidth / 100,
+				points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }]
+			});
 
-					stack[stack.length - 1].points.push({ x: e.offsetX / ratio, y: e.offsetY / ratio });
-					last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
-				}}
-			></canvas>
-			<div class="loaderBar"></div>
-			<div class="loaderBar loaderBar--opponent"></div>
-		</div>
-		<div class="tools">
-			<label>
-				Color
-				<input
-					type="color"
-					bind:value={selectedColor}
-					oninput={() => (lastSelectedColor = selectedColor)}
-				/>
-			</label>
-			<label>
-				Width
-				<input type="range" min="1" max="20" step="0.5" bind:value={lineWidth} />
-			</label>
-			<button onclick={pencil}>✏️</button>
-			<button onclick={eraser}>🧹</button>
-			<button onclick={undo}>↶</button>
-			<button onclick={redo}>↷</button>
+			redoStack = [];
+			last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+		}}
+		onpointerup={() => (last = null)}
+		onpointerleave={() => (last = null)}
+		onpointermove={(e) => {
+			if (e.buttons !== 1 || !last) return;
 
-			{#each COLORS as c}
-				<button
-					title={c}
-					style="color:{c}"
-					onclick={() => {
-						selectedColor = c;
-						lastSelectedColor = c;
-					}}>●</button
-				>
-			{/each}
-		</div>
+			context.strokeStyle = selectedColor;
+			context.lineWidth = stack[stack.length - 1].width * canvas.clientWidth;
+			context.lineCap = 'round';
+			context.lineJoin = 'round';
+			context.beginPath();
+			context.moveTo(last.x * ratio, last.y * ratio);
+			context.lineTo(e.offsetX * ratio, e.offsetY * ratio);
+			context.stroke();
+
+			stack[stack.length - 1].points.push({ x: e.offsetX / ratio, y: e.offsetY / ratio });
+			last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+		}}
+	></canvas>
+
+	<div class="bars">
+		<div class="loaderBar"></div>
+		<div class="loaderBar loaderBar--opponent"></div>
 	</div>
 </div>
 
@@ -168,21 +162,15 @@
 		letter-spacing: 0.02em;
 	}
 
-	label {
+	.game {
+		--canvas-side: 50vmin;
+		--tool-size: calc(var(--canvas-side) * 0.1);
+		--tool-gap: 0.5rem;
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
-	}
-
-	input[type='color'] {
-		width: 2.25rem;
-		height: 2.25rem;
-		border: none;
-		border-radius: 50%;
-		cursor: pointer;
-		background: transparent;
+		gap: 1rem;
+		padding: 1rem;
 	}
 
 	canvas {
@@ -191,55 +179,51 @@
 		background: #ffffff;
 		border: 1px solid #d1d5db;
 		border-radius: 12px;
-	}
-
-	p {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
-		font-weight: 500;
-		color: #6b7280;
-		margin: 0;
-	}
-
-	.arena {
-		--canvas-side: 50vmin;
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		align-items: flex-start;
-		gap: 2rem;
-		padding: 1rem;
-	}
-
-	.you {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.canvas-row {
-		display: flex;
-		align-items: stretch;
-		gap: 0.5rem;
+		cursor: crosshair;
 	}
 
 	.tools {
-		width: var(--canvas-side);
-		max-width: 100%;
-		display: flex;
-		flex-direction: row;
-		flex-wrap: wrap;
-		justify-content: center;
-		align-items: center;
-		gap: 0.5rem 0.75rem;
+		display: grid;
+		grid-template-columns: repeat(3, var(--tool-size));
+		gap: var(--tool-gap);
+	}
+
+	.tools > * {
+		width: var(--tool-size);
+		height: var(--tool-size);
+		margin: 0;
+		padding: 0;
+		border: 1px solid #d1d5db;
+		border-radius: 8px;
+		background: #ffffff;
+		cursor: pointer;
+		font-size: calc(var(--tool-size) * 0.5);
+		line-height: 1;
 		box-sizing: border-box;
 	}
 
+	.tools > .active {
+		border: 2px solid #1f2937;
+		background: #e5e7eb;
+	}
+
+	.tools > *:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
+	}
+
+	.tools > .width {
+		grid-column: 1 / -1;
+		width: 100%;
+	}
+
+	.bars {
+		display: flex;
+		gap: var(--tool-gap);
+	}
+
 	.loaderBar {
-		width: calc(var(--canvas-side) * 0.1);
+		width: var(--tool-size);
 		height: var(--canvas-side);
 		background: #f9f9f9;
 		border-radius: 10px;
@@ -301,11 +285,11 @@
 		70%,
 		90% {
 			background: repeating-linear-gradient(
-					45deg,
-					#0031f2 0 30px,
-					#006dfe 0 40px,
-					rgba(255, 255, 255, 0.3) 0 40px
-				);
+				45deg,
+				#0031f2 0 30px,
+				#006dfe 0 40px,
+				rgba(255, 255, 255, 0.3) 0 40px
+			);
 			background-size: 200% 200%;
 			background-position: center bottom;
 		}
@@ -344,11 +328,11 @@
 		70%,
 		90% {
 			background: repeating-linear-gradient(
-					45deg,
-					#991b1b 0 30px,
-					#dc2626 0 40px,
-					rgba(255, 255, 255, 0.35) 0 40px
-				);
+				45deg,
+				#991b1b 0 30px,
+				#dc2626 0 40px,
+				rgba(255, 255, 255, 0.35) 0 40px
+			);
 			background-size: 200% 200%;
 			background-position: center bottom;
 		}
