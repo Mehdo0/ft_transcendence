@@ -1,14 +1,21 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from backend.database import setup_database, fetch_user_stats, add_user, reset_database
 import random
-import os
+from backend.ai_service import load_word_list, make_ai_guess
+from backend.game import Drawing, get_state_game
+from slowapi.errors import RateLimitExceeded
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
 
 # setup variables
-setup_database()
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+setup_database()
 
 # allow SvelteKit dev server
 # we might want to switch to using SvelteKit as a proxy to avoid giving direct acces to API
@@ -52,22 +59,28 @@ async def destroy_db():
     return {"data": "erased"}
 
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FILE_PATH = os.path.join(BASE_DIR, "list.txt")
-
-
 @app.get("/api/word_list/get_word/")
 async def get_random_word(num: int = 1):
-    if not os.path.exists(FILE_PATH):
-        raise HTTPException(
-            status_code=500, detail="Word list file not found on server."
-        )
-    with open(FILE_PATH) as inp:
-        data = inp.read().split()
-    if not data:
-        raise HTTPException(status_code=500, detail="Word list is empty.")
+    data = load_word_list("list.txt")
+    if (data[0] == "Error"):
+        raise HTTPException(status_code=500, detail=data[1])
+    
     word = random.choice(data)
     return {"word": word}
+
+@app.post("/api/ai_guess/")
+@limiter.limit("2/seconds")
+async def ai_guess(request: Request, drawing : Drawing):
+    if "data:image" not in drawing.Base64_drawing:
+        raise HTTPException(status_code=406, detail="Bad data sent")
+    base64_str = drawing.Base64_drawing
+    results = make_ai_guess(base64_str)
+    if not results or len(results) != 3:
+        raise HTTPException(status_code=500, detail="Bad ai output")
+    drawing.ai_results = results
+    flag = get_state_game(drawing)
+    return {"ai_guess":drawing.ai_results[drawing.current_word], "game_stop":flag}
+    
 
 
 # ce code est censer etre fonctionnel lorsque le frontend sera operationnel
