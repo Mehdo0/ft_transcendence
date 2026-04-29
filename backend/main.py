@@ -5,7 +5,6 @@ from fastapi.responses import FileResponse
 from backend.database import setup_database, fetch_user_stats, add_user, reset_database
 import random
 from backend.ai_service import load_word_list, make_ai_guess
-from backend.game import Drawing, get_state_game
 from slowapi.errors import RateLimitExceeded
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -68,18 +67,17 @@ async def get_random_word(num: int = 1):
     word = random.choice(data)
     return {"word": word}
 
-@app.post("/api/ai_guess/")
-@limiter.limit("2/seconds")
-async def ai_guess(request: Request, drawing : Drawing):
-    if "data:image" not in drawing.Base64_drawing:
-        raise HTTPException(status_code=406, detail="Bad data sent")
-    base64_str = drawing.Base64_drawing
-    results = make_ai_guess(base64_str)
-    if not results or len(results) != 3:
-        raise HTTPException(status_code=500, detail="Bad ai output")
-    drawing.ai_results = results
-    flag = get_state_game(drawing)
-    return {"ai_guess":drawing.ai_results[drawing.current_word], "game_stop":flag}
+# @app.post("/api/ai_guess/")
+# @limiter.limit("2/seconds")
+# async def ai_guess(request: Request, drawing : Drawing):
+#     if "data:image" not in drawing.Base64_drawing:
+#         raise HTTPException(status_code=406, detail="Bad data sent")
+#     base64_str = drawing.Base64_drawing
+#     results = make_ai_guess(base64_str)
+#     if not results or len(results) != 3:
+#         raise HTTPException(status_code=500, detail="Bad ai output")
+#     drawing.ai_results = results
+#     return {"ai_guess":drawing.ai_results[drawing.current_word], "game_stop":flag}
     
 
 
