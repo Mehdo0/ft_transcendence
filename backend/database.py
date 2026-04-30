@@ -1,10 +1,12 @@
 import os
 import sqlite3
+from backend.data import User
+from backend.auth import get_password_hash
+
 
 # Define the DB name as a constant so you only have to type it once
 DB_DIR = "data"
 DB_NAME = f"{DB_DIR}/game_data.db"
-
 os.makedirs(DB_DIR, exist_ok=True)
 
 
@@ -17,18 +19,16 @@ def setup_database():
     # ici ca ajoute les tables si elles n'existent pas encore
     cursor.execute("""  
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            username TEXT,
+            username TEXT PRIMARY KEY,
             password TEXT,
-            wins INTEGER,
-            losses INTEGER
+            elo INTEGER
         )
     """)
 
     # creation du super user (modo)
     cursor.execute("""
-        INSERT OR IGNORE INTO users (id, username, wins, losses) 
-        VALUES (1, "modo", 999, 0)
+        INSERT OR IGNORE INTO users (username, elo) 
+        VALUES ("modo", 9999)
     """)
 
     # et ca degage
@@ -36,23 +36,7 @@ def setup_database():
     conn.close()
 
 
-def fetch_user_stats(user_id: int):
-    # Connects to DB, fetches the user by ID, and returns the row.
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
-    cursor = conn.cursor()
-    # le '?' est une protection contre les attaques par injection SQL
-    cursor.execute(
-        "SELECT id, username, wins, losses FROM users WHERE id = ?", (user_id,)
-    )
-    row = cursor.fetchone()
-
-    # et ca degage
-    conn.close()
-    return row
-
-
-def add_user(username: str):
+def add_user(username: str, password: str):
     # Connects to DB, fetches the user by ID, and create a new one.
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -62,35 +46,22 @@ def add_user(username: str):
     new_user_id = 1 if max_id is None else max_id + 1  # on assigne la max + 1
     if username == "drawer":
         username = username + str(new_user_id)  # username par defaut
+    password = get_password_hash(password)
     cursor.execute(
         """
-        INSERT INTO users (id, username, wins, losses) 
-        VALUES (?, ?, 0, 0)
+        INSERT INTO users (username, password, elo) 
+        VALUES (?, ?, 0)
     """,
-        (new_user_id, username),
+        (username, password),
     )  # on add a la db
     conn.commit()
     conn.close()
-    return new_user_id  # on return son id
+    return User(username=username)
 
-
-def delete_user(user_id):
-    # Drop a user, but dont reset the id.
+def get_user_elo(username: str):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS users")
-
-    conn.commit()
+    cursor.execute("SELECT elo FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
     conn.close()
-    setup_database()
-
-
-def reset_database():  # debug purpose, SUPPRIMER AVANT DE RENDRE LE PROJET
-    # Destroys the table entirely and rebuilds a fresh one. Resets all IDs.
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS users")
-
-    conn.commit()
-    conn.close()
-    setup_database()
+    return row[0]
