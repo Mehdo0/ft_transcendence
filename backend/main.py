@@ -5,6 +5,8 @@ from fastapi.responses import FileResponse
 from backend.database import setup_database, fetch_user_stats, add_user, reset_database
 import random
 from backend.ai_service import load_word_list, make_ai_guess
+from backend.auth import Depends, get_current_user
+from backend.data import User
 from slowapi.errors import RateLimitExceeded
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -81,7 +83,7 @@ async def get_random_word(num: int = 1):
 
 # @app.post("/api/ai_guess/")
 # @limiter.limit("2/seconds")
-# async def ai_guess(request: Request, drawing : Drawing):
+# async def ai_guess(request: Request, current_user: User = Depends(get_current_user)):
 #     if "data:image" not in drawing.Base64_drawing:
 #         raise HTTPException(status_code=406, detail="Bad data sent")
 #     base64_str = drawing.Base64_drawing

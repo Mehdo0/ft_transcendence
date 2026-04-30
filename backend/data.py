@@ -29,19 +29,31 @@ class Session(BaseModel):
     session_id: str
 
 
-# class OfflinePlayer(BaseModel):  # may not be useful as offline players are stored in DB
-#     name: str  # name is unique and used as ID
-#     state: PlayerState = PlayerState.OFFLINE
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 
-class OnlinePlayer(BaseModel):
-    name: str  # name is unique and used as ID
+class TokenData(BaseModel):
+    username: str | None = None
+
+class User(BaseModel):
+    username: str
     state: PlayerState
-    session: Session
+    disabled: bool | None = None
+
+
+class UserInDB(User):
+    hashed_password: str
 
 
 class Game(BaseModel):
     id: str
     game_state: GameState = GameState.CONNECTING
     game_type: GameType
-    players: list[OnlinePlayer] = Field(default_factory=list)
+    players: list[User] = Field(default_factory=list)
+
+MATCHMAKING_QUEUE = {
+    "TWO_PLAYER_AI": [],  # List of players waiting for 1v1
+    "FOUR_PLAYER": []     # List of players waiting for a 4-player
+}
