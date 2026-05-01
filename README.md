@@ -1,10 +1,28 @@
 # ft_transcendance
 
-## Stack:
-    - Docker: two containers (one for frontend one for backend)
-    - Frontend: SvelteKit (with Vite for dev and TypseScript)
-    - Backend: FastAPI
-    - DB: SQLite
+## Stack
+
+- Docker: two containers (nginx reverse proxy, backend)
+- Reverse proxy: nginx (HTTPS termination, serves built frontend, proxies `/api/`)
+- Frontend: SvelteKit (TypeScript, built statically via `adapter-static`)
+- Backend: FastAPI
+- DB: SQLite
+
+## Architecture
+
+```
+[ browser ]
+    │  https://localhost
+    ▼
+[ nginx ]  ── serves built SvelteKit (static files)
+    │  http://backend:8000  (internal Docker network)
+    ▼
+[ backend (FastAPI) ]
+```
+
+The `nginx` container is the only one exposed on the host (ports 80, 443).
+HTTP traffic on port 80 is redirected to HTTPS.
+The TLS certificate is self-signed at image build time.
 
 ## Prereqs
 
@@ -19,9 +37,9 @@ make
 
 ## URLs
 
-- http://localhost:5173 — frontend  
-- http://localhost:8000 — backend
+- https://localhost — application (accept the self-signed certificate warning once)
+- http://localhost — redirects to https://localhost
 
 ## Makefile
 
-`make` | `make up` | `down` | `logs` | `logs-front` | `re`
+`make` | `make up` | `down` | `logs` | `re` | `fclean`
