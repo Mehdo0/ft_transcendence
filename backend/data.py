@@ -18,7 +18,6 @@ class GameType(str, Enum):
 
 
 class PlayerState(str, Enum):
-    OFFLINE = "offline"
     IDLE = "idle"
     PLAYING = "playing"
 
@@ -27,11 +26,6 @@ class PlayerState(str, Enum):
 class Session(BaseModel):
     ip_address: str
     session_id: str
-
-
-# class OfflinePlayer(BaseModel):  # may not be useful as offline players are stored in DB
-#     name: str  # name is unique and used as ID
-#     state: PlayerState = PlayerState.OFFLINE
 
 
 class OnlinePlayer(BaseModel):
