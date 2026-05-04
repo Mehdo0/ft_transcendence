@@ -31,7 +31,7 @@ def start_four_player(player: User, game: Game):
 
 
 def create_game(game_type: GameType) -> Game:
-    game: Game = Game.__init__()
+    game = Game()
     game.id = secrets.token_urlsafe(8)
     game.game_state = GameState.CONNECTING
     game.game_type = game_type

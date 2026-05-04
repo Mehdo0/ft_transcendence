@@ -52,9 +52,3 @@ class Game(BaseModel):
     game_state: GameState = GameState.CONNECTING
     game_type: GameType
     players: list[User] = Field(default_factory=list)
-
-
-MATCHMAKING_QUEUE = {
-    "TWO_PLAYER_AI": [],  # List of players waiting for 1v1
-    "FOUR_PLAYER": [],  # List of players waiting for a 4-player
-}
