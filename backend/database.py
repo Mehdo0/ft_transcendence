@@ -1,13 +1,8 @@
-import os
 import sqlite3
-from backend.data import User
+
 from backend.auth import get_password_hash
-
-
-# Define the DB name as a constant so you only have to type it once
-DB_DIR = "data"
-DB_NAME = f"{DB_DIR}/game_data.db"
-os.makedirs(DB_DIR, exist_ok=True)
+from backend.data import User
+from backend.global_var import DB_NAME
 
 
 def setup_database():
@@ -57,6 +52,7 @@ def add_user(username: str, password: str):
     conn.commit()
     conn.close()
     return User(username=username)
+
 
 def get_user_elo(username: str):
     conn = sqlite3.connect(DB_NAME)

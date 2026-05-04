@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from fastapi import WebSocket
 from pydantic import BaseModel, Field
 
 
@@ -37,6 +38,7 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: str | None = None
 
+
 class User(BaseModel):
     username: str
     state: PlayerState
@@ -53,7 +55,26 @@ class Game(BaseModel):
     game_type: GameType
     players: list[User] = Field(default_factory=list)
 
-MATCHMAKING_QUEUE = {
-    "TWO_PLAYER_AI": [],  # List of players waiting for 1v1
-    "FOUR_PLAYER": []     # List of players waiting for a 4-player
-}
+
+class ConnectionManager:
+    def __init__(self):
+        # This dictionary links a username to their open WebSocket
+        self.active_connections: dict[str, WebSocket] = {}
+
+    async def connect(self, websocket: WebSocket, username: str):
+        await websocket.accept()  # This creates a Websocket
+        self.active_connections[username] = (
+            websocket  # And here we bind the user to the socket
+        )
+
+    def disconnect(self, username: str):
+        if username in self.active_connections:
+            del self.active_connections[
+                username
+            ]  # We simply remove the connection in the dictionary
+
+    async def send_personal_message(self, message: dict, username: str):
+        # Send a JSON message to one specific player
+        if username in self.active_connections:
+            websocket = self.active_connections[username]
+            await websocket.send_json(message)

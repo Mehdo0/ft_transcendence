@@ -1,23 +1,23 @@
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
-import jwt
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
-from pwdlib import PasswordHash
-from backend.data import User, UserInDB, Token, TokenData
-from backend.database import add_user, DB_NAME
-import sqlite3
 
-# to get a string like this run:
-# openssl rand -hex 32
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7" #TODO:import from .env
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-password_hash = PasswordHash.recommended()
-DUMMY_HASH = password_hash.hash("dummypassword")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-app = FastAPI()
+import jwt
+from fastapi import Depends, HTTPException, WebSocketException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from jwt.exceptions import InvalidTokenError
+
+from backend.data import Token, TokenData, User, UserInDB
+from backend.database import DB_NAME, add_user
+from backend.global_var import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    DUMMY_HASH,
+    SECRET_KEY,
+    app,
+    oauth2_scheme,
+    password_hash,
+)
 
 
 def verify_password(plain_password, hashed_password):
@@ -34,22 +34,19 @@ def get_user(username: str) -> User | None:
     conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
     cursor = conn.cursor()
     # le '?' est une protection contre les attaques par injection SQL
-    cursor.execute(
-        "SELECT username FROM users WHERE username = ?", (username,)
-    )
+    cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
     row = cursor.fetchone()
     # et ca degage
     conn.close()
     if row is None:
-        return None # User not found
+        return None  # User not found
     return UserInDB(username=row["username"], hashed_password=row["password"])
-
 
 
 def authenticate_user(username: str, password: str):
     user = get_user(username)
     if not user:
-        verify_password(password, DUMMY_HASH) #preventing timing attacks
+        verify_password(password, DUMMY_HASH)  # preventing timing attacks
         return False
     if not verify_password(password, user.hashed_password):
         return False
@@ -87,6 +84,19 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     return user
 
 
+def get_username_from_ws_token(token: str) -> str:
+    try:
+        # Decode the token exactly like we did in the HTTP bouncer
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+        return username
+    except jwt.InvalidTokenError:
+        # If the token is fake or expired, instantly kill the connection
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
+
+
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -119,6 +129,7 @@ async def read_users_me(
 ) -> User:
     return current_user
 
+
 @app.post("/api/register/")
 async def registering(username: str, password: str):
     username_test = get_user(username)
@@ -126,6 +137,6 @@ async def registering(username: str, password: str):
         raise HTTPException(status_code=406, detail="Username already used")
     add_user(username, password)
     if get_user(username):
-        return {"user_created":username}
+        return {"user_created": username}
     else:
         raise HTTPException(status_code=500, detail="Error while adding user")
