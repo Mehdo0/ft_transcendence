@@ -1,15 +1,16 @@
 import sqlite3
+import jwt
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-import jwt
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 
 from backend.data import Token, TokenData, User, UserInDB
-from backend.database import DB_NAME, add_user
 from backend.global_var import (
+    DB_NAME,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
     DUMMY_HASH,
@@ -19,6 +20,62 @@ from backend.global_var import (
     password_hash,
 )
 
+def setup_database():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # ici ca ajoute les tables si elles n'existent pas encore
+    cursor.execute("""  
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password TEXT,
+            elo INTEGER
+        )
+    """)
+
+    # creation du super user (modo)
+    cursor.execute("""
+        INSERT OR IGNORE INTO users (username, elo) 
+        VALUES ("modo", 9999)
+    """)
+
+    # et ca degage
+    conn.commit()
+    conn.close()
+
+# Initialize DB on script load
+setup_database()
+
+def add_user(username: str, password: str) -> User:
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    if username == "drawer":
+        username = f"drawer{random.randint(1000, 9999)}"
+    hashed_password = get_password_hash(password)
+    try:
+        cursor.execute(
+            """
+            INSERT INTO users (username, password, elo) 
+            VALUES (?, ?, 0)
+            """,
+            (username, hashed_password)
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        # This triggers if the username already exists
+        conn.close()
+        raise ValueError("This username is already taken.")
+    conn.close()
+    return User(username=username)
+
+
+def get_user_elo(username: str):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT elo FROM users WHERE username = ?", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0]
 
 def verify_password(plain_password, hashed_password):
     return password_hash.verify(plain_password, hashed_password)
@@ -34,14 +91,13 @@ def get_user(username: str) -> User | None:
     conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
     cursor = conn.cursor()
     # le '?' est une protection contre les attaques par injection SQL
-    cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
+    cursor.execute("SELECT username, password FROM users WHERE username = ?", (username,))
     row = cursor.fetchone()
     # et ca degage
     conn.close()
     if row is None:
         return None  # User not found
     return UserInDB(username=row["username"], hashed_password=row["password"])
-
 
 def authenticate_user(username: str, password: str):
     user = get_user(username)
@@ -100,7 +156,8 @@ def get_username_from_ws_token(token: str) -> str:
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    if current_user.disabled:
+    # Note: Ensure the User model has a 'disabled' attribute or adjust accordingly
+    if hasattr(current_user, 'disabled') and current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
@@ -135,7 +192,9 @@ async def registering(username: str, password: str):
     username_test = get_user(username)
     if username_test:
         raise HTTPException(status_code=406, detail="Username already used")
+    
     add_user(username, password)
+    
     if get_user(username):
         return {"user_created": username}
     else:
