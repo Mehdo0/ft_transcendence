@@ -1,15 +1,16 @@
 import sqlite3
+import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-import jwt
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 
-from backend.data import Token, TokenData, User, UserInDB
-from backend.database import DB_NAME, add_user
+from backend.data import Token, TokenData, User
+from backend.database import add_user, get_user
 from backend.global_var import (
+    DB_NAME,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
     DUMMY_HASH,
@@ -22,25 +23,6 @@ from backend.global_var import (
 
 def verify_password(plain_password, hashed_password):
     return password_hash.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return password_hash.hash(password)
-
-
-def get_user(username: str) -> User | None:
-    # Connects to DB, fetches the user by ID, and returns the row.
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
-    cursor = conn.cursor()
-    # le '?' est une protection contre les attaques par injection SQL
-    cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
-    row = cursor.fetchone()
-    # et ca degage
-    conn.close()
-    if row is None:
-        return None  # User not found
-    return UserInDB(username=row["username"], hashed_password=row["password"])
 
 
 def authenticate_user(username: str, password: str):
@@ -100,7 +82,8 @@ def get_username_from_ws_token(token: str) -> str:
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    if current_user.disabled:
+    # Note: Ensure the User model has a 'disabled' attribute or adjust accordingly
+    if hasattr(current_user, "disabled") and current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
@@ -135,7 +118,9 @@ async def registering(username: str, password: str):
     username_test = get_user(username)
     if username_test:
         raise HTTPException(status_code=406, detail="Username already used")
+
     add_user(username, password)
+
     if get_user(username):
         return {"user_created": username}
     else:
