@@ -25,7 +25,16 @@ services:
       - backend
     networks:
       - trsc_net
+    secrets:
+      - server_crt
+      - server_key
 
 networks:
   trsc_net:
     driver: bridge
+
+secrets:
+  server_crt:
+    file: ../secrets/server.crt
+  server_key:
+    file: ../secrets/server.key
