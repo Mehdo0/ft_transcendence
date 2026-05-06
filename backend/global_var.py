@@ -1,7 +1,6 @@
 import os
 import secrets
 
-from backend.data import ConnectionManager
 from fastapi import FastAPI
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
@@ -9,22 +8,12 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from backend.database import setup_database
-
 # fastapi app + limiter init
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.state.games = {}
-
-# manage socket connection
-manager = ConnectionManager()
-
-# DB var
-setup_database()
-DB_NAME = "data/game_data.db"
-os.makedirs("data", exist_ok=True)
 
 # Useful to find the file directory no matter where he is
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

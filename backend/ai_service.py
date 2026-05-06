@@ -40,7 +40,11 @@ class QuickDrawBrain(nn.Module):
 
 model = QuickDrawBrain()
 BRAIN_PATH = os.path.join(BASE_DIR, "ai_brain", "trained_brain.pth")
-weights = torch.load(BRAIN_PATH, weights_only=True)
+map_location = torch.device("cpu")
+weights = torch.load(
+    BRAIN_PATH, weights_only=True, map_location=torch.device("cpu")
+)  # for running in docker we should use only the CPU
+# if we want to run on GPU we should setup a dedicated server
 model.load_state_dict(weights)
 model.eval()
 

@@ -1,4 +1,3 @@
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -8,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 
 from backend.data import Token, TokenData, User, UserInDB
-from backend.database import DB_NAME, add_user
+from backend.database import add_user, get_user
 from backend.global_var import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
@@ -22,25 +21,6 @@ from backend.global_var import (
 
 def verify_password(plain_password, hashed_password):
     return password_hash.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return password_hash.hash(password)
-
-
-def get_user(username: str) -> User | None:
-    # Connects to DB, fetches the user by ID, and returns the row.
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
-    cursor = conn.cursor()
-    # le '?' est une protection contre les attaques par injection SQL
-    cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
-    row = cursor.fetchone()
-    # et ca degage
-    conn.close()
-    if row is None:
-        return None  # User not found
-    return UserInDB(username=row["username"], hashed_password=row["password"])
 
 
 def authenticate_user(username: str, password: str):
