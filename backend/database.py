@@ -1,9 +1,8 @@
 import sqlite3
-
-from backend.hash_service import get_password_hash
-from backend.data import User
 from contextlib import contextmanager
-from data import UserInDB
+
+from backend.data import User, UserInDB
+from backend.hash_service import get_password_hash
 
 DB_NAME = "data/game_data.db"
 
