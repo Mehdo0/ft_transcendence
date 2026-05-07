@@ -79,19 +79,11 @@
 	function pencil() {
 		selectedColor = lastSelectedColor;
 	}
-
-	let word = $state<string | null>(null);
-	async function getWord() {
-		const response = await fetch('/api/word_list/get_word/');
-		const data = await response.json();
-		word = data.word;
-	}
-	getWord();
 </script>
 
 <svelte:window onresize={resize} />
 <h1>Draw !</h1>
-<div class="word">{word}</div>
+
 <div class="game">
 	<div class="tools">
 		{#each COLORS as c}
