@@ -1,6 +1,16 @@
 <script lang="ts">
-	// let data;
+	let data = $state(null);
+
+	async function load_data() {
+		const res = await fetch('/api/');
+		data = await res.json();
+	}
+
+	load_data();
 </script>
+
+<p>Api call:</p>
+<p>{JSON.stringify(data)}</p>
 
 <body>
 	<div class="center">

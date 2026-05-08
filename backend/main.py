@@ -25,7 +25,7 @@ app.add_middleware(
 
 
 # default route
-@app.get("/")
+@app.get("/api/")
 async def root():
     print("sent hello world!")
     return {"message": "Hello World"}

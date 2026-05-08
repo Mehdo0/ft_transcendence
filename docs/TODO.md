@@ -6,7 +6,7 @@
 |- Prioritize the <!important> tasks.                                  |
 |-----------------------RULES------------------------------------------|
 
-- [ ] Create a container to store the frontend (dependencies, installation etc...) 
+- [X] Create a container to store the frontend (dependencies, installation etc...) 
 
 - [X] Create the database with the correct colons (user_name, user_id, elo, wins, losses, friends)
 
@@ -17,7 +17,7 @@
 - [X] Code a function to add data into the DB
 
 - [ ] Connect front to backend (started by lfaure)
-    - [ ] simple API fetch
+    - [X] simple API fetch
     - [ ] WebSocket connection
     - [ ] vector data transfer (one block)
     - [ ] vector data stream
