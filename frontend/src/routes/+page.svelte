@@ -18,7 +18,7 @@
     }
 
     function connect() {
-        socket = new WebSocket('ws://localhost/ws');
+        socket = new WebSocket('/ws/');
 
         socket.onopen = () => {
             console.log("WebSocket connected");
@@ -55,7 +55,7 @@
         }
 
         try {
-            const response = await fetch("/users/me/", {
+            const response = await fetch("/api/users/me/", {
                 method: "GET",
                 headers: {
                     "Authorization": `Bearer ${token}`,

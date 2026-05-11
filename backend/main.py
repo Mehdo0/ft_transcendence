@@ -5,13 +5,11 @@ from backend.auth import (
     Depends,
     User,
     get_current_user,
-    get_username_from_ws_token,
 )
 from backend.data import ImagePayload, UserRegister
 from backend.database import add_user, get_user_elo
-from backend.global_var import app, limiter, manager
-from fastapi import HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from backend import websocket
+from backend.global_var import app, limiter
+from fastapi import HTTPException, Request
 
 
 # default route
