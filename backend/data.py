@@ -34,12 +34,6 @@ class ServerWebsocketMessageType(str, Enum):
     PLAYER_GUESS = "player_guess"
 
 
-@dataclass
-class Session(BaseModel):
-    ip_address: str
-    session_id: str
-
-
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -66,7 +60,7 @@ class Game(BaseModel):
     id: str
     game_state: GameState = GameState.CONNECTING
     game_type: GameType
-    players: list[User] = Field(default_factory=list)
+    players: list[str] = Field(default_factory=list)
 
 
 class ImagePayload(BaseModel):
