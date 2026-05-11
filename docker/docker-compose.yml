@@ -12,6 +12,22 @@ services:
     networks:
       - trsc_net
 
+  vite:
+    build:
+      context: ..
+      dockerfile: docker/vite.Dockerfile
+    container_name: trsc_vite
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - trsc_net
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
   nginx:
     build:
       context: ..
@@ -23,6 +39,7 @@ services:
       - "443:443"
     depends_on:
       - backend
+      - vite
     networks:
       - trsc_net
     secrets:
