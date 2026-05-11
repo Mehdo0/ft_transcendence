@@ -49,6 +49,7 @@ def setup_database():
             VALUES ("modo", 9999)
         """)
 
+setup_database()
 
 def add_user(username: str, password: str) -> User:
     conn = sqlite3.connect(DB_NAME)
