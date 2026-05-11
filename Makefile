@@ -2,8 +2,11 @@ COMPOSE = docker-compose -f docker/docker-compose.yml
 
 all: up
 
-up:
+up: secrets/server.crt
 	$(COMPOSE) up --build -d
+
+secrets/server.crt:
+	bash setup.sh
 
 down:
 	$(COMPOSE) down

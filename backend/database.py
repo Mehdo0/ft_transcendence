@@ -19,8 +19,8 @@ def db_cursor(
     else:
         conn = sqlite3.connect(f"file:{DB_NAME}?mode=ro", uri=True)
 
-    cursor = conn.cursor()
     conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
+    cursor = conn.cursor()
     try:
         yield cursor
         if writable:
@@ -49,27 +49,24 @@ def setup_database():
             VALUES ("modo", 9999)
         """)
 
+setup_database()
 
 def add_user(username: str, password: str) -> User:
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    if username == "drawer":
-        username = f"drawer{random.randint(1000, 9999)}"
-    hashed_password = get_password_hash(password)
-    try:
-        cursor.execute(
-            """
-            INSERT INTO users (username, password, elo) 
-            VALUES (?, ?, 0)
-            """,
-            (username, hashed_password)
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        conn.close()
-        raise ValueError("This username is already taken.")
-    conn.close()
-    return User(username=username)
+    with db_cursor(writable=True) as cursor:
+        if username == "drawer":
+            username = f"drawer{random.randint(1000, 9999)}"
+        hashed_password = get_password_hash(password)
+        try:
+            cursor.execute(
+                """
+                INSERT INTO users (username, password, elo) 
+                VALUES (?, ?, 0)
+                """,
+                (username, hashed_password),
+            )
+        except sqlite3.IntegrityError:
+            raise ValueError("This username is already taken.")
+        return User(username=username)
 
 
 def get_user_elo(username: str):
@@ -81,8 +78,6 @@ def get_user_elo(username: str):
 
 def get_user(username: str) -> User | None:
     with db_cursor() as cursor:
-        # Connects to DB, fetches the user by ID, and returns the row.
-        # le '?' est une protection contre les attaques par injection SQL
         cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
         row = cursor.fetchone()
         if row is None:
