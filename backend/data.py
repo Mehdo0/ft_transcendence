@@ -53,12 +53,15 @@ class Game(BaseModel):
     game_type: GameType
     players: list[User] = Field(default_factory=list)
 
+
 class ImagePayload(BaseModel):
     base64_string: str
+
 
 class UserRegister(BaseModel):
     username: str = "drawer"
     password: str
+
 
 class ConnectionManager:
     def __init__(self):

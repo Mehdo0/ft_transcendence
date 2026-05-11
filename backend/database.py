@@ -19,8 +19,8 @@ def db_cursor(
     else:
         conn = sqlite3.connect(f"file:{DB_NAME}?mode=ro", uri=True)
 
-    cursor = conn.cursor()
     conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
+    cursor = conn.cursor()
     try:
         yield cursor
         if writable:
@@ -77,8 +77,6 @@ def get_user_elo(username: str):
 
 def get_user(username: str) -> User | None:
     with db_cursor() as cursor:
-        # Connects to DB, fetches the user by ID, and returns the row.
-        # le '?' est une protection contre les attaques par injection SQL
         cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
         row = cursor.fetchone()
         if row is None:
