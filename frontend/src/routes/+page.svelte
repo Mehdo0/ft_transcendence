@@ -40,7 +40,7 @@
 	let data = $state(null);
 
 	async function load_data() {
-		const res = await fetch('/api');
+		const res = await fetch('/api/');
 		data = await res.json();
 	}
 
@@ -50,7 +50,7 @@
 	let socket: WebSocket;
 
 	function connect() {
-		socket = new WebSocket('/ws');
+		socket = new WebSocket('/ws/');
 
 		socket.onopen = () => {
 			console.log("WebSocket connected");
