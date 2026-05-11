@@ -2,15 +2,56 @@
 	let data = $state(null);
 
 	async function load_data() {
-		const res = await fetch('/api/');
+		const res = await fetch('/api');
 		data = await res.json();
 	}
 
 	load_data();
+
+	let messages: string[] = $state([]);
+	let socket: WebSocket;
+
+	function connect() {
+		socket = new WebSocket('/ws');
+
+		socket.onopen = () => {
+			console.log("WebSocket connected");
+			messages = [...messages, "connected to server"];
+		};
+
+		socket.onmessage = (event) => {
+			console.log("received:", event.data);
+			messages = [...messages, `server: ${event.data}`];
+		};
+
+		socket.onclose = () => {
+			console.log("WebSocket closed");
+			messages = [...messages, "disconnected"];
+		};
+	}
+
+	function sendMessage() {
+		if (socket?.readyState === WebSocket.OPEN) {
+			socket.send("hello from browser at " + new Date().toISOString());
+		}
+	}
+
+	connect();
 </script>
 
 <p>Api call:</p>
 <p>{JSON.stringify(data)}</p>
+
+<p>WebSocket test:</p>
+<button onclick={sendMessage}>
+	Send message
+</button>
+
+<ul>
+	{#each messages as msg}
+		<li>{msg}</li>
+	{/each}
+</ul>
 
 <body>
 	<div class="center">
