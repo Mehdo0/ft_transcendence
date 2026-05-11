@@ -1,7 +1,7 @@
-<script>
+<script lang="ts">
     import { onMount } from 'svelte';
 
-    let username = "Loading...";
+    let username = "Loading";
     let errorMessage = "";
 
     onMount(async () => {
@@ -35,20 +35,8 @@
             username = "Guest";
         }
     });
-</script>
 
-<main style="padding: 2rem; font-family: sans-serif;">
-    <h2>Dashboard</h2>
-    
-    <p>Welcome back, <strong>{username}</strong>!</p>
 
-    {#if errorMessage}
-        <p style="color: red; background: #fee; padding: 1rem; border-radius: 4px;">
-            {errorMessage}
-        </p>
-    {/if}
-</main>
-<script lang="ts">
 	let data = $state(null);
 
 	async function load_data() {
@@ -88,6 +76,18 @@
 
 	connect();
 </script>
+
+<main style="padding: 2rem; font-family: sans-serif;">
+    <h2>Dashboard</h2>
+    
+    <p>Welcome back, <strong>{username}</strong>!</p>
+
+    {#if errorMessage}
+        <p style="color: red; background: #fee; padding: 1rem; border-radius: 4px;">
+            {errorMessage}
+        </p>
+    {/if}
+</main>
 
 <p>Api call:</p>
 <p>{JSON.stringify(data)}</p>
