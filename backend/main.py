@@ -21,23 +21,6 @@ async def root():
     return {"message": "Hello World"}
 
 
-<<<<<<< HEAD
-=======
-@app.websocket("/ws/")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    print("websocket connected")
-    try:
-        while True:
-            data = await websocket.receive_text()
-            print("received:", data)
-            response = f"Echo from server {data}"
-            await websocket.send_text(response)
-            print("sent:", response)
->>>>>>> dev
-
-
-
 # get user stats
 @app.get("/api/users/{username}/stats")
 async def get_user_stats(username: str):
@@ -65,9 +48,6 @@ async def get_random_word(num: int = 1):
 
     word = random.choice(data)
     return {"word": word}
-
-
-
 
 
 @app.post("/api/ai_guess/")

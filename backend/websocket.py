@@ -1,5 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from backend.global_var import app, MATCHMAKING_QUEUE
+from backend.data import ClientWebsocketMessageType
 
 
 @app.websocket("/ws")
@@ -9,14 +10,17 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            type = data.get("type")
+            type: ClientWebsocketMessageType = data.get("type")
 
-            if type == "find_player":
-                MATCHMAKING_QUEUE["TWO_PLAYER_AI"].append(data.get("username"))
-
-            else:
-                await websocket.send_json({"event": "error", "msg": "unknown type"})
+            match type:
+                case "drawing":
+                    make_ai_guess()
+                case "quit":
+                    player_quit_game()
+                case _:
+                    await websocket.send_json({"event": "error", "msg": "unknown type"})
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        
 
+        # if type == "find_player":
+        #     MATCHMAKING_QUEUE["TWO_PLAYER_AI"].append(data.get("username"))
