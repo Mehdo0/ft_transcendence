@@ -45,8 +45,8 @@ def setup_database():
 
         # creation du super user (modo)
         cursor.execute("""
-            INSERT OR IGNORE INTO users (username, elo) 
-            VALUES ("modo", 9999)
+            INSERT OR IGNORE INTO users (username, password, elo) 
+            VALUES ("modo", "modo_mdp", 9999)
         """)
 
 setup_database()
@@ -78,7 +78,7 @@ def get_user_elo(username: str):
 
 def get_user(username: str) -> User | None:
     with db_cursor() as cursor:
-        cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT username, password FROM users WHERE username = ?", (username,))
         row = cursor.fetchone()
         if row is None:
             return None  # User not found
