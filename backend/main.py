@@ -53,8 +53,6 @@ async def db_add(payload: UserRegister):
         return {"username": new_user.username, "added": "yes"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    # except Exception:
-    # raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/word_list/get_word/")

@@ -39,12 +39,15 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
+    email: str
     state: PlayerState | None = None
     disabled: bool | None = None
 
 
 class UserInDB(User):
+    username: str
     hashed_password: str
+    email: str
 
 
 class Game(BaseModel):
