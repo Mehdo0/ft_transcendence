@@ -1,8 +1,46 @@
 <script lang="ts">
+    import { onMount } from 'svelte';
+
+    let username = "Loading";
+    let errorMessage = "";
+
+    onMount(async () => {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            errorMessage = "You are not logged in.";
+            username = "Guest";
+            return;
+        }
+
+        try {
+            const response = await fetch("/users/me/", {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                
+                username = data.username;
+            } else {
+                errorMessage = "Your session expired. Please log in again.";
+                localStorage.removeItem("access_token");
+                username = "Guest";
+            }
+        } catch (error) {
+            errorMessage = "Could not connect to the backend server.";
+            username = "Guest";
+        }
+    });
+
+
 	let data = $state(null);
 
 	async function load_data() {
-		const res = await fetch('/api');
+		const res = await fetch('/api/');
 		data = await res.json();
 	}
 
@@ -12,7 +50,7 @@
 	let socket: WebSocket;
 
 	function connect() {
-		socket = new WebSocket('/ws');
+		socket = new WebSocket('/ws/');
 
 		socket.onopen = () => {
 			console.log("WebSocket connected");
@@ -38,6 +76,18 @@
 
 	connect();
 </script>
+
+<main style="padding: 2rem; font-family: sans-serif;">
+    <h2>Dashboard</h2>
+    
+    <p>Welcome back, <strong>{username}</strong>!</p>
+
+    {#if errorMessage}
+        <p style="color: red; background: #fee; padding: 1rem; border-radius: 4px;">
+            {errorMessage}
+        </p>
+    {/if}
+</main>
 
 <p>Api call:</p>
 <p>{JSON.stringify(data)}</p>
