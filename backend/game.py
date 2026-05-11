@@ -1,7 +1,15 @@
 import secrets
 
-from backend.data import Game, GameType, PlayerState, GameState, MATCHMAKING_QUEUE
+from backend.data import (
+    Game,
+    GameType,
+    PlayerState,
+    GameState,
+    MATCHMAKING_QUEUE,
+    Player,
+)
 from backend.auth import User, Depends, get_current_user
+
 
 def start_solo(player: User, game: Game):
     # start game
@@ -30,7 +38,7 @@ def start_four_player(player: User, game: Game):
     return game
 
 
-def create_game(game_type: GameType) -> Game:
+def create_game(player: Player, game_type: GameType) -> Game:
     game = Game()
     game.id = secrets.token_urlsafe(8)
     game.game_state = GameState.CONNECTING
@@ -46,8 +54,9 @@ def create_game(game_type: GameType) -> Game:
         case GameType.FOUR_PLAYER:
             return start_four_player(player, game)
 
-async def fill_game():
-    if len(MATCHMAKING_QUEUE) < 2:
-        return 
-    elif:
-    #TODO : make the filling logic 
+
+# async def fill_game():
+#     if len(MATCHMAKING_QUEUE) < 2:
+#         return
+#     elif:
+# TODO : make the filling logic

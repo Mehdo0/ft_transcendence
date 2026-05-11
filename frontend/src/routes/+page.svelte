@@ -55,7 +55,7 @@
         }
 
         try {
-            const response = await fetch("https://localhost/users/me/", {
+            const response = await fetch("/users/me/", {
                 method: "GET",
                 headers: {
                     "Authorization": `Bearer ${token}`,

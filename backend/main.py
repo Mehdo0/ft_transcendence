@@ -20,7 +20,7 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.websocket("/ws")
+@app.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("websocket connected")
@@ -53,8 +53,6 @@ async def db_add(payload: UserRegister):
         return {"username": new_user.username, "added": "yes"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    # except Exception:
-    # raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/api/word_list/get_word/")
