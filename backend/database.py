@@ -1,4 +1,5 @@
 import sqlite3
+import random
 from contextlib import contextmanager
 
 from backend.data import User, UserInDB
@@ -49,23 +50,26 @@ def setup_database():
         """)
 
 
-def add_user(username: str, password: str):
-    with db_cursor(writable=True) as cursor:
-        # ici on trouve l'id max pour mettre le nouveau user a la fin de la table
-        cursor.execute("SELECT MAX(id) FROM users")
-        max_id = cursor.fetchone()[0]  # on isole l'id
-        new_user_id = 1 if max_id is None else max_id + 1  # on assigne la max + 1
-        if username == "drawer":
-            username = username + str(new_user_id)  # username par defaut
-        password = get_password_hash(password)
+def add_user(username: str, password: str) -> User:
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    if username == "drawer":
+        username = f"drawer{random.randint(1000, 9999)}"
+    hashed_password = get_password_hash(password)
+    try:
         cursor.execute(
             """
             INSERT INTO users (username, password, elo) 
             VALUES (?, ?, 0)
-        """,
-            (username, password),
-        )  # on add a la db
-        return User(username=username)
+            """,
+            (username, hashed_password)
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise ValueError("This username is already taken.")
+    conn.close()
+    return User(username=username)
 
 
 def get_user_elo(username: str):

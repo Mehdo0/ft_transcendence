@@ -11,24 +11,29 @@ from backend.data import ImagePayload, UserRegister
 from backend.database import add_user, get_user_elo
 from backend.global_var import app, limiter, manager
 from fastapi import HTTPException, Query, Request, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-
-# allow SvelteKit dev server
-# we might want to switch to using SvelteKit as a proxy to avoid giving direct acces to API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://trsc_front:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 # default route
-@app.get("/")
+@app.get("/api/")
 async def root():
     print("sent hello world!")
     return {"message": "Hello World"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("websocket connected")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("received:", data)
+            response = f"Echo from server {data}"
+            await websocket.send_text(response)
+            print("sent:", response)
+
+    except Exception as e:
+        print("websocket closed:", e)
 
 
 # get user stats
