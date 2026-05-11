@@ -22,6 +22,18 @@ class PlayerState(str, Enum):
     PLAYING = "playing"
 
 
+class ClientWebsocketMessageType(str, Enum):
+    DRAWING = "drawing"
+    QUIT = "quit"
+
+
+class ServerWebsocketMessageType(str, Enum):
+    GAME_START = "game_start"
+    GAME_END = "game_end"
+    AI_GUESS = "ai_guess"
+    PLAYER_GUESS = "player_guess"
+
+
 @dataclass
 class Session(BaseModel):
     ip_address: str
@@ -64,6 +76,7 @@ class ImagePayload(BaseModel):
 class UserRegister(BaseModel):
     username: str = "drawer"
     password: str
+    email: str
 
 
 class ConnectionManager:
