@@ -7,16 +7,17 @@
         ws = new WebSocket('/ws/');
         ws.onopen = () => {
 			console.log("WebSocket connected");
-            ws.send("salut bg");
+            ws.send(JSON.stringify({ username: "nils" }));
 
 		};
         ws.onmessage = (event) => {
-            console.log("serveur dit:", event.data, event.type, event.origin);
+            console.log("serveur dit:", event.data);
         };
         
     }
 
     function findGame() {
+        ws.send(JSON.stringify({ type: "find_player" }));
     
 
     }

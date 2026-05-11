@@ -2,11 +2,13 @@ import os
 import secrets
 
 from fastapi import FastAPI
+from fastapi import WebSocket
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from backend.data import Game
 
 from backend.data import ConnectionManager
 
@@ -15,7 +17,7 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.state.games = {}
+# app.state.games = {}
 
 # manage socket connection
 manager = ConnectionManager()
@@ -39,3 +41,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 password_hash = PasswordHash.recommended()
 DUMMY_HASH = password_hash.hash("dummy_password")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+CONNECTIONS: dict[str, WebSocket] = {} # username of the player  and his websocket id
+GAMES: dict[str, Game] = {} # list of games with their players usernames

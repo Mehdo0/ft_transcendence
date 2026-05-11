@@ -21,20 +21,6 @@ async def root():
     return {"message": "Hello World"}
 
 
-<<<<<<< HEAD
-=======
-@app.websocket("/ws/")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    print("websocket connected")
-    try:
-        while True:
-            data = await websocket.receive_text()
-            print("received:", data)
-            response = f"Echo from server {data}"
-            await websocket.send_text(response)
-            print("sent:", response)
->>>>>>> dev
 
 
 
