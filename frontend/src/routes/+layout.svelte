@@ -1,13 +1,14 @@
 <script lang="ts">
     import { page } from '$app/stores';
-    import favicon from '$lib/Draw_meter_logo.svg';
+    import favicon from '$lib/draw_meter_logo.svg';
 
     let { children } = $props();
 
     // Define the main navigation links for the app
     const navLinks = [
         { href: '/', label: 'Dashboard' },
-        { href: '/game/lobby', label: 'Play' },
+        { href: '/game/start_game', label: 'Play Now!' },
+        { href: '/game/lobby', label: 'Create Lobby' },
         { href: '/ranking', label: 'Leaderboard' },
     ];
 </script>
