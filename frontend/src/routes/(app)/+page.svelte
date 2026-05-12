@@ -51,12 +51,6 @@
         <a href="/game/in-game" class="menu-btn">Start game</a>
         <a href="/game/lobby" class="menu-btn">Join lobby</a>
         <a href="/ranking" class="menu-btn">Ranking</a>
-        
-        <!-- Optional: A divider to separate game actions from account actions -->
-        <hr class="divider" />
-        
-        <a href="/account/login" class="menu-btn secondary">Login</a>
-        <a href="/account/register" class="menu-btn secondary">Register</a>
     </main>
 
 </div>
@@ -82,10 +76,6 @@
         color: #333;
     }
 
-    .dashboard-header h2 {
-        margin: 0 0 0.5rem 0;
-        font-size: 2rem;
-    }
 
     .error-banner {
         color: red;
@@ -110,13 +100,6 @@
         box-sizing: border-box;
     }
 
-    .divider {
-        border: 0;
-        height: 1px;
-        background-color: rgba(255, 255, 255, 0.3);
-        margin: 0.5rem 0;
-    }
-
     /* Anchor tags styled to look exactly like your old buttons */
     .menu-btn {
         display: flex;
@@ -138,17 +121,5 @@
         background-color: aquamarine;
         color: #333;
         transform: translateY(-2px); /* Slight lift effect on hover */
-    }
-
-    /* A slightly different style for login/register to separate them visually */
-    .menu-btn.secondary {
-        background-color: transparent;
-        color: white;
-        border-color: white;
-    }
-
-    .menu-btn.secondary:hover {
-        background-color: white;
-        color: blueviolet;
     }
 </style>

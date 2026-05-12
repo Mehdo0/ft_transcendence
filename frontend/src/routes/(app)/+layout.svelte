@@ -1,8 +1,20 @@
 <script lang="ts">
     import { page } from '$app/stores';
     import favicon from '$lib/draw_meter_logo.svg';
+    import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
 
     let { children } = $props();
+    
+    // It's safer to default to false (logged out) so the user 
+    // doesn't see a "Logout" button flash on the screen before the API responds.
+    let login = $state(false); 
+
+    async function handleLogout() {
+        await fetch("/api/logout/", {credentials: "same-origin"});
+        login = false; // Update the UI state instantly
+        goto('/');
+    }
 
     // Define the main navigation links for the app
     const navLinks = [
@@ -11,6 +23,18 @@
         { href: '/game/lobby', label: 'Create Lobby' },
         { href: '/ranking', label: 'Leaderboard' },
     ];
+
+    onMount(async () => {
+        const response = await fetch("/api/users/me/", {
+            method: "GET",
+            credentials: 'same-origin',
+        });
+        
+        // If the backend recognizes the user, update the state to true
+        if (response.ok) {
+            login = true;
+        }
+    });
 </script>
 
 <svelte:head>
@@ -34,10 +58,6 @@
                 <ul>
                     {#each navLinks as link}
                         <li>
-                            <!-- 
-                              $page.url.pathname checks the current URL.
-                              If it matches the link, it applies the "active" CSS class.
-                            -->
                             <a 
                                 href={link.href} 
                                 class="nav-link"
@@ -50,12 +70,18 @@
                 </ul>
             </nav>
 
-            <!-- Action Area (Login / Register) -->
+            <!-- Auth Actions -->
             <div class="nav-actions">
-                <a href="/account/login" class="btn-login">Login</a>
-                <a href="/account/register" class="btn-register">Register</a>
+                {#if !login}
+                    <a href="/account/login" class="btn-login">Login</a>
+                    <a href="/account/register" class="btn-register">Register</a>
+                {:else}
+                    <!-- FIXED: Lowercase 'onclick' and added 'nav-actions' container -->
+                    <button class="btn-logout" onclick={handleLogout}>
+                         Logout
+                    </button>
+                {/if}
             </div>
-
         </div>
     </header>
 
@@ -66,10 +92,7 @@
 </div>
 
 <style>
-    /* 
-      Global reset for the entire app. 
-      You can move this to an app.css file if you prefer. 
-    */
+    /* Global reset for the entire app. */
     :global(body) {
         margin: 0;
         padding: 0;
@@ -147,7 +170,6 @@
         color: blueviolet;
     }
 
-    /* The glowing underline for the active page */
     .nav-link.active {
         color: blueviolet;
     }
@@ -193,6 +215,23 @@
 
     .btn-register:hover {
         background-color: #7a1cd1;
+    }
+
+    /* FIXED: Reset default button styling so it looks clean */
+    .btn-logout {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 1rem;
+        color: #e74c3c;
+        font-weight: 600;
+        transition: color 0.2s ease;
+    }
+
+    .btn-logout:hover {
+        color: #c0392b;
     }
 
     /* Main Content Area */
