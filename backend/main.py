@@ -32,44 +32,44 @@ async def get_user_stats(username: str):
     return {"username": username, "Elo": elo}
 
 
-@app.get("/api/word_list/get_word/")
-async def get_random_word():
-    data = load_word_list("list.txt")
-    if data[0] == "Error":
-        raise HTTPException(status_code=500, detail=data[1])
+# @app.get("/api/word_list/get_word/")
+# async def get_random_word():
+#     data = load_word_list("list.txt")
+#     if data[0] == "Error":
+#         raise HTTPException(status_code=500, detail=data[1])
 
-    word = random.choice(data)
-    return {"word": word}
-
-
-@app.websocket("/ws/matchmaking")
-async def websocket_matchmaking(
-    websocket: WebSocket,
-):
-    token = websocket.cookies.get("access_token")
-    username = get_username_from_ws_token(token)
-    await manager.connect(websocket, username)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            await manager.send_personal_message(
-                {"status": "received", "you_said": data}, username
-            )  # test purpose
-    except WebSocketDisconnect:
-        manager.disconnect(username)
+#     word = random.choice(data)
+#     return {"word": word}
 
 
-@app.post("/api/ai_guess/")
-async def ai_guess(
-    payload: ImagePayload,
-):
-    base64_str = payload.base64_string
-    if "data:image" not in base64_str:
-        raise HTTPException(status_code=406, detail="Bad data sent")
-    results = make_ai_guess(base64_str)
-    if not results or len(results) != 3:
-        raise HTTPException(status_code=500, detail="Bad AI output")
-    return {"guesses": results}
+# @app.websocket("/ws/matchmaking")
+# async def websocket_matchmaking(
+#     websocket: WebSocket,
+# ):
+#     token = websocket.cookies.get("access_token")
+#     username = get_username_from_ws_token(token)
+#     await manager.connect(websocket, username)
+#     try:
+#         while True:
+#             data = await websocket.receive_text()
+#             await manager.send_personal_message(
+#                 {"status": "received", "you_said": data}, username
+#             )  # test purpose
+#     except WebSocketDisconnect:
+#         manager.disconnect(username)
+
+
+# @app.post("/api/ai_guess/")
+# async def ai_guess(
+#     payload: ImagePayload,
+# ):
+#     base64_str = payload.base64_string
+#     if "data:image" not in base64_str:
+#         raise HTTPException(status_code=406, detail="Bad data sent")
+#     results = make_ai_guess(base64_str)
+#     if not results or len(results) != 3:
+#         raise HTTPException(status_code=500, detail="Bad AI output")
+#     return {"guesses": results}
 
 
 @app.get("/api/get_ranking")

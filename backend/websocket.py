@@ -1,17 +1,15 @@
 import uuid
 import random
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from backend.global_var import CONNECTIONS, GAMES, MATCHMAKING_QUEUE, app
-from backend.data import Game, GameState, GameType
-from backend.ai_service import make_ai_guess, load_word_list
+from state import CONNECTIONS, GAMES, matchmaking_queue, app
+from data import Game, GameState, GameType
+from ai_service import make_ai_guess, load_word_list
 
 router = APIRouter()
-
 
 @router.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("websocket connected")
     response = await websocket.receive_json()
     username = response.get("username")
     CONNECTIONS[username] = websocket
@@ -29,7 +27,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 async def find_player(username: str):
-    queue = MATCHMAKING_QUEUE["TWO_PLAYER_AI"]
+    queue = matchmaking_queue["TWO_PLAYER_AI"]
 
     if (len(queue)) >= 1:
         opponent = queue.pop(0)
@@ -70,7 +68,7 @@ async def create_game(player1: str, player2: str):
 
 def disconnect(username: str):
     CONNECTIONS.pop(username, None)
-    queue = MATCHMAKING_QUEUE["TWO_PLAYER_AI"]
+    queue = matchmaking_queue["TWO_PLAYER_AI"]
     if username in queue:
         queue.remove(username)
 
