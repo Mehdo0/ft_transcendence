@@ -1,4 +1,3 @@
-import sqlite3
 import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -7,9 +6,9 @@ from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt.exceptions import InvalidTokenError
 
-from backend.data import Token, TokenData, User
-from backend.database import add_user, get_user
-from backend.global_var import (
+from data import Token, TokenData, User
+from database import add_user, get_user
+from state import (
     DB_NAME,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,

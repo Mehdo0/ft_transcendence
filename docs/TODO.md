@@ -18,9 +18,13 @@
 
 - [ ] Connect front to backend (started by lfaure)
     - [X] simple API fetch
-    - [ ] WebSocket connection
+    - [X] WebSocket connection
     - [ ] vector data transfer (one block)
     - [ ] vector data stream
+
+- [ ] Organize the backend better (started by lfaure)
+
+- [ ] Add salt to hashed passwords
 
 - [ ] Train the AI following the instructions @AI_DOCS.md
 
