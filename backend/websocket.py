@@ -1,17 +1,19 @@
 import uuid
 import random
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, get_username_from_ws_token
 from state import CONNECTIONS, GAMES, matchmaking_queue, app, PLAYER_GAMES
 from data import Game, GameState, GameType
 from ai_service import make_ai_guess, load_word_list
+
 
 router = APIRouter()
 
 @router.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    response = await websocket.receive_json()
-    username = response.get("username")
+    token = websocket.cookies.get("access_token")
+    # response = await websocket.receive_json()
+    username = get_username_from_ws_token(token)
     CONNECTIONS[username] = websocket
     try:
         while True:
