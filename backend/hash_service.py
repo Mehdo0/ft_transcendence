@@ -1,4 +1,4 @@
-from backend.global_var import password_hash
+from state import password_hash
 
 
 def get_password_hash(password):

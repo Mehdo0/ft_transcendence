@@ -1,5 +1,5 @@
-from backend.data import User
-from backend.auth import get_user_elo
+from data import User
+from database import get_user_elo
 
 # This function applies the chess elo formula to determine the new player elo after a game
 # We use the chances to win and the elo difference to decide how much the player gains or losses elo

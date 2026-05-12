@@ -1,9 +1,9 @@
-import sqlite3
 import random
+import sqlite3
 from contextlib import contextmanager
 
-from backend.data import User, UserInDB
-from backend.hash_service import get_password_hash
+from data import User, UserInDB
+from hash_service import get_password_hash
 
 DB_NAME = "data/game_data.db"
 
@@ -49,7 +49,9 @@ def setup_database():
             VALUES ("modo", "modo_mdp", 9999)
         """)
 
+
 setup_database()
+
 
 def add_user(username: str, password: str) -> User:
     with db_cursor(writable=True) as cursor:
@@ -78,7 +80,9 @@ def get_user_elo(username: str):
 
 def get_user(username: str) -> User | None:
     with db_cursor() as cursor:
-        cursor.execute("SELECT username, password FROM users WHERE username = ?", (username,))
+        cursor.execute(
+            "SELECT username, password FROM users WHERE username = ?", (username,)
+        )
         row = cursor.fetchone()
         if row is None:
             return None  # User not found

@@ -1,18 +1,15 @@
 import random
 
-from backend.ai_service import load_word_list, make_ai_guess
-from backend.auth import (
-    Depends,
-    User,
-    get_current_user,
+from fastapi import HTTPException, Query, WebSocket, WebSocketDisconnect
+
+from ai_service import load_word_list, make_ai_guess
+from auth import (
     get_username_from_ws_token,
 )
-from backend.data import ImagePayload, UserRegister
-from backend.database import add_user, get_user_elo, db_cursor
-from backend.database import add_user, get_user_elo
-from backend.websocket import router as websocket_router
-from backend.global_var import app, limiter, manager
-from fastapi import HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from data import ImagePayload, UserRegister
+from database import add_user, db_cursor, get_user_elo
+from state import app, manager
+from websocket import router as websocket_router
 
 
 # default route
@@ -45,7 +42,7 @@ async def db_add(payload: UserRegister):
 
 
 @app.get("/api/word_list/get_word/")
-async def get_random_word(num: int = 1):
+async def get_random_word():
     data = load_word_list("list.txt")
     if data[0] == "Error":
         raise HTTPException(status_code=500, detail=data[1])
@@ -72,11 +69,8 @@ async def websocket_matchmaking(
 
 
 @app.post("/api/ai_guess/")
-@limiter.limit("2/second")
 async def ai_guess(
     payload: ImagePayload,
-    request: Request,
-    current_user: User = Depends(get_current_user),
 ):
     base64_str = payload.base64_string
     if "data:image" not in base64_str:
@@ -92,5 +86,7 @@ async def get_ranking():
     with db_cursor() as cursor:
         cursor.execute("SELECT username, elo FROM users ORDER BY elo DESC LIMIT 10")
         row = cursor.fetchall()
-        result = [{"username": player["username"], "elo": player["elo"]} for player in row]
+        result = [
+            {"username": player["username"], "elo": player["elo"]} for player in row
+        ]
         return result
