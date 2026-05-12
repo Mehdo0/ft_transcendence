@@ -3,14 +3,14 @@
 
     let username = $state("Loading...");
     let errorMessage = $state("");
-    
+
     let data = $state(null);
     let messages: string[] = $state([]);
     let socket: WebSocket;
 
     async function load_data() {
         try {
-            const res = await fetch('/api/'); 
+            const res = await fetch('/api/');
             data = await res.json();
         } catch (e) {
             console.error("Failed to load generic data", e);
@@ -43,24 +43,14 @@
     }
     onMount(async () => {
         console.log("onMount fired safely!");
-        
+
         load_data();
         connect();
-
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-            errorMessage = "You are not logged in.";
-            username = "Guest";
-            return;
-        }
 
         try {
             const response = await fetch("/api/users/me/", {
                 method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
+                credentials: 'same-origin',
             });
 
             if (response.ok) {
@@ -68,7 +58,6 @@
                 username = userData.username;
             } else {
                 errorMessage = "Your session expired. Please log in again.";
-                localStorage.removeItem("access_token");
                 username = "Guest";
             }
         } catch (error) {
@@ -76,11 +65,19 @@
             username = "Guest";
         }
     });
+
+    async function handleLogout() {
+   		await fetch("/api/logout", {
+     		credentials: 'same-origin',
+     		method: 'POST'
+     	})
+     	window.location.reload();
+    }
 </script>
 
 <main style="padding: 2rem; font-family: sans-serif;">
     <h2>Dashboard</h2>
-    
+
     <p>Welcome back, <strong>{username}</strong>!</p>
 
     {#if errorMessage}
@@ -128,6 +125,9 @@
             <div class="center">
                 <a href="/account/register"><button>Register</button></a>
             </div>
+            <div class="center">
+                <button onclick={handleLogout}>Logout</button>
+            </div>
         </div>
     </div>
 </div>
@@ -141,7 +141,7 @@
         width: 100%;
     }
     .square {
-        height: 425px;
+        height: 500px;
         width: 400px;
         /* 'position: center' is not valid CSS, removed it */
         margin: 5%;

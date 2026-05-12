@@ -37,10 +37,11 @@ export async function registerUser(
 	email: string,
 	password: string
 ): Promise<ApiResult<{ user_created: string }>> {
-	const qs = new URLSearchParams({ username, email, password }).toString();
-	const res = await fetch(`${API_REGISTER}?${qs}`, {
+	const res = await fetch(API_REGISTER, {
 		...FETCH_BASE,
-		method: 'POST'
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ username, email, password })
 	});
 	return asResult(res);
 }

@@ -35,23 +35,24 @@ def db_cursor(
 def setup_database():
     with db_cursor(writable=True) as cursor:
         # ajoute les tables si elles n'existent pas encore
-        cursor.execute("""  
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,
                 password TEXT,
+                email TEXT UNIQUE,
                 elo INTEGER
             )
         """)
 
         # creation du super user (modo)
         cursor.execute("""
-            INSERT OR IGNORE INTO users (username, password, elo) 
-            VALUES ("modo", "modo_mdp", 9999)
+            INSERT OR IGNORE INTO users (username, password, email, elo)
+            VALUES ("modo", "modo_mdp", "modo@modo.com", 9999)
         """)
 
 setup_database()
 
-def add_user(username: str, password: str) -> User:
+def add_user(username: str, password: str, email: str) -> User:
     with db_cursor(writable=True) as cursor:
         if username == "drawer":
             username = f"drawer{random.randint(1000, 9999)}"
@@ -59,14 +60,14 @@ def add_user(username: str, password: str) -> User:
         try:
             cursor.execute(
                 """
-                INSERT INTO users (username, password, elo) 
-                VALUES (?, ?, 0)
+                INSERT INTO users (username, password, email, elo)
+                VALUES (?, ?, ?, 0)
                 """,
-                (username, hashed_password),
+                (username, hashed_password, email),
             )
         except sqlite3.IntegrityError:
-            raise ValueError("This username is already taken.")
-        return User(username=username)
+            raise ValueError("Username or email already in use")
+        return User(username=username, email=email)
 
 
 def get_user_elo(username: str):
@@ -78,8 +79,8 @@ def get_user_elo(username: str):
 
 def get_user(username: str) -> User | None:
     with db_cursor() as cursor:
-        cursor.execute("SELECT username, password FROM users WHERE username = ?", (username,))
+        cursor.execute("SELECT username, password, email FROM users WHERE username = ?", (username,))
         row = cursor.fetchone()
         if row is None:
             return None  # User not found
-        return UserInDB(username=row["username"], hashed_password=row["password"])
+        return UserInDB(username=row["username"], hashed_password=row["password"], email=row["email"])

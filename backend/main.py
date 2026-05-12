@@ -7,11 +7,11 @@ from backend.auth import (
     get_current_user,
     get_username_from_ws_token,
 )
-from backend.data import ImagePayload, UserRegister
-from backend.database import add_user, get_user_elo
+from backend.data import ImagePayload
+from backend.database import get_user_elo
 from backend.websocket import router as websocket_router
 from backend.global_var import app, limiter, manager
-from fastapi import HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import HTTPException, Request, WebSocket, WebSocketDisconnect
 
 
 # default route
@@ -34,15 +34,6 @@ async def get_user_stats(username: str):
     return {"username": username, "Elo": elo}
 
 
-@app.post("/api/users/add_user/")
-async def db_add(payload: UserRegister):
-    try:
-        new_user = add_user(payload.username, payload.password)
-        return {"username": new_user.username, "added": "yes"}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.get("/api/word_list/get_word/")
 async def get_random_word(num: int = 1):
     data = load_word_list("list.txt")
@@ -56,8 +47,8 @@ async def get_random_word(num: int = 1):
 @app.websocket("/ws/matchmaking")
 async def websocket_matchmaking(
     websocket: WebSocket,
-    token: str = Query(...),
-):  # This forces the URL to include "?token=..."
+):
+    token = websocket.cookies.get("access_token")
     username = get_username_from_ws_token(token)
     await manager.connect(websocket, username)
     try:

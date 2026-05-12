@@ -3,7 +3,7 @@ import secrets
 
 from fastapi import FastAPI
 from fastapi import WebSocket
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import APIKeyCookie
 from pwdlib import PasswordHash
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -40,7 +40,9 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 password_hash = PasswordHash.recommended()
 DUMMY_HASH = password_hash.hash("dummy_password")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+cookie_scheme = APIKeyCookie(name="access_token")
 
 CONNECTIONS: dict[str, WebSocket] = {} # username of the player  and his websocket id
 GAMES: dict[str, Game] = {} # list of games with their players usernames
+
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"

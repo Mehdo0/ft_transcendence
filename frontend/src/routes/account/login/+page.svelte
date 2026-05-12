@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { login } from '$lib/api';
+
     // Using Svelte 5 reactivity
     let username = $state("");
     let password = $state("");
@@ -8,45 +12,23 @@
     async function handleLogin(event: Event) {
         // Prevent the default HTML form submission from refreshing the page
         event.preventDefault();
-        
+
         errorMessage = "";
         isLoading = true;
 
         try {
-            // CRITICAL: OAuth2 requires Form Data, NOT JSON!
-            // URLSearchParams formats the data as "username=PlayerOne&password=mysecret"
-            const formData = new URLSearchParams();
-            formData.append("username", username);
-            formData.append("password", password);
-
-            const response = await fetch("https://localhost/api/token", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                body: formData
-            });
-
-            if (response.ok) {
-                // Parse the response to get the token
-                const data = await response.json();
-                
-                // Save the VIP Badge into the browser's memory
-                localStorage.setItem("access_token", data.access_token);
-                
-                // Redirect the user to the dashboard or main menu
-                // (If you are using SvelteKit, you can import { goto } from '$app/navigation' instead)
-                window.location.href = "/"; 
-            } else if (response.status === 401) {
-                // The bouncer rejected the credentials
-                errorMessage = "Incorrect username or password.";
-            } else {
-                // Something else broke on the server
-                errorMessage = "An error occurred. Please try again later.";
-            }
-        } catch (error) {
-            // The server is turned off or blocked by CORS
-            errorMessage = "Could not connect to the server.";
+       		const result = await login(username, password)
+        	if (!result.ok) {
+               if (result.status === 401) {
+                   errorMessage = "Incorrect username or password.";
+               } else {
+                   errorMessage = "An error occurred. Please try again later.";
+               }
+               return;
+           }
+           await goto(resolve('/'));
+        } catch {
+       		errorMessage = "Could not connect to the server.";
         } finally {
             isLoading = false;
         }
@@ -69,22 +51,22 @@
             <div class="input-group">
                 <label for="username">Username</label>
                 <!-- bind:value connects the input box directly to our Svelte variable -->
-                <input 
-                    type="text" 
-                    id="username" 
-                    bind:value={username} 
-                    required 
+                <input
+                    type="text"
+                    id="username"
+                    bind:value={username}
+                    required
                     disabled={isLoading}
                 />
             </div>
 
             <div class="input-group">
                 <label for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    bind:value={password} 
-                    required 
+                <input
+                    type="password"
+                    id="password"
+                    bind:value={password}
+                    required
                     disabled={isLoading}
                 />
             </div>
