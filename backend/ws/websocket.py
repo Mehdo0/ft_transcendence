@@ -4,6 +4,8 @@ from state.state import connections, games
 import random
 from fastapi import WebSocketDisconnect
 from state.state import matchmaking_queue
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from state.state import connections, games, matchmaking_queue, player_games
 from data import Game, GameState, GameType
 from services.ai_service import load_word_list
 from services.services import make_ai_guess
@@ -24,7 +26,10 @@ async def websocket_endpoint(websocket: WebSocket):
             if payload.get("type") == "find_player":
                 await find_player(username)
             elif payload.get("type") == "image":
-                guess = await make_ai_guess(payload.get("image"))
+                game_id = player_games.get(username)
+                if game_id is None or game_id not in games:
+                    continue
+                guess = await make_ai_guess(payload.get("image"), games[game_id].word)
                 await websocket.send_json({"type": "ai_guess", "guess": guess})
 
     except WebSocketDisconnect:
@@ -50,7 +55,6 @@ async def create_game(player1: str, player2: str):
         players=[player1, player2],
         word=get_random_word(),
     )
-    games[game.id] = game
 
     await connections[player1].send_json(
         {
@@ -73,6 +77,7 @@ async def create_game(player1: str, player2: str):
 
 def disconnect(username: str):
     connections.pop(username, None)
+    player_games.pop(username, None)
     queue = matchmaking_queue["TWO_PLAYER_AI"]
     if username in queue:
         queue.remove(username)

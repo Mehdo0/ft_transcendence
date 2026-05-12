@@ -69,11 +69,11 @@ def add_user(username: str, password: str, email: str) -> User:
         return User(username=username, email=email)
 
 
-async def make_ai_guess(payload: ImagePayload):
+async def make_ai_guess(payload: ImagePayload, target_word: str):
     base64_str = payload.base64_string
     if "data:image" not in base64_str:
         raise ValueError("wrong payload")
-    results = internal_make_ai_guess(base64_str)
+    results = internal_make_ai_guess(base64_str, target_word)
     if not results or len(results) != 3:
         raise ValueError("Bad AI output")
     return results

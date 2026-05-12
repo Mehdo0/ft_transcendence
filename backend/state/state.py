@@ -1,9 +1,6 @@
 from fastapi import WebSocket
 
-from data import ConnectionManager, Game
-
-# manage socket connection
-manager = ConnectionManager()
+from data import Game
 
 matchmaking_queue = {
     "TWO_PLAYER_AI": [],  # List of players waiting for 1v1
@@ -13,3 +10,4 @@ matchmaking_queue = {
 # Auth var
 connections: dict[str, WebSocket] = {}  # username of the player  and his websocket id
 games: dict[str, Game] = {}  # list of games with their players usernames
+player_games: dict[str, str] = {}
