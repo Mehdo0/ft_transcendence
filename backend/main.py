@@ -42,17 +42,6 @@ async def db_add(payload: UserRegister):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
-@app.get("/api/word_list/get_word/")
-async def get_random_word(num: int = 1):
-    data = load_word_list("list.txt")
-    if data[0] == "Error":
-        raise HTTPException(status_code=500, detail=data[1])
-
-    word = random.choice(data)
-    return {"word": word}
-
-
 @app.websocket("/ws/matchmaking")
 async def websocket_matchmaking(
     websocket: WebSocket,

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { getWs } from "$lib/stores/ws";
+	import { game } from "$lib/stores/game";
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
 
@@ -79,10 +81,17 @@
 	function pencil() {
 		selectedColor = lastSelectedColor;
 	}
+	function makeAiGuess() {
+		const ws = getWs();
+		const image = canvas.toDataURL();
+		ws?.send(JSON.stringify({ type: "image", image }));
+	}
 </script>
 
 <svelte:window onresize={resize} />
 <h1>Draw !</h1>
+<h2>Word: {game.word}</h2>
+<h2>Opponent: {game.opponent}</h2>
 
 <div class="game">
 	<div class="tools">
@@ -122,7 +131,10 @@
 			redoStack = [];
 			last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
 		}}
-		onpointerup={() => (last = null)}
+		onpointerup={() => {
+			last = null;
+			makeAiGuess();
+		}}
 		onpointerleave={() => (last = null)}
 		onpointermove={(e) => {
 			if (e.buttons !== 1 || !last) return;

@@ -1,7 +1,9 @@
 import uuid
+import random
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.global_var import CONNECTIONS, GAMES, MATCHMAKING_QUEUE, app
 from backend.data import Game, GameState, GameType
+from backend.ai_service import make_ai_guess, load_word_list
 
 router = APIRouter()
 
@@ -10,30 +12,20 @@ router = APIRouter()
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("websocket connected")
+    response = await websocket.receive_json()
+    username = response.get("username")
+    CONNECTIONS[username] = websocket
     try:
         while True:
-            data = await websocket.receive_text()
-            print("received:", data)
-            response = f"Echo from server {data}"
-            await websocket.send_text(response)
-            print("sent:", response)
+            payload = await websocket.receive_json()
+            if payload.get("type") == "find_player":
+                await find_player(username)
+            elif payload.get("type") == "image":
+                guess = make_ai_guess(payload.get("image"))
+                await websocket.send_json({"type": "ai_guess", "guess": guess})
 
-    except Exception as e:
-        print("websocket closed:", e)
-
-
-# try:
-#     response = await websocket.receive_json()
-#     username = response.get("username")
-#     CONNECTIONS[username] = websocket
-#     try:
-#         while True:
-#             payload = await websocket.receive_json()
-#             if payload.get("type") == "find_player":
-#                 await find_player(username)
-
-#     except WebSocketDisconnect:
-#         disconnect(username)
+    except WebSocketDisconnect:
+        disconnect(username)
 
 
 async def find_player(username: str):
@@ -44,7 +36,7 @@ async def find_player(username: str):
         await create_game(opponent, username)
     else:
         queue.append(username)
-        await CONNECTIONS[username].send_json({"event": "waiting"})
+        await CONNECTIONS[username].send_json({"type": "waiting"})
 
 
 async def create_game(player1: str, player2: str):
@@ -53,22 +45,25 @@ async def create_game(player1: str, player2: str):
         game_type=GameType.TWO_PLAYER_AI,
         game_state=GameState.STARTED,
         players=[player1, player2],
+        word=get_random_word()
     )
     GAMES[game.id] = game
 
     await CONNECTIONS[player1].send_json(
         {
-            "event": "match_found",
+            "type": "match_found",
             "game_id": game.id,
             "opponent": player2,
+            "word": game.word
         }
     )
 
     await CONNECTIONS[player2].send_json(
         {
-            "event": "match_found",
+            "type": "match_found",
             "game_id": game.id,
-            "opponent": player1,
+            "opponent": player1,    
+            "word": game.word
         }
     )
 
@@ -78,3 +73,8 @@ def disconnect(username: str):
     queue = MATCHMAKING_QUEUE["TWO_PLAYER_AI"]
     if username in queue:
         queue.remove(username)
+
+def get_random_word():
+    data = load_word_list("list.txt")
+    word = random.choice(data)
+    return word
