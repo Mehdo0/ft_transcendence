@@ -1,13 +1,28 @@
 import uuid
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.global_var import CONNECTIONS, GAMES, MATCHMAKING_QUEUE, app
 from backend.data import Game, GameState, GameType
 
+router = APIRouter()
 
-# @app.websocket("/ws/")
-# async def websocket_endpoint(websocket: WebSocket):
-#     await websocket.accept()
 
+@router.websocket("/ws/")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("websocket connected")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("received:", data)
+            response = f"Echo from server {data}"
+            await websocket.send_text(response)
+            print("sent:", response)
+
+    except Exception as e:
+        print("websocket closed:", e)
+
+
+# try:
 #     response = await websocket.receive_json()
 #     username = response.get("username")
 #     CONNECTIONS[username] = websocket
