@@ -1,7 +1,7 @@
 import uuid
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from backend.global_var import CONNECTIONS, GAMES, MATCHMAKING_QUEUE, app
-from backend.data import Game, GameState, GameType
+from fastapi import APIRouter, WebSocket
+from state import CONNECTIONS, GAMES
+from data import Game, GameState, GameType
 
 router = APIRouter()
 

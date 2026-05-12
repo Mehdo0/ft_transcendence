@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from backend.drawing_parse import base64_to_tensor
-from backend.global_var import BASE_DIR
+from drawing_parse import base64_to_tensor
+from state import BASE_DIR
 
 
 def load_word_list(file_name):
