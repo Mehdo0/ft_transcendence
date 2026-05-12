@@ -11,7 +11,10 @@
     let login = $state(false); 
 
     async function handleLogout() {
-        await fetch("/api/logout/", {credentials: "same-origin"});
+        await fetch("/api/logout/", {
+		method: 'POST',
+        credentials:"same-origin"
+	    });
         login = false; // Update the UI state instantly
         goto('/');
     }
@@ -76,7 +79,6 @@
                     <a href="/account/login" class="btn-login">Login</a>
                     <a href="/account/register" class="btn-register">Register</a>
                 {:else}
-                    <!-- FIXED: Lowercase 'onclick' and added 'nav-actions' container -->
                     <button class="btn-logout" onclick={handleLogout}>
                          Logout
                     </button>
