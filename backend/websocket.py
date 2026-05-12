@@ -20,6 +20,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 await find_player(username)
             elif payload.get("type") == "image":
                 game_id = PLAYER_GAMES.get(username)
+                if game_id is None or game_id not in GAMES:
+                    continue
                 guess = make_ai_guess(payload.get("image"), GAMES[game_id].word)
                 await websocket.send_json({"type": "ai_guess", "guess": guess})
 
