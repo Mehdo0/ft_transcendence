@@ -34,6 +34,8 @@ services:
       dockerfile: docker/nginx.Dockerfile
     container_name: trsc_nginx
     restart: unless-stopped
+    volumes:
+      - ../logs:/var/log/nginx;
     ports:
       - "80:80"
       - "443:443"
