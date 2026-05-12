@@ -95,4 +95,14 @@ def internal_make_ai_guess(base64_string):
             percentage = round(top_probs[i] * 100, 2)
             results[word] = percentage
 
+        target_word = game.word
+        word_list = load_word_list("list.txt")
+        try:
+            target_index = word_list.index(target_word)
+        except ValueError:
+            return {target_word: 0.0}
+
+        target_prob = probabilities[0][target_index].item()
+        percentage = round(target_prob * 100, 2)
+        results = {target_word: percentage}
         return results

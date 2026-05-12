@@ -44,7 +44,7 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
-    # email: str
+    email: str
     state: PlayerState | None = None
     disabled: bool | None = None
     hashed_password: str
@@ -53,7 +53,6 @@ class User(BaseModel):
 class UserInDB(User):
     username: str
     hashed_password: str
-    # email: str
 
 
 class Game(BaseModel):
@@ -61,6 +60,7 @@ class Game(BaseModel):
     game_state: GameState = GameState.CONNECTING
     game_type: GameType
     players: list[str] = Field(default_factory=list)
+    word: str | None = None
 
 
 class ImagePayload(BaseModel):
@@ -70,7 +70,7 @@ class ImagePayload(BaseModel):
 class UserRegister(BaseModel):
     username: str = "drawer"
     password: str
-    # email: str
+    email: str
 
 
 class ConnectionManager:

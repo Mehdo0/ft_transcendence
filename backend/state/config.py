@@ -1,3 +1,4 @@
+from os import getenv
 import secrets
 from pwdlib import PasswordHash
 from fastapi.security import OAuth2PasswordBearer
@@ -11,3 +12,4 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 DUMMY_HASH = PasswordHash.recommended().hash("dummy_password")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 WORD_LIST = "list.txt"
+COOKIE_SECURE = getenv("COOKIE_SECURE", "false").lower() == "true"

@@ -10,7 +10,8 @@ from services.services import (
     register_user,
     get_current_active_user,
 )
-from fastapi import HTTPException, APIRouter, Depends
+from state.config import COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES
+from fastapi import HTTPException, APIRouter, Depends, Response
 from data import UserRegister, ImagePayload, Token, User
 
 router = APIRouter()
@@ -76,7 +77,16 @@ async def API_get_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     try:
-        return await get_access_token(form_data)
+        token = await get_access_token(form_data)
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            samesite="strict",
+            secure=COOKIE_SECURE,
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+        return {"ok": True}
     except Exception as e:
         raise HTTPException(400, e)
 
@@ -91,6 +101,26 @@ async def API_get_users_me(
 @router.post("/api/register/")
 async def API_register(username: str, password: str):
     try:
-        await register_user(username, password)
+        response = await register_user(username, password)
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = await create_access_token(
+            data={"sub": payload.username}, expires_delta=access_token_expires
+        )
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            samesite="strict",
+            secure=COOKIE_SECURE,
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+
     except ValueError as e:
         raise HTTPException(400, e)
+
+
+@router.post("/api/logout")
+async def logout(response: Response):
+    # unprotected -> cookie expiry
+    response.delete_cookie("access_token")
+    return {"ok": True}
