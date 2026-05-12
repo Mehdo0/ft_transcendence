@@ -1,6 +1,6 @@
 import uuid
 from fastapi import APIRouter, WebSocket
-from state import CONNECTIONS, GAMES
+from state.state import connections, games
 from data import Game, GameState, GameType
 
 router = APIRouter()
@@ -44,7 +44,7 @@ async def find_player(username: str):
         await create_game(opponent, username)
     else:
         queue.append(username)
-        await CONNECTIONS[username].send_json({"event": "waiting"})
+        await connections[username].send_json({"event": "waiting"})
 
 
 async def create_game(player1: str, player2: str):
@@ -54,9 +54,9 @@ async def create_game(player1: str, player2: str):
         game_state=GameState.STARTED,
         players=[player1, player2],
     )
-    GAMES[game.id] = game
+    games[game.id] = game
 
-    await CONNECTIONS[player1].send_json(
+    await connections[player1].send_json(
         {
             "event": "match_found",
             "game_id": game.id,
@@ -64,7 +64,7 @@ async def create_game(player1: str, player2: str):
         }
     )
 
-    await CONNECTIONS[player2].send_json(
+    await connections[player2].send_json(
         {
             "event": "match_found",
             "game_id": game.id,
@@ -74,7 +74,7 @@ async def create_game(player1: str, player2: str):
 
 
 def disconnect(username: str):
-    CONNECTIONS.pop(username, None)
+    connections.pop(username, None)
     queue = MATCHMAKING_QUEUE["TWO_PLAYER_AI"]
     if username in queue:
         queue.remove(username)
