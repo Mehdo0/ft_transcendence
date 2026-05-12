@@ -8,6 +8,7 @@ services:
     env_file:
       - ../.env
     volumes:
+      - ../backend:/app/backend
       - ../data:/app/data
     networks:
       - trsc_net
