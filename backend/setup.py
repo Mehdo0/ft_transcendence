@@ -1,5 +1,5 @@
 import os
-from backend.database import setup_database
+from database import setup_database
 
 # DB var
 setup_database()
