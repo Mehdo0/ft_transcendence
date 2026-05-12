@@ -80,19 +80,19 @@ model.load_state_dict(weights)
 model.eval()
 
 
-def make_ai_guess(base64_string):
+def make_ai_guess(base64_string, game):
     with torch.no_grad():
         input_tensor = base64_to_tensor(base64_string)
         drawing_output = model(input_tensor)
         probabilities = F.softmax(drawing_output, dim=1)
-        top_probs, top_indices = torch.topk(probabilities, 3)
-        top_probs = top_probs[0].tolist()
-        top_indices = top_indices[0].tolist()
-        results = {}
+        target_word = game.word
         word_list = load_word_list("list.txt")
-        for i in range(3):
-            word = word_list[top_indices[i]]
-            percentage = round(top_probs[i] * 100, 2)
-            results[word] = percentage
-
+        try:
+            target_index = word_list.index(target_word)
+        except ValueError:
+            return {target_word: 0.0}
+            
+        target_prob = probabilities[0][target_index].item()
+        percentage = round(target_prob * 100, 2) 
+        results = {target_word: percentage}
         return results
