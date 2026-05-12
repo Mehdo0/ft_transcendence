@@ -1,35 +1,28 @@
 import uuid
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.global_var import CONNECTIONS, GAMES, MATCHMAKING_QUEUE, app
 from backend.data import Game, GameState, GameType
 
-ALLOWED_ORIGINS = {
-    "https://localhost",
-}
+router = APIRouter()
 
 
-# @app.websocket("/ws/")
-# async def websocket_endpoint(websocket: WebSocket):
-#     await websocket.accept()
+@router.websocket("/ws/")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("websocket connected")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("received:", data)
+            response = f"Echo from server {data}"
+            await websocket.send_text(response)
+            print("sent:", response)
+
+    except Exception as e:
+        print("websocket closed:", e)
+
 
 # try:
-#     while True:
-#         data = await websocket.receive_json()
-#         type: ClientWebsocketMessageType = data.get("type")
-#         _ = type
-#         websocket.send_json("hi from server")
-
-#         # match type:
-#         #     case "drawing":
-#         #         make_ai_guess()
-#         #     case "quit":
-#         #         player_quit_game()
-#         #     case _:
-#         #         await websocket.send_json({"event": "error", "msg": "unknown type"})
-# except WebSocketDisconnect:
-#     raise WebSocketDisconnect
-
-# manager.disconnect(websocket)
 #     response = await websocket.receive_json()
 #     username = response.get("username")
 #     CONNECTIONS[username] = websocket
