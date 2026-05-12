@@ -1,7 +1,7 @@
 import uuid
 import random
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from state import CONNECTIONS, GAMES, matchmaking_queue, app
+from state import CONNECTIONS, GAMES, matchmaking_queue, app, PLAYER_GAMES
 from data import Game, GameState, GameType
 from ai_service import make_ai_guess, load_word_list
 
@@ -19,7 +19,8 @@ async def websocket_endpoint(websocket: WebSocket):
             if payload.get("type") == "find_player":
                 await find_player(username)
             elif payload.get("type") == "image":
-                guess = make_ai_guess(payload.get("image"))
+                game_id = PLAYER_GAMES.get(username)
+                guess = make_ai_guess(payload.get("image"), GAMES[game_id].word)
                 await websocket.send_json({"type": "ai_guess", "guess": guess})
 
     except WebSocketDisconnect:
@@ -46,6 +47,8 @@ async def create_game(player1: str, player2: str):
         word=get_random_word()
     )
     GAMES[game.id] = game
+    PLAYER_GAMES[player1] = game.id
+    PLAYER_GAMES[player2] = game.id
 
     await CONNECTIONS[player1].send_json(
         {
@@ -68,6 +71,7 @@ async def create_game(player1: str, player2: str):
 
 def disconnect(username: str):
     CONNECTIONS.pop(username, None)
+    PLAYER_GAMES.pop(username, None)
     queue = matchmaking_queue["TWO_PLAYER_AI"]
     if username in queue:
         queue.remove(username)

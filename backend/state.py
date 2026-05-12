@@ -43,5 +43,6 @@ cookie_scheme = APIKeyCookie(name="access_token")
 
 CONNECTIONS: dict[str, WebSocket] = {}  # username of the player  and his websocket id
 GAMES: dict[str, Game] = {}  # list of games with their players usernames
+PLAYER_GAMES: dict[str, str] = {} # username of the player and the game id he is in
 
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
