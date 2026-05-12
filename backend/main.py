@@ -8,7 +8,7 @@ from backend.auth import (
     get_username_from_ws_token,
 )
 from backend.data import ImagePayload, UserRegister
-from backend.database import add_user, get_user_elo
+from backend.database import add_user, get_user_elo, db_cursor
 from backend.global_var import app, limiter, manager
 from fastapi import HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 
@@ -98,8 +98,10 @@ async def ai_guess(
     return {"guesses": results}
 
 
-# ce code est censer etre fonctionnel lorsque le frontend sera operationnel
-# app.mount("/", StaticFiles(directory="backend/frontend_dist", html=True), name="frontend")
-# @app.exception_handler(404)
-# async def not_found_exception_handler(request, exc):
-#    return FileResponse("frontend_dist/index.html")
+@app.get("/api/get_ranking")
+async def get_ranking():
+    with db_cursor() as cursor:
+        cursor.execute("SELECT username, elo FROM users ORDER BY elo DESC LIMIT 10")
+        row = cursor.fetchall()
+        result = [{"username": player["username"], "elo": player["elo"]} for player in row]
+        return result
