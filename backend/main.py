@@ -9,7 +9,7 @@ from backend.auth import (
 from backend.data import ImagePayload, UserRegister
 from backend.database import add_user, get_user_elo
 from backend.global_var import app, limiter
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, WebSocket
 
 
 # default route
@@ -17,6 +17,22 @@ from fastapi import HTTPException, Request
 async def root():
     print("sent hello world!")
     return {"message": "Hello World"}
+
+
+@app.websocket("/ws/")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("websocket connected")
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print("received:", data)
+            response = f"Echo from server {data}"
+            await websocket.send_text(response)
+            print("sent:", response)
+
+    except Exception as e:
+        print("websocket closed:", e)
 
 
 # get user stats
