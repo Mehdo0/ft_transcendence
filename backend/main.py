@@ -7,8 +7,8 @@ from auth import (
     get_username_from_ws_token,
 )
 from data import ImagePayload, UserRegister
-from database import add_user, get_user_elo, db_cursor
-from state import app, limiter, manager
+from database import add_user, db_cursor, get_user_elo
+from state import app, manager
 from websocket import router as websocket_router
 
 
@@ -69,7 +69,6 @@ async def websocket_matchmaking(
 
 
 @app.post("/api/ai_guess/")
-@limiter.limit("2/second")
 async def ai_guess(
     payload: ImagePayload,
 ):
