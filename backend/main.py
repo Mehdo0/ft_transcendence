@@ -5,11 +5,12 @@ from backend.auth import (
     Depends,
     User,
     get_current_user,
+    get_username_from_ws_token,
 )
 from backend.data import ImagePayload, UserRegister
 from backend.database import add_user, get_user_elo
-from backend.global_var import app, limiter
-from fastapi import HTTPException, Request, WebSocket
+from backend.global_var import app, limiter, manager
+from fastapi import HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 
 
 # default route
@@ -62,6 +63,23 @@ async def get_random_word(num: int = 1):
 
     word = random.choice(data)
     return {"word": word}
+
+
+@app.websocket("/ws/matchmaking")
+async def websocket_matchmaking(
+    websocket: WebSocket,
+    token: str = Query(...),
+):  # This forces the URL to include "?token=..."
+    username = get_username_from_ws_token(token)
+    await manager.connect(websocket, username)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await manager.send_personal_message(
+                {"status": "received", "you_said": data}, username
+            )  # test purpose
+    except WebSocketDisconnect:
+        manager.disconnect(username)
 
 
 @app.post("/api/ai_guess/")
