@@ -4,18 +4,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from drawing_parse import base64_to_tensor
-from state import BASE_DIR
+from utils.drawing_parse import base64_to_tensor
+from state.config import BASE_DIR, WORD_LIST
 
 
-def load_word_list(file_name):
-    FILE_PATH = os.path.join(BASE_DIR, file_name)
+def load_word_list():
+    FILE_PATH = os.path.join(BASE_DIR, WORD_LIST)
     if not os.path.exists(FILE_PATH):
-        return {"Error": "no word list"}
+        raise ValueError(WORD_LIST, "doesnt exist")
     with open(FILE_PATH) as inp:
         data = inp.read().split()
     if not data:
-        return {"Error": "no data in word list"}
+        raise ValueError(WORD_LIST, "is empty")
     return data
 
 
@@ -80,18 +80,18 @@ model.load_state_dict(weights)
 model.eval()
 
 
-def make_ai_guess(base64_string, target_word):
+def internal_make_ai_guess(base64_string, target_word):
     with torch.no_grad():
         input_tensor = base64_to_tensor(base64_string)
         drawing_output = model(input_tensor)
         probabilities = F.softmax(drawing_output, dim=1)
-        word_list = load_word_list("list.txt")
+        word_list = load_word_list(WORD_LIST)
         try:
             target_index = word_list.index(target_word)
         except ValueError:
             return {target_word: 0.0}
-            
+
         target_prob = probabilities[0][target_index].item()
-        percentage = round(target_prob * 100, 2) 
+        percentage = round(target_prob * 100, 2)
         results = {target_word: percentage}
         return results

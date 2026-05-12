@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import Enum
 from pydantic import BaseModel, Field
 from fastapi import WebSocket
@@ -48,6 +47,7 @@ class User(BaseModel):
     email: str
     state: PlayerState | None = None
     disabled: bool | None = None
+    hashed_password: str
 
 
 class UserInDB(User):
