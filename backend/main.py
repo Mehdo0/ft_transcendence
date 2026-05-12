@@ -1,13 +1,13 @@
 import random
 
-from fastapi import HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import HTTPException, WebSocket, WebSocketDisconnect
 
 from ai_service import load_word_list, make_ai_guess
 from auth import (
     get_username_from_ws_token,
 )
-from data import ImagePayload, UserRegister
-from database import add_user, db_cursor, get_user_elo
+from data import ImagePayload
+from database import db_cursor, get_user_elo
 from state import app, manager
 from websocket import router as websocket_router
 
@@ -32,15 +32,6 @@ async def get_user_stats(username: str):
     return {"username": username, "Elo": elo}
 
 
-@app.post("/api/users/add_user/")
-async def db_add(payload: UserRegister):
-    try:
-        new_user = add_user(payload.username, payload.password)
-        return {"username": new_user.username, "added": "yes"}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.get("/api/word_list/get_word/")
 async def get_random_word():
     data = load_word_list("list.txt")
@@ -54,8 +45,8 @@ async def get_random_word():
 @app.websocket("/ws/matchmaking")
 async def websocket_matchmaking(
     websocket: WebSocket,
-    token: str = Query(...),
-):  # This forces the URL to include "?token=..."
+):
+    token = websocket.cookies.get("access_token")
     username = get_username_from_ws_token(token)
     await manager.connect(websocket, username)
     try:
