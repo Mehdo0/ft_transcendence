@@ -4,21 +4,22 @@ from backend.global_var import CONNECTIONS, GAMES, MATCHMAKING_QUEUE, app
 from backend.data import Game, GameState, GameType
 
 
-@app.websocket("/ws/")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
+# @app.websocket("/ws/")
+# async def websocket_endpoint(websocket: WebSocket):
+#     await websocket.accept()
 
-    response = await websocket.receive_json()
-    username = response.get("username")
-    CONNECTIONS[username] = websocket
-    try:
-        while True:
-            payload = await websocket.receive_json()
-            if payload.get("type") == "find_player":
-                await find_player(username)
+#     response = await websocket.receive_json()
+#     username = response.get("username")
+#     CONNECTIONS[username] = websocket
+#     try:
+#         while True:
+#             payload = await websocket.receive_json()
+#             if payload.get("type") == "find_player":
+#                 await find_player(username)
 
-    except WebSocketDisconnect:
-        disconnect(username)
+#     except WebSocketDisconnect:
+#         disconnect(username)
+
 
 async def find_player(username: str):
     queue = MATCHMAKING_QUEUE["TWO_PLAYER_AI"]
@@ -32,25 +33,30 @@ async def find_player(username: str):
 
 
 async def create_game(player1: str, player2: str):
-    game = Game (
+    game = Game(
         id=str(uuid.uuid4()),
         game_type=GameType.TWO_PLAYER_AI,
         game_state=GameState.STARTED,
-        players=[player1, player2]
+        players=[player1, player2],
     )
     GAMES[game.id] = game
 
-    await CONNECTIONS[player1].send_json({
-        "event": "match_found",
-        "game_id": game.id,
-        "opponent": player2,
-    })
+    await CONNECTIONS[player1].send_json(
+        {
+            "event": "match_found",
+            "game_id": game.id,
+            "opponent": player2,
+        }
+    )
 
-    await CONNECTIONS[player2].send_json({
-        "event": "match_found",
-        "game_id": game.id,
-        "opponent": player1,
-    })
+    await CONNECTIONS[player2].send_json(
+        {
+            "event": "match_found",
+            "game_id": game.id,
+            "opponent": player1,
+        }
+    )
+
 
 def disconnect(username: str):
     CONNECTIONS.pop(username, None)
