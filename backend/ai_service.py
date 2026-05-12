@@ -80,12 +80,11 @@ model.load_state_dict(weights)
 model.eval()
 
 
-def make_ai_guess(base64_string, game):
+def make_ai_guess(base64_string, target_word):
     with torch.no_grad():
         input_tensor = base64_to_tensor(base64_string)
         drawing_output = model(input_tensor)
         probabilities = F.softmax(drawing_output, dim=1)
-        target_word = game.word
         word_list = load_word_list("list.txt")
         try:
             target_index = word_list.index(target_word)
