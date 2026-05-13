@@ -1,7 +1,6 @@
-import datetime
 import random
 import sqlite3
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 import jwt
 from jwt import InvalidTokenError, encode, decode
@@ -15,7 +14,7 @@ from core.database import db_cursor
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     DUMMY_HASH,
-    oauth2_scheme,
+    cookie_scheme,
     ALGORITHM,
     SECRET_KEY,
 )
@@ -77,12 +76,17 @@ async def get_ranking():
 async def get_user(username: str) -> User | None:
     with db_cursor() as cursor:
         cursor.execute(
-            "SELECT username, password FROM users WHERE username = ?", (username,)
+            "SELECT username, password, email FROM users WHERE username = ?",
+            (username,),
         )
         row = cursor.fetchone()
         if row is None:
             return None  # User not found
-        return UserInDB(username=row["username"], hashed_password=row["password"])
+        return UserInDB(
+            username=row["username"],
+            hashed_password=row["password"],
+            email=row["email"],
+        )
 
 
 async def get_access_token(
@@ -133,7 +137,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(cookie_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

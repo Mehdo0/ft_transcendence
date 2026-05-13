@@ -1,3 +1,4 @@
+from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from services.services import (
@@ -67,23 +68,24 @@ async def API_get_ranking():
 @router.post("/api/token")
 async def API_get_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-) -> Token:
+    response: Response,
+):
     try:
         token = await get_access_token(form_data)
-        response.set_cookie(
-            key="access_token",
-            value=token,
-            httponly=True,
-            samesite="strict",
-            secure=COOKIE_SECURE,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-        return {"ok": True}
-    except Exception as e:
-        raise HTTPException(400, e)
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+    response.set_cookie(
+        key="access_token",
+        value=token.access_token,
+        httponly=True,
+        samesite="strict",
+        secure=COOKIE_SECURE,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return {"ok": True}
 
 
-@router.get("/users/me/")
+@router.get("/api/users/me/")
 async def API_get_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> User:
@@ -91,24 +93,27 @@ async def API_get_users_me(
 
 
 @router.post("/api/register/")
-async def API_register(email: str, password: str, username: str):
+async def API_register(payload: UserRegister, response: Response):
     try:
-        response = await register_user(username, password, email)
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = await create_access_token(
-            data={"sub": payload.username}, expires_delta=access_token_expires
-        )
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            samesite="strict",
-            secure=COOKIE_SECURE,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-
-    except Exception as e:
-        raise HTTPException(400, e)
+        result = await register_user(payload.username, payload.password, payload.email)
+    except ValueError as e:
+        msg = str(e)
+        if "already" in msg.lower():
+            raise HTTPException(406, msg)
+        raise HTTPException(400, msg)
+    access_token = create_access_token(
+        data={"sub": payload.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        samesite="strict",
+        secure=COOKIE_SECURE,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return result
 
 
 @router.post("/api/logout")

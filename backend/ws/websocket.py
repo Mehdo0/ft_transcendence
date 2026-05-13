@@ -5,7 +5,7 @@ from state.state import connections, games
 import random
 from fastapi import WebSocketDisconnect
 from state.state import matchmaking_queue
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 from state.state import (
     connections,
     games,
@@ -15,7 +15,7 @@ from state.state import (
 )
 from schemas.data import Game, GameState, GameType
 from services.ai_service import load_word_list
-from services.services import make_ai_guess
+from services.services import make_ai_guess, get_username_from_ws_token
 from state.config import WORD_LIST
 
 router = APIRouter()
@@ -23,9 +23,13 @@ router = APIRouter()
 
 @router.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
+    token = websocket.cookies.get("access_token")
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    username = get_username_from_ws_token(token)
     await websocket.accept()
-    response = await websocket.receive_json()
-    username = response.get("username")
+    await websocket.receive_json()
     connections[username] = websocket
     try:
         while True:
