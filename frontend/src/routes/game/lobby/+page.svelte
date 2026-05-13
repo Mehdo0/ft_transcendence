@@ -28,54 +28,54 @@
         ws?.send(JSON.stringify({ type: 'find_player' }));
     }
 
-    let joinCode = $state('');
-    let isCreating = $state(false);
-    let isJoining = $state(false);
-    let errorMessage = $state('');
+    // let joinCode = $state('');
+    // let isCreating = $state(false);
+    // let isJoining = $state(false);
+    // let errorMessage = $state('');
 
-    async function createLobby() {
-        isCreating = true;
-        errorMessage = '';
-        try {
-            const token = localStorage.getItem('access_token');
-            const response = await fetch('/api/create_lobby', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                const secretCode = data.code;
-                goto(`/game/lobby/${secretCode}`);
-            } else {
-                errorMessage = 'Failed to create lobby. Please try again.';
-            }
-        } catch (error) {
-            console.error(error);
-            errorMessage = 'Could not connect to the server.';
-        } finally {
-            isCreating = false;
-        }
-    }
+    // async function createLobby() {
+    //     isCreating = true;
+    //     errorMessage = '';
+    //     try {
+    //         const token = localStorage.getItem('access_token');
+    //         const response = await fetch('/api/create_lobby', {
+    //             method: 'POST',
+    //             headers: {
+    //                 'Authorization': `Bearer ${token}`,
+    //                 'Content-Type': 'application/json'
+    //             }
+    //         });
+    //         if (response.ok) {
+    //             const data = await response.json();
+    //             const secretCode = data.code;
+    //             goto(`/game/lobby/${secretCode}`);
+    //         } else {
+    //             errorMessage = 'Failed to create lobby. Please try again.';
+    //         }
+    //     } catch (error) {
+    //         console.error(error);
+    //         errorMessage = 'Could not connect to the server.';
+    //     } finally {
+    //         isCreating = false;
+    //     }
+    // }
 
-    function joinLobby() {
-        const cleanCode = joinCode.trim().toUpperCase();
-        if (!cleanCode) {
-            errorMessage = 'Please enter a valid lobby code.';
-            return;
-        }
-        isJoining = true;
-        goto(`/game/lobby/${cleanCode}`);
-    }
+    // function joinLobby() {
+    //     const cleanCode = joinCode.trim().toUpperCase();
+    //     if (!cleanCode) {
+    //         errorMessage = 'Please enter a valid lobby code.';
+    //         return;
+    //     }
+    //     isJoining = true;
+    //     goto(`/game/lobby/${cleanCode}`);
+    // }
 </script>
 
 <h1>Lobby</h1>
 <button onclick={connect}>Join Lobby</button>
 <button onclick={findGame}>Find Game</button>
 
-<div class="private-container">
+<!-- <div class="private-container">
     <div class="private-card">
         <h1 class="title">Private Match</h1>
         <p class="subtitle">Play against your friends</p>
@@ -115,7 +115,7 @@
             </div>
         </div>
     </div>
-</div>
+</div> -->
 
 <style>
     .private-container {

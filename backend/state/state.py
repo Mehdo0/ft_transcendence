@@ -10,4 +10,4 @@ matchmaking_queue = {
 # Auth var
 connections: dict[str, WebSocket] = {}  # username of the player  and his websocket id
 games: dict[str, Game] = {}  # list of games with their players usernames
-player_games: dict[str, str] = {}
+player_games: dict[str, str] = {} # username of the player and the game id

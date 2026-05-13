@@ -1,73 +1,76 @@
 <script lang="ts">
     // Added state variables to make the UI react to the connection
+    import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
+    import { getWs, setWs } from '$lib/stores/ws';
+    import { game } from '$lib/stores/game';
+
     let isConnected = $state(false);
     let isSearching = $state(false);
     let statusMessage = $state("Disconnected");
-    let ws: WebSocket;
 
     function connect() {
-        console.log("Joining lobby...");
-        statusMessage = "Connecting to server...";
-        
-        // Note: ensure this URL matches your setup (e.g., wss://localhost/api/ws)
-        ws = new WebSocket('/ws/');
-        
+        console.log('connecting...');
+        const ws = new WebSocket('/ws/');
+        setWs(ws);
         ws.onopen = () => {
-            console.log("WebSocket connected");
+            console.log('WebSocket connected');
             isConnected = true;
-            statusMessage = "Connected to Lobby";
-            
-            // Note: You should eventually replace "nils" with your actual username variable!
-            ws.send(JSON.stringify({ username: "nils" })); 
+            statusMessage = 'Connected';
         };
-        
         ws.onmessage = (event) => {
-            console.log("Server says:", event.data);
-            
-            // Example: update UI if the backend confirms a game is found
-            if (event.data.includes("found")) {
+            console.log('serveur dit:', event.data);
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'match_found') {
                 isSearching = false;
-                statusMessage = "Game Found! Get ready...";
+                statusMessage = 'Game found';
+                console.log('Game found');
+                game.id = msg.game_id;
+                game.opponent = msg.opponent;
+                game.word = msg.word;
+                goto('/game/in-game');
             }
         };
-
         ws.onclose = () => {
+            console.log('WebSocket closed');
             isConnected = false;
-            isSearching = false;
-            statusMessage = "Disconnected from server";
+            statusMessage = 'Disconnected';
+        };
+        ws.onerror = (event) => {
+            console.log('WebSocket error:', event);
+            isConnected = false;
+            statusMessage = 'Error';
         };
     }
 
     function findGame() {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
-        
+        const ws = getWs();
+        ws?.send(JSON.stringify({ type: 'find_player' }))
         isSearching = true;
-        statusMessage = "Searching for an opponent...";
-        ws.send(JSON.stringify({ type: "find_player" }));
+        statusMessage = 'Searching...';
     }
+    onMount(() => {
+        connect();
+    });
 </script>
 
 <div class="lobby-container">
     <div class="lobby-card">
         <h1 class="title">Matchmaking</h1>
-        
-        <!-- Status Indicator (Dot changes color based on state) -->
+
         <div class="status-box" class:connected={isConnected} class:searching={isSearching}>
             <span class="status-dot"></span>
             <span class="status-text">{statusMessage}</span>
         </div>
 
         <div class="button-group">
-            <!-- Dynamically show the right button based on connection -->
-            {#if !isConnected}
-                <button class="menu-btn primary" onclick={connect}>
-                    Join Lobby
-                </button>
-            {:else}
-                <button class="menu-btn secondary" onclick={findGame} disabled={isSearching}>
-                    {isSearching ? 'Searching...' : 'Find Game'}
-                </button>
-            {/if}
+            <button
+                class="menu-btn secondary"
+                onclick={findGame}
+                disabled={!isConnected || isSearching}
+            >
+                {isSearching ? 'Searching...' : 'Find Game'}
+            </button>
         </div>
     </div>
 </div>
