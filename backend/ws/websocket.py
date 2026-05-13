@@ -1,12 +1,18 @@
 import random
 import uuid
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from schemas.data import Game, GameState, GameType, ImagePayload
 from services.ai_service import load_word_list
 from services.services import get_username_from_ws_token, make_ai_guess
-from state.state import connections, games, matchmaking_queue, player_games
+from state.state import (
+    connections,
+    games,
+    matchmaking_queue,
+    player_games,
+    disconnected_players,
+)
 
 
 router = APIRouter()
@@ -24,15 +30,17 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             payload = await websocket.receive_json()
-            if payload.get("type") == "find_player":
-                await find_player(username)
-            elif payload.get("type") == "image":
-                game_id = player_games.get(username)
-                if game_id is None or game_id not in games:
-                    continue
-                image_payload = ImagePayload(base64_string=payload.get("image"))
-                guess = await make_ai_guess(image_payload, games[game_id].word)
-                await websocket.send_json({"type": "ai_guess", "guess": guess})
+            type = payload.get("type")
+            match type:
+                case "find_player":
+                    await find_player(username)
+                case "image":
+                    game_id = player_games.get(username)
+                    if game_id is None or game_id not in games:
+                        continue
+                    image_payload = ImagePayload(base64_string=payload.get("image"))
+                    guess = await make_ai_guess(image_payload, games[game_id].word)
+                    await websocket.send_json({"type": "ai_guess", "guess": guess})
 
     except WebSocketDisconnect:
         if game_id is None:
