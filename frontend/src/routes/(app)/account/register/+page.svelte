@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { resolve } from '$app/paths';
-    import { registerUser, login } from '$lib/api';
+    import { registerUser, login, hashPassword } from '$lib/api';
 
     type Errors = {
         username?: string;
@@ -40,14 +40,16 @@
 
         loading = true;
         try {
-            const reg = await registerUser(username.trim(), email.trim(), password);
+            const hashed_password = await hashPassword(password)
+            console.log(hashed_password)
+            const reg = await registerUser(username.trim(), email.trim(), hashed_password);
             if (!reg.ok) {
                 if (reg.status === 406) serverError = 'This username is already taken.';
                 else serverError = 'Registration failed, please try again.';
                 return;
             }
 
-            const log = await login(username.trim(), password);
+            const log = await login(username.trim(), hashed_password);
             if (!log.ok) {
                 serverError = 'Account created, but automatic login failed. Please go to the login page.';
                 return;

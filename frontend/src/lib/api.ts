@@ -46,6 +46,21 @@ export async function registerUser(
 	return asResult(res);
 }
 
+export async function hashPassword(password: string) {
+    // 1. Convert the string password into a byte array
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+
+    // 2. Ask the browser's built-in Crypto API to hash the bytes using SHA-256
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+
+    // 3. Convert the resulting ArrayBuffer back into a readable Hexadecimal string
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+
+    return hashHex;
+}
+
 export async function login(username: string, password: string): Promise<ApiResult<void>> {
 	const body = new URLSearchParams({ username, password });
 	const res = await fetch(API_TOKEN, {
