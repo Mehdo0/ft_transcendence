@@ -1,11 +1,12 @@
 import uuid
+import asyncio
 from fastapi import APIRouter, WebSocket
 from state.state import connections, games
 import random
 from fastapi import WebSocketDisconnect
 from state.state import matchmaking_queue
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from state.state import connections, games, matchmaking_queue, player_games
+from state.state import connections, games, matchmaking_queue, player_games, disconnected_players
 from schemas.data import Game, GameState, GameType
 from services.ai_service import load_word_list
 from services.services import make_ai_guess
@@ -33,8 +34,14 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "ai_guess", "guess": guess})
 
     except WebSocketDisconnect:
-        disconnect(username)
+        asyncio.create_task(handle_disconnect_grace_period(username, game_id))
 
+async def handle_disconnect_grace_period(username: str, game_id: str):
+    disconnected_players[username] = {"reconnected": False}
+    await asyncio.sleep(10)
+    if username in disconnected_players and not disconnected_players[username]["reconnected"]:
+        print(f"Player {username} abandoned the game. Removing them permanently.")
+        del disconnected_players[username]
 
 async def find_player(username: str):
     queue = matchmaking_queue["TWO_PLAYER_AI"]
