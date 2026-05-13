@@ -72,7 +72,7 @@ async def API_get_access_token(
         token = await get_access_token(form_data)
         response.set_cookie(
             key="access_token",
-            value=access_token,
+            value=token,
             httponly=True,
             samesite="strict",
             secure=COOKIE_SECURE,

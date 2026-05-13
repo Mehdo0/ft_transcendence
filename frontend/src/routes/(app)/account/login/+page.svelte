@@ -32,17 +32,17 @@
         isLoading = true;
 
         try {
-            hashPassword(password).then(console.log)
-       		const result = await login(username, password)
-        	if (!result.ok) {
-               if (result.status === 401) {
+            password = await hashPassword(password)
+            const result = await login(username, password)
+            if (!result.ok) {
+                if (result.status === 401) {
                    errorMessage = "Incorrect username or password.";
-               } else {
+                } else {
                    errorMessage = "An error occurred. Please try again later.";
-               }
-               return;
-           }
-           await goto(resolve('/'));
+                }
+                return;
+            }
+            await goto(resolve('/'));
         } catch {
        		errorMessage = "Could not connect to the server.";
         } finally {
