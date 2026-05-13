@@ -1,6 +1,6 @@
 from fastapi import WebSocket
 
-from data import Game
+from schemas.data import Game
 
 matchmaking_queue = {
     "TWO_PLAYER_AI": [],  # List of players waiting for 1v1
