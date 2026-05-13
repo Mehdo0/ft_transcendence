@@ -60,7 +60,7 @@ class Game(BaseModel):
     game_state: GameState = GameState.CONNECTING
     game_type: GameType
     players: list[str] = Field(default_factory=list)
-    word: str | None = None
+    word: str
 
 
 class ImagePayload(BaseModel):

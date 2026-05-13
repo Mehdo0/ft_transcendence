@@ -98,11 +98,11 @@ async def get_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-async def register_user(username: str, password: str):
+async def register_user(username: str, password: str, email: str):
     username_test = await get_user(username)
     if username_test:
         raise ValueError("Username already used")
-    await add_user(username, password)
+    add_user(username, password, email)
     if await get_user(username):
         return {"user_created": username}
     else:
