@@ -55,7 +55,7 @@ async def make_ai_guess(payload: ImagePayload, target_word: str):
     if "data:image" not in base64_str:
         raise ValueError("wrong payload")
     results = internal_make_ai_guess(base64_str, target_word)
-    if not results or len(results) != 3:
+    if not results:
         raise ValueError("Bad AI output")
     return results
 
