@@ -7,6 +7,8 @@ matchmaking_queue = {
     "FOUR_PLAYER": [],  # List of players waiting for a 4-player
 }
 
+disconnected_players = {} # list of the disconnected player to reconnect them gracely ;)
+
 # Auth var
 connections: dict[str, WebSocket] = {}  # username of the player  and his websocket id
 games: dict[str, Game] = {}  # list of games with their players usernames

@@ -31,16 +31,17 @@ def db_cursor(
 def setup_database():
     with db_cursor(writable=True) as cursor:
         # ajoute les tables si elles n'existent pas encore
-        cursor.execute("""  
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,
                 password TEXT,
+                email TEXT UNIQUE,
                 elo INTEGER
             )
         """)
 
         # creation du super user (modo)
         cursor.execute("""
-            INSERT OR IGNORE INTO users (username, password, elo) 
-            VALUES ("modo", "modo_mdp", 9999)
+            INSERT OR IGNORE INTO users (username, password, email, elo)
+            VALUES ("modo", "modo_mdp", "modo@modo.com", 9999)
         """)

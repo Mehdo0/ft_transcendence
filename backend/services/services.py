@@ -1,7 +1,6 @@
-import datetime
 import random
 import sqlite3
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 import jwt
 from jwt import InvalidTokenError, encode, decode
@@ -15,7 +14,7 @@ from core.database import db_cursor
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     DUMMY_HASH,
-    oauth2_scheme,
+    cookie_scheme,
     ALGORITHM,
     SECRET_KEY,
 )
@@ -34,28 +33,10 @@ async def get_random_word() -> str:
     return random.choice(data)
 
 
-# async def add_user(username: str, hashed_password: str) -> User:
-#     with db_cursor(writable=True) as cursor:
-#         if username == "drawer":
-#             username = f"drawer{random.randint(1000, 9999)}"
-#         try:
-#             cursor.execute(
-#                 """
-#                 INSERT INTO users (username, password, elo)
-#                 VALUES (?, ?, 0)
-#                 """,
-#                 (username, hashed_password),
-#             )
-#             return User(username=username, hashed_password=hashed_password)
-#         except sqlite3.IntegrityError:
-#             raise ValueError("This username is already taken.")
-
-
-def add_user(username: str, password: str, email: str) -> User:
+def add_user(username: str, hashed_password: str, email: str) -> User:
     with db_cursor(writable=True) as cursor:
         if username == "drawer":
             username = f"drawer{random.randint(1000, 9999)}"
-        hashed_password = get_password_hash(password)
         try:
             cursor.execute(
                 """
@@ -66,7 +47,7 @@ def add_user(username: str, password: str, email: str) -> User:
             )
         except sqlite3.IntegrityError:
             raise ValueError("Username or email already in use")
-        return User(username=username, email=email)
+        return User(username=username, email=email, hashed_password=hashed_password)
 
 
 async def make_ai_guess(payload: ImagePayload, target_word: str):
@@ -95,12 +76,17 @@ async def get_ranking():
 async def get_user(username: str) -> User | None:
     with db_cursor() as cursor:
         cursor.execute(
-            "SELECT username, password FROM users WHERE username = ?", (username,)
+            "SELECT username, password, email FROM users WHERE username = ?",
+            (username,),
         )
         row = cursor.fetchone()
         if row is None:
             return None  # User not found
-        return UserInDB(username=row["username"], hashed_password=row["password"])
+        return UserInDB(
+            username=row["username"],
+            hashed_password=row["password"],
+            email=row["email"],
+        )
 
 
 async def get_access_token(
@@ -116,11 +102,11 @@ async def get_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-async def register_user(username: str, password: str):
+async def register_user(username: str, password: str, email: str):
     username_test = await get_user(username)
     if username_test:
         raise ValueError("Username already used")
-    await add_user(username, password)
+    add_user(username, password, email)
     if await get_user(username):
         return {"user_created": username}
     else:
@@ -151,7 +137,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(cookie_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

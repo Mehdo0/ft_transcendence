@@ -1,3 +1,4 @@
+from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from services.services import (
@@ -9,6 +10,7 @@ from services.services import (
     get_access_token,
     register_user,
     get_current_active_user,
+    create_access_token,
 )
 from state.config import COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi import HTTPException, APIRouter, Depends, Response
@@ -42,15 +44,6 @@ async def API_get_user_stats(username: str):
     return {"username": username, "Elo": elo}
 
 
-@router.post("/api/users/add_user/")
-async def API_add_user(payload: UserRegister):
-    try:
-        new_user = await add_user(payload.username, payload.password, payload.email)
-        return {"username": new_user.username, "added": "yes"}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @router.post("/api/ai_guess/")
 async def API_ai_guess(payload: ImagePayload):
     try:
@@ -75,23 +68,24 @@ async def API_get_ranking():
 @router.post("/api/token")
 async def API_get_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-) -> Token:
+    response: Response,
+):
     try:
         token = await get_access_token(form_data)
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            samesite="strict",
-            secure=COOKIE_SECURE,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-        return {"ok": True}
-    except Exception as e:
-        raise HTTPException(400, e)
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+    response.set_cookie(
+        key="access_token",
+        value=token.access_token,
+        httponly=True,
+        samesite="strict",
+        secure=COOKIE_SECURE,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return {"ok": True}
 
 
-@router.get("/users/me/")
+@router.get("/api/users/me/")
 async def API_get_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> User:
@@ -99,24 +93,27 @@ async def API_get_users_me(
 
 
 @router.post("/api/register/")
-async def API_register(username: str, password: str):
+async def API_register(payload: UserRegister, response: Response):
     try:
-        response = await register_user(username, password)
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = await create_access_token(
-            data={"sub": payload.username}, expires_delta=access_token_expires
-        )
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=True,
-            samesite="strict",
-            secure=COOKIE_SECURE,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
-
+        result = await register_user(payload.username, payload.password, payload.email)
     except ValueError as e:
-        raise HTTPException(400, e)
+        msg = str(e)
+        if "already" in msg.lower():
+            raise HTTPException(406, msg)
+        raise HTTPException(400, msg)
+    access_token = create_access_token(
+        data={"sub": payload.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        samesite="strict",
+        secure=COOKIE_SECURE,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return result
 
 
 @router.post("/api/logout")

@@ -11,7 +11,7 @@
     let login = $state(false); 
 
     async function handleLogout() {
-        await fetch("/api/logout/", {
+        await fetch("/api/logout", {
 		method: 'POST',
         credentials:"same-origin"
 	    });

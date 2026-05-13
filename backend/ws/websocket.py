@@ -34,7 +34,20 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json({"type": "ai_guess", "guess": guess})
 
     except WebSocketDisconnect:
-        disconnect(username)
+        if game_id is None:
+            raise ValueError("game_id not found")
+        asyncio.create_task(handle_disconnect_grace_period(username, game_id))
+
+
+async def handle_disconnect_grace_period(username: str, game_id: str):
+    disconnected_players[username] = {"reconnected": False}
+    await asyncio.sleep(10)
+    if (
+        username in disconnected_players
+        and not disconnected_players[username]["reconnected"]
+    ):
+        print(f"Player {username} abandoned the game. Removing them permanently.")
+        del disconnected_players[username]
 
 
 async def find_player(username: str):
