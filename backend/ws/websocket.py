@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from schemas.data import Game, GameState, GameType
+from schemas.data import Game, GameState, GameType, ImagePayload
 from services.ai_service import load_word_list
 from services.services import get_username_from_ws_token, make_ai_guess
 from state.state import connections, games, matchmaking_queue, player_games
@@ -30,7 +30,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 game_id = player_games.get(username)
                 if game_id is None or game_id not in games:
                     continue
-                guess = await make_ai_guess(payload.get("image"), games[game_id].word)
+                image_payload = ImagePayload(base64_string=payload.get("image"))
+                guess = await make_ai_guess(image_payload, games[game_id].word)
                 await websocket.send_json({"type": "ai_guess", "guess": guess})
 
     except WebSocketDisconnect:
@@ -69,6 +70,10 @@ async def create_game(player1: str, player2: str):
         players=[player1, player2],
         word=get_random_word(),
     )
+
+    games[game.id] = game
+    player_games[player1] = game.id
+    player_games[player2] = game.id
 
     await connections[player1].send_json(
         {
