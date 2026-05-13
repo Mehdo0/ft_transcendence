@@ -5,18 +5,14 @@ from state.state import connections, games
 import random
 from fastapi import WebSocketDisconnect
 from state.state import matchmaking_queue
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import status
 from state.state import (
-    connections,
-    games,
-    matchmaking_queue,
     player_games,
     disconnected_players,
 )
 from schemas.data import Game, GameState, GameType
 from services.ai_service import load_word_list
 from services.services import make_ai_guess, get_username_from_ws_token
-from state.config import WORD_LIST
 
 router = APIRouter()
 
@@ -34,14 +30,18 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             payload = await websocket.receive_json()
-            if payload.get("type") == "find_player":
-                await find_player(username)
-            elif payload.get("type") == "image":
-                game_id = player_games.get(username)
-                if game_id is None or game_id not in games:
-                    continue
-                guess = await make_ai_guess(payload.get("image"), games[game_id].word)
-                await websocket.send_json({"type": "ai_guess", "guess": guess})
+            type = payload.get("type")
+            match type:
+                case "find_player":
+                    await find_player(username)
+                case "image":
+                    game_id = player_games.get(username)
+                    if game_id is None or game_id not in games:
+                        continue
+                    guess = await make_ai_guess(
+                        payload.get("image"), games[game_id].word
+                    )
+                    await websocket.send_json({"type": "ai_guess", "guess": guess})
 
     except WebSocketDisconnect:
         if game_id is None:
