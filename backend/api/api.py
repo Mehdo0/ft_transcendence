@@ -12,7 +12,7 @@ from services.services import (
 )
 from state.config import COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi import HTTPException, APIRouter, Depends, Response
-from data import UserRegister, ImagePayload, Token, User
+from schemas.data import UserRegister, ImagePayload, Token, User
 
 router = APIRouter()
 
@@ -45,7 +45,7 @@ async def API_get_user_stats(username: str):
 @router.post("/api/users/add_user/")
 async def API_add_user(payload: UserRegister):
     try:
-        new_user = await add_user(payload.username, payload.password)
+        new_user = await add_user(payload.username, payload.password, payload.email)
         return {"username": new_user.username, "added": "yes"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -54,7 +54,7 @@ async def API_add_user(payload: UserRegister):
 @router.post("/api/ai_guess/")
 async def API_ai_guess(payload: ImagePayload):
     try:
-        results = await make_ai_guess(payload)
+        results = await make_ai_guess(payload)  # get game and target word TODO
     except Exception as e:
         if e == "wrong payload":
             raise HTTPException(400, e)

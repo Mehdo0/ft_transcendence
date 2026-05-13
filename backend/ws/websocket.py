@@ -6,7 +6,7 @@ from fastapi import WebSocketDisconnect
 from state.state import matchmaking_queue
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from state.state import connections, games, matchmaking_queue, player_games
-from data import Game, GameState, GameType
+from schemas.data import Game, GameState, GameType
 from services.ai_service import load_word_list
 from services.services import make_ai_guess
 from state.config import WORD_LIST

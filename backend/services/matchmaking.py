@@ -1,4 +1,4 @@
-from data import User
+from schemas.data import User
 from services.services import get_user_elo
 
 # This function applies the chess elo formula to determine the new player elo after a game

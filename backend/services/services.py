@@ -10,7 +10,7 @@ from fastapi import Depends, HTTPException, status, WebSocketException
 from fastapi.security import OAuth2PasswordRequestForm
 
 from services.ai_service import internal_make_ai_guess, load_word_list
-from data import ImagePayload, Token, User, UserInDB
+from schemas.data import ImagePayload, Token, User, UserInDB
 from core.database import db_cursor
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -34,21 +34,21 @@ async def get_random_word() -> str:
     return random.choice(data)
 
 
-async def add_user(username: str, hashed_password: str) -> User:
-    with db_cursor(writable=True) as cursor:
-        if username == "drawer":
-            username = f"drawer{random.randint(1000, 9999)}"
-        try:
-            cursor.execute(
-                """
-                INSERT INTO users (username, password, elo) 
-                VALUES (?, ?, 0)
-                """,
-                (username, hashed_password),
-            )
-            return User(username=username, hashed_password=hashed_password)
-        except sqlite3.IntegrityError:
-            raise ValueError("This username is already taken.")
+# async def add_user(username: str, hashed_password: str) -> User:
+#     with db_cursor(writable=True) as cursor:
+#         if username == "drawer":
+#             username = f"drawer{random.randint(1000, 9999)}"
+#         try:
+#             cursor.execute(
+#                 """
+#                 INSERT INTO users (username, password, elo)
+#                 VALUES (?, ?, 0)
+#                 """,
+#                 (username, hashed_password),
+#             )
+#             return User(username=username, hashed_password=hashed_password)
+#         except sqlite3.IntegrityError:
+#             raise ValueError("This username is already taken.")
 
 
 def add_user(username: str, password: str, email: str) -> User:
