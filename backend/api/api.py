@@ -45,7 +45,7 @@ async def API_get_user_stats(username: str):
 @router.post("/api/users/add_user/")
 async def API_add_user(payload: UserRegister):
     try:
-        new_user = await add_user(payload.username, payload.password, payload.email)
+        new_user = add_user(payload.username, payload.password, payload.email)
         return {"username": new_user.username, "added": "yes"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

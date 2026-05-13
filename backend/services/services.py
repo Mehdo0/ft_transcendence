@@ -34,28 +34,10 @@ async def get_random_word() -> str:
     return random.choice(data)
 
 
-# async def add_user(username: str, hashed_password: str) -> User:
-#     with db_cursor(writable=True) as cursor:
-#         if username == "drawer":
-#             username = f"drawer{random.randint(1000, 9999)}"
-#         try:
-#             cursor.execute(
-#                 """
-#                 INSERT INTO users (username, password, elo)
-#                 VALUES (?, ?, 0)
-#                 """,
-#                 (username, hashed_password),
-#             )
-#             return User(username=username, hashed_password=hashed_password)
-#         except sqlite3.IntegrityError:
-#             raise ValueError("This username is already taken.")
-
-
-def add_user(username: str, password: str, email: str) -> User:
+def add_user(username: str, hashed_password: str, email: str) -> User:
     with db_cursor(writable=True) as cursor:
         if username == "drawer":
             username = f"drawer{random.randint(1000, 9999)}"
-        hashed_password = get_password_hash(password)
         try:
             cursor.execute(
                 """
@@ -66,7 +48,7 @@ def add_user(username: str, password: str, email: str) -> User:
             )
         except sqlite3.IntegrityError:
             raise ValueError("Username or email already in use")
-        return User(username=username, email=email)
+        return User(username=username, email=email, hashed_password=hashed_password)
 
 
 async def make_ai_guess(payload: ImagePayload, target_word: str):
