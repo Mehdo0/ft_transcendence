@@ -1,15 +1,28 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { login, hashPassword } from '$lib/api';
+	import { login } from '$lib/api';
 
     // Using Svelte 5 reactivity
     let username = $state("");
     let password = $state("");
-    let hashed_password = $state("");
     let errorMessage = $state("");
     let isLoading = $state(false);
 
+    async function hashPassword(password: string) {
+        // 1. Convert the string password into a byte array
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+
+        // 2. Ask the browser's built-in Crypto API to hash the bytes using SHA-256
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+
+        // 3. Convert the resulting ArrayBuffer back into a readable Hexadecimal string
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+
+        return hashHex;
+    }
 
     async function handleLogin(event: Event) {
         // Prevent the default HTML form submission from refreshing the page
@@ -19,17 +32,17 @@
         isLoading = true;
 
         try {
-            hashed_password = await hashPassword(password)
-            const result = await login(username, hashed_password)
-            if (!result.ok) {
-                if (result.status === 401) {
+            hashPassword(password).then(console.log)
+       		const result = await login(username, password)
+        	if (!result.ok) {
+               if (result.status === 401) {
                    errorMessage = "Incorrect username or password.";
-                } else {
+               } else {
                    errorMessage = "An error occurred. Please try again later.";
-                }
-                return;
-            }
-            await goto(resolve('/'));
+               }
+               return;
+           }
+           await goto(resolve('/'));
         } catch {
        		errorMessage = "Could not connect to the server.";
         } finally {

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getWs } from "$lib/stores/ws";
 	import { game } from "$lib/stores/game";
+    import { goto } from '$app/navigation';
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
 
@@ -27,6 +28,14 @@
 		'#ff8000'
 	];
 
+    function surrender() {
+        if (confirm("Are you sure you want to forfeit the match?")) {
+            goto('/game/lobby');
+        }
+    }
+
+	
+
 	$effect(() => {
 		context = canvas.getContext('2d')!;
 		resize();
@@ -41,7 +50,7 @@
 
 		context.scale(dpr, dpr);
 		redraw();
-	}
+	};
 
 	function redraw() {
 		context.clearRect(0, 0, canvas.width, canvas.height);
@@ -60,38 +69,41 @@
 			}
 			context.stroke();
 		}
-	}
+	};
 
 	function undo() {
 		const trait = stack.pop();
 		if (!trait) return;
 		redoStack.push(trait);
 		redraw();
-	}
+	};
 
 	function redo() {
 		const trait = redoStack.pop();
 		if (!trait) return;
 		stack.push(trait);
 		redraw();
-	}
+	};
 	function eraser() {
 		selectedColor = '#ffffff';
-	}
+	};
 	function pencil() {
 		selectedColor = lastSelectedColor;
-	}
+	};
 	function makeAiGuess() {
 		const ws = getWs();
 		const image = canvas.toDataURL();
 		ws?.send(JSON.stringify({ type: "image", image }));
-	}
+	};
 </script>
 
 <svelte:window onresize={resize} />
 <h1>Draw !</h1>
 <h2>Word: {game.word}</h2>
 <h2>Opponent: {game.opponent}</h2>
+<button class="menu-btn secondary surrender-btn" onclick={surrender}>
+    Surrender
+</button>
 
 <div class="game">
 	<div class="tools">
@@ -227,6 +239,16 @@
 	.tools > .width {
 		grid-column: 1 / -1;
 		width: 100%;
+	}
+
+	.surrender-btn {
+		border-color: #e74c3c;
+		color: #e74c3c;
+	}
+
+	.surrender-btn:hover {
+		background-color: #e74c3c;
+		color: white;
 	}
 
 	.bars {
