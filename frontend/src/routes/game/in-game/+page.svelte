@@ -29,6 +29,31 @@
 		'#ff8000'
 	];
 
+
+	onMount(() => {
+    	const ws = getWs();
+    	if (!ws) return;
+
+    	ws.onmessage = (event) => {
+    	  const msg = JSON.parse(event.data);
+    	  switch (msg.type) {
+    	    case 'ai_guess':
+    	      game.my_score = msg.guess[game.word];
+			  console.log('my_score:', game.my_score);
+    	      break;
+    	    case 'opponent_guess':
+    	      game.opponent_score = msg.guess[game.word];
+			  console.log('opponent_score:', game.opponent_score);
+    	      break;
+			case 'end_game':
+				if (msg.status === 'winner')
+					console.log('You Won')
+				else if (msg.status === 'looser')
+					console.log('You Lost')
+
+    	  }
+    	};
+  	});
     function surrender() {
         if (confirm("Are you sure you want to forfeit the match?")) {
             goto('/game/lobby');
@@ -96,24 +121,7 @@
 		const image = canvas.toDataURL();
 		ws?.send(JSON.stringify({ type: "image", image }));
 	};
- 	onMount(() => {
-    	const ws = getWs();
-    	if (!ws) return;
 
-    	ws.onmessage = (event) => {
-    	  const msg = JSON.parse(event.data);
-    	  switch (msg.type) {
-    	    case 'ai_guess':
-    	      game.my_score = msg.guess[game.word];
-			  console.log('my_score:', game.my_score);
-    	      break;
-    	    case 'opponent_guess':
-    	      game.opponent_score = msg.guess[game.word];
-			  console.log('opponent_score:', game.opponent_score);
-    	      break;
-    	  }
-    	};
-  	});
 	
 </script>
 
@@ -187,10 +195,10 @@
 
 	<div class="bars">
 		<div class="loaderBar">
-			<div class="loaderBar-fill" style="height: {Math.min(100, game.my_score)}%"></div>
+			<div class="loaderBar-fill" style="height: {game.my_score}%"></div>
 		</div>
 		<div class="loaderBar loaderBar--opponent">
-			<div class="loaderBar-fill" style="height: {Math.min(100, game.opponent_score)}%"></div>
+			<div class="loaderBar-fill" style="height: {game.opponent_score}%"></div>
 		</div>
 	</div>
 </div>
