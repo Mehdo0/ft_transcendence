@@ -16,6 +16,7 @@
 	let redoStack = $state<Trait[]>([]);
 
 	let lineWidth = $state(1);
+	let result = $state<'winner' | 'looser' | null>(null);
 
 	const COLORS = [
 		'#ff0000',
@@ -46,10 +47,12 @@
 			  console.log('opponent_score:', game.opponent_score);
     	      break;
 			case 'end_game':
+				result = msg.status;
 				if (msg.status === 'winner')
 					console.log('You Won')
-				else if (msg.status === 'looser')
+				else if (msg.status === 'looser') {
 					console.log('You Lost')
+				}
 
     	  }
     	};
@@ -132,6 +135,16 @@
 <button class="menu-btn secondary surrender-btn" onclick={surrender}>
     Surrender
 </button>
+{#if result}
+  <div class="overlay">
+    {#if result === 'winner'}
+      <h2>You Won!</h2>
+    {:else}
+      <h2>You Lost!</h2>
+    {/if}
+	<button onclick={() => goto('/')}>Back to Home</button>
+  </div>
+{/if}
 
 <div class="game">
 	<div class="tools">
