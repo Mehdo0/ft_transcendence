@@ -9,15 +9,25 @@
         setWs(ws);
         ws.onopen = () => console.log('WebSocket connected');
         ws.onmessage = (event) => {
-            console.log('serveur dit:', event.data);
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'match_found') {
+        console.log('serveur dit:', event.data);
+        const msg = JSON.parse(event.data);
+        switch (msg.type) {
+            case 'match_found':
                 console.log('Game found');
                 game.id = msg.game_id;
                 game.opponent = msg.opponent;
                 game.word = msg.word;
                 goto('/game/in-game');
-            }
+                break;
+            case 'ai_guess':
+                game.my_score = msg.guess[game.word];
+                console.log('my_score:', game.my_score);
+                break;
+            case 'opponent_guess':
+                game.opponent_score = msg.guess[game.word];
+                console.log('opponent_score:', game.opponent_score);
+                break;
+    }
         };
         ws.onclose = () => console.log('WebSocket closed');
         ws.onerror = (event) => console.log('WebSocket error:', event);

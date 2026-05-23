@@ -41,11 +41,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     image_payload = ImagePayload(base64_string=payload.get("image"))
                     guess = await make_ai_guess(image_payload, games[game_id].word)
                     await websocket.send_json({"type": "ai_guess", "guess": guess})
+                    opponent = get_opponent(username, game_id)
+                    await connections[opponent].send_json({"type": "opponent_guess", "guess": guess})
 
     except WebSocketDisconnect:
         if game_id is None:
             raise ValueError("game_id not found")
         asyncio.create_task(handle_disconnect_grace_period(username, game_id))
+
+def get_opponent(username: str, game_id: str):
+    game = games[game_id]
+    for player in game.players:
+        if player != username:
+            return player
 
 
 async def handle_disconnect_grace_period(username: str, game_id: str):

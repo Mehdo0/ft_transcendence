@@ -95,6 +95,8 @@
 		const image = canvas.toDataURL();
 		ws?.send(JSON.stringify({ type: "image", image }));
 	};
+	
+	
 </script>
 
 <svelte:window onresize={resize} />
@@ -166,8 +168,12 @@
 	></canvas>
 
 	<div class="bars">
-		<div class="loaderBar"></div>
-		<div class="loaderBar loaderBar--opponent"></div>
+		<div class="loaderBar">
+			<div class="loaderBar-fill" style="height: {Math.min(100, game.my_score)}%"></div>
+		</div>
+		<div class="loaderBar loaderBar--opponent">
+			<div class="loaderBar-fill" style="height: {Math.min(100, game.opponent_score)}%"></div>
+		</div>
 	</div>
 </div>
 
@@ -266,67 +272,16 @@
 		overflow: hidden;
 	}
 
-	.loaderBar::before {
-		content: '';
+	.loaderBar-fill {
 		position: absolute;
 		bottom: 0;
 		left: 0;
 		width: 100%;
-		height: 0%;
 		border-radius: 5px;
 		background: repeating-linear-gradient(45deg, #0031f2 0 30px, #006dfe 0 40px);
 		background-size: 200% 200%;
 		background-position: center bottom;
-		animation:
-			fillProgress 6s ease-in-out infinite,
-			lightEffect 1s infinite linear;
-		animation-fill-mode: forwards;
-	}
-
-	@keyframes fillProgress {
-		0% {
-			height: 0%;
-		}
-
-		33% {
-			height: 33.333%;
-		}
-
-		66% {
-			height: 66.67%;
-		}
-
-		100% {
-			height: 100%;
-		}
-	}
-
-	@keyframes lightEffect {
-		0%,
-		20%,
-		40%,
-		60%,
-		80%,
-		100% {
-			background: repeating-linear-gradient(45deg, #0031f2 0 30px, #006dfe 0 40px);
-			background-size: 200% 200%;
-			background-position: center bottom;
-		}
-
-		10%,
-		30%,
-		50%,
-		70%,
-		90% {
-			background: repeating-linear-gradient(
-				45deg,
-				#0031f2 0 30px,
-				#006dfe 0 40px,
-				rgba(255, 255, 255, 0.3) 0 40px
-			);
-			background-size: 200% 200%;
-			background-position: center bottom;
-		}
+		transition: height 0.3s ease;
 	}
 
 	.loaderBar--opponent {
@@ -334,41 +289,9 @@
 		border-color: #dc2626;
 	}
 
-	.loaderBar--opponent::before {
+	.loaderBar--opponent .loaderBar-fill {
 		background: repeating-linear-gradient(45deg, #991b1b 0 30px, #dc2626 0 40px);
 		background-size: 200% 200%;
 		background-position: center bottom;
-		animation:
-			fillProgress 6s ease-in-out infinite,
-			lightEffectOpponent 1s infinite linear;
-		animation-fill-mode: forwards;
-	}
-
-	@keyframes lightEffectOpponent {
-		0%,
-		20%,
-		40%,
-		60%,
-		80%,
-		100% {
-			background: repeating-linear-gradient(45deg, #991b1b 0 30px, #dc2626 0 40px);
-			background-size: 200% 200%;
-			background-position: center bottom;
-		}
-
-		10%,
-		30%,
-		50%,
-		70%,
-		90% {
-			background: repeating-linear-gradient(
-				45deg,
-				#991b1b 0 30px,
-				#dc2626 0 40px,
-				rgba(255, 255, 255, 0.35) 0 40px
-			);
-			background-size: 200% 200%;
-			background-position: center bottom;
-		}
 	}
 </style>
