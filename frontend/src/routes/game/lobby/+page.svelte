@@ -1,7 +1,7 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { getWs, setWs } from '$lib/stores/ws';
-    import { game } from '$lib/stores/game';
+    import { game } from '$lib/stores/game.svelte';
 
     function connect() {
         console.log('Joining lobby...');
@@ -19,14 +19,7 @@
                 game.word = msg.word;
                 goto('/game/in-game');
                 break;
-            case 'ai_guess':
-                game.my_score = msg.guess[game.word];
-                console.log('my_score:', game.my_score);
-                break;
-            case 'opponent_guess':
-                game.opponent_score = msg.guess[game.word];
-                console.log('opponent_score:', game.opponent_score);
-                break;
+
     }
         };
         ws.onclose = () => console.log('WebSocket closed');

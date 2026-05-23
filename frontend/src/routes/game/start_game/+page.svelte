@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getWs, setWs } from '$lib/stores/ws';
-	import { game } from '$lib/stores/game';
+	import { game } from '$lib/stores/game.svelte';
 
 	let isConnected = $state(false);
 	let isSearching = $state(false);

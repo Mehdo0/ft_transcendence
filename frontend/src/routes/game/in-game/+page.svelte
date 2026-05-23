@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { getWs } from "$lib/stores/ws";
-	import { game } from "$lib/stores/game";
+	import { game } from "$lib/stores/game.svelte";
     import { goto } from '$app/navigation';
+	import { onMount} from 'svelte';
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
 
@@ -95,7 +96,24 @@
 		const image = canvas.toDataURL();
 		ws?.send(JSON.stringify({ type: "image", image }));
 	};
-	
+ 	onMount(() => {
+    	const ws = getWs();
+    	if (!ws) return;
+
+    	ws.onmessage = (event) => {
+    	  const msg = JSON.parse(event.data);
+    	  switch (msg.type) {
+    	    case 'ai_guess':
+    	      game.my_score = msg.guess[game.word];
+			  console.log('my_score:', game.my_score);
+    	      break;
+    	    case 'opponent_guess':
+    	      game.opponent_score = msg.guess[game.word];
+			  console.log('opponent_score:', game.opponent_score);
+    	      break;
+    	  }
+    	};
+  	});
 	
 </script>
 
