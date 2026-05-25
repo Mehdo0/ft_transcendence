@@ -3,6 +3,7 @@ import random
 from contextlib import contextmanager
 
 from schemas.data import User, UserInDB
+from sqlalchemy import create_engine
 
 DB_NAME = "data/game_data.db"
 
