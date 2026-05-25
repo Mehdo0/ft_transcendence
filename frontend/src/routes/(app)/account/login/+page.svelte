@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { login } from '$lib/api';
 
 	// Using Svelte 5 reactivity
@@ -32,8 +30,7 @@
 		isLoading = true;
 
 		try {
-			hashPassword(password).then(console.log);
-			const result = await login(username, password);
+			const result = await login(username, await hashPassword(password));
 			if (!result.ok) {
 				if (result.status === 401) {
 					errorMessage = 'Incorrect username or password.';
@@ -42,7 +39,7 @@
 				}
 				return;
 			}
-			await goto(resolve('/'));
+			location.assign('/');
 		} catch {
 			errorMessage = 'Could not connect to the server.';
 		} finally {
