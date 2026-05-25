@@ -3,7 +3,6 @@ import random
 from contextlib import contextmanager
 
 from schemas.data import User, UserInDB
-from backend.hash_service import get_password_hash
 
 DB_NAME = "data/game_data.db"
 
@@ -53,12 +52,11 @@ def setup_database():
 setup_database()
 
 
-def add_user(username: str, password: str) -> User:
+def add_user(username: str, hashed_password: str) -> User:
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     if username == "drawer":
         username = f"drawer{random.randint(1000, 9999)}"
-    hashed_password = get_password_hash(password)
     try:
         cursor.execute(
             """
