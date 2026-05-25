@@ -1,92 +1,107 @@
-import sqlite3
 import random
-from contextlib import contextmanager
 
+from models.models import Base, UserModel
 from schemas.data import User, UserInDB
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session, sessionmaker
 
 DB_NAME = "data/game_data.db"
+DATABASE_URL = f"sqlite+pysqlite:///{DB_NAME}"
 
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,  # debug logs
+    connect_args={"check_same_thread": False},
+)
 
-# provide `cursor` context,
-# takes boolean to specify write or read-only access
-@contextmanager
-def db_cursor(
-    writable=False,
-):
-    if writable:
-        conn = sqlite3.connect(DB_NAME)
-    else:
-        conn = sqlite3.connect(f"file:{DB_NAME}?mode=ro", uri=True)
-
-    cursor = conn.cursor()
-    conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
-    try:
-        yield cursor
-        if writable:
-            conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+)
 
 
 def setup_database():
-    with db_cursor(writable=True) as cursor:
-        # ajoute les tables si elles n'existent pas encore
-        cursor.execute("""  
-            CREATE TABLE IF NOT EXISTS users (
-                username TEXT PRIMARY KEY,
-                password TEXT,
-                elo INTEGER
-            )
-        """)
+    Base.metadata.create_all(bind=engine)
 
-        # creation du super user (modo)
-        cursor.execute("""
-            INSERT OR IGNORE INTO users (username, elo) 
-            VALUES ("modo", 9999)
-        """)
+    with SessionLocal() as session:
+        existing_user = session.get(UserModel, "modo")
+        if existing_user is None:
+            modo = UserModel(
+                username="modo",
+                password="",
+                elo=9999,
+                email="modo@example.com",
+            )
+
+            session.add(modo)
+            session.commit()
 
 
 setup_database()
 
 
-def add_user(username: str, hashed_password: str) -> User:
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+# Dependency/helper
+def get_session() -> Session:
+    with SessionLocal() as session:
+        yield session
+
+
+def add_user(username: str, hashed_password: str, email: str) -> User:
     if username == "drawer":
         username = f"drawer{random.randint(1000, 9999)}"
-    try:
-        cursor.execute(
-            """
-            INSERT INTO users (username, password, elo) 
-            VALUES (?, ?, 0)
-            """,
-            (username, hashed_password),
+    with SessionLocal() as session:
+        existing_user = session.get(UserModel, username)
+
+        if existing_user:
+            raise ValueError("This username is already taken.")
+
+        user = UserModel(
+            username=username,
+            password=hashed_password,
+            email=email,
+            elo=0,
         )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        conn.close()
-        raise ValueError("This username is already taken.")
-    conn.close()
-    return User(username=username)
+
+        session.add(user)
+        session.commit()
+
+        return User(
+            username=user.username,
+            email=user.email,
+            hashed_password=user.password,
+        )
 
 
-def get_user_elo(username: str):
-    with db_cursor() as cursor:
-        cursor.execute("SELECT elo FROM users WHERE username = ?", (username,))
-        row = cursor.fetchone()
-    return row[0]
+def get_ranking():
+    with SessionLocal() as session:
+        stmt = (
+            select(UserModel.username, UserModel.elo)
+            .order_by(UserModel.elo.desc())
+            .limit(10)
+        )
+
+        rows = session.execute(stmt).mappings().all()
+
+        return list(rows)
+
+
+def get_user_elo(username: str) -> int | None:
+    with SessionLocal() as session:
+        user = session.get(UserModel, username)
+
+        if user is None:
+            return None
+        return user.elo
 
 
 def get_user(username: str) -> User | None:
-    with db_cursor() as cursor:
-        # Connects to DB, fetches the user by ID, and returns the row.
-        # le '?' est une protection contre les attaques par injection SQL
-        cursor.execute("SELECT username FROM users WHERE username = ?", (username,))
-        row = cursor.fetchone()
-        if row is None:
-            return None  # User not found
-        return UserInDB(username=row["username"], hashed_password=row["password"])
+    with SessionLocal() as session:
+        user = session.get(UserModel, username)
+        if user is None:
+            return None
+        return UserInDB(
+            username=user.username,
+            email=user.email,
+            hashed_password=user.password,
+        )

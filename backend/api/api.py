@@ -3,14 +3,16 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from services.services import (
     get_random_word,
-    get_user_elo,
-    add_user,
     make_ai_guess,
-    get_ranking,
     get_access_token,
     register_user,
     get_current_active_user,
     create_access_token,
+)
+from core.database import (
+    get_user_elo,
+    add_user,
+    get_ranking,
 )
 from state.config import COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi import HTTPException, APIRouter, Depends, Response
@@ -59,7 +61,7 @@ async def API_ai_guess(payload: ImagePayload):
 @router.get("/api/get_ranking")
 async def API_get_ranking():
     try:
-        return await get_ranking()
+        return get_ranking()
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
