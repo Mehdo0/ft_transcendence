@@ -38,9 +38,6 @@ def setup_database():
             session.commit()
 
 
-setup_database()
-
-
 def add_user(user: UserRegister) -> User:
     with SessionLocal() as session:
         user = UserModel(
