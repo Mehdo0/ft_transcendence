@@ -44,7 +44,7 @@ def add_user(user: UserRegister) -> User:
             username=user.username,
             password=user.password,
             email=user.email,
-            elo=0,
+            elo=500,
         )
 
         session.add(user)
@@ -70,7 +70,7 @@ def get_ranking():
         return list(rows)
 
 
-def get_user_elo(username: str) -> int | None:
+async def get_user_elo(username: str) -> int | None:
     with SessionLocal() as session:
         user = session.get(UserModel, username)
 
@@ -89,3 +89,11 @@ def get_user(username: str) -> User | None:
             email=user.email,
             hashed_password=user.password,
         )
+
+def update_user_elo(username: str, new_elo: int):
+    with SessionLocal() as session:
+        user = session.get(UserModel, username)
+        if user is None:
+            return
+        user.elo = new_elo
+        session.commit()

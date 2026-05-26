@@ -17,6 +17,7 @@
 
 	let lineWidth = $state(1);
 	let result = $state<'winner' | 'looser' | null>(null);
+	let elo_diff = $state(0);
 
 	const COLORS = [
 		'#ff0000',
@@ -47,12 +48,10 @@
 			  console.log('opponent_score:', game.opponent_score);
     	      break;
 			case 'end_game':
-				result = msg.status;
-				if (msg.status === 'winner')
-					console.log('You Won')
-				else if (msg.status === 'looser') {
-					console.log('You Lost')
-				}
+				elo_diff = msg.elo_diff;
+    			result = msg.status;
+    			console.log(msg);
+				break;
 
     	  }
     	};
@@ -138,9 +137,9 @@
 {#if result}
   <div class="overlay">
     {#if result === 'winner'}
-      <h2>You Won!</h2>
+      <h2>You Won +{elo_diff} elo!</h2>
     {:else}
-      <h2>You Lost!</h2>
+      <h2>You Lost {elo_diff} elo!</h2>
     {/if}
 	<button onclick={() => goto('/')}>Back to Home</button>
   </div>

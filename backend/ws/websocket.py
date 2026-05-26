@@ -7,6 +7,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from schemas.data import Game, GameState, GameType, ImagePayload
 from services.ai_service import load_word_list
 from services.services import get_username_from_ws_token, make_ai_guess
+from api.api import get_user_elo
+from core.database import update_user_elo
 from state.state import (
     connections,
     games,
@@ -51,7 +53,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                     score = guess.get(games[game_id].word)
                     if score >= 1:
-                        await end_game(websocket, opponent)
+                        await end_game(websocket, username, opponent)
 
     except WebSocketDisconnect:
         if game_id is None:
@@ -66,10 +68,24 @@ def get_opponent(username: str, game_id: str):
             return player
 
 
-async def end_game(websocket: WebSocket, opponent: str):
-    await websocket.send_json({"type": "end_game", "status": "winner"})
-    await connections[opponent].send_json({"type": "end_game", "status": "looser"})
+async def end_game(websocket: WebSocket, username: str, opponent: str):
+    diff_winner, new_elo_winner = await calculate_new_elo(username, opponent, 1)
+    diff_loser, new_elo_loser = await calculate_new_elo(opponent, username, 0)
+    await websocket.send_json({"type": "end_game", "status": "winner", "elo_diff": diff_winner, "new_elo": new_elo_winner})
+    await connections[opponent].send_json({"type": "end_game", "status": "looser", "elo_diff": diff_loser, "new_elo": new_elo_loser})
+    update_user_elo(username, new_elo_winner)
+    update_user_elo(opponent, new_elo_loser)
 
+
+async def calculate_new_elo(username1: str, username2: str, result: int):
+    elo1 = await get_user_elo(username1)
+    elo2 = await get_user_elo(username2)
+    moyenne = (elo1 + elo2) / 2
+    K = 40 - round(moyenne / 50)
+    E = 1 / (1 + 10 ** ((elo2 - elo1) / 400))
+    new_elo = round(elo1 + (K * (result - E)))
+    diff = new_elo - elo1
+    return diff, new_elo
 
 async def handle_disconnect_grace_period(username: str, game_id: str):
     disconnected_players[username] = {"reconnected": False}

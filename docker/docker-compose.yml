@@ -38,8 +38,8 @@ services:
     volumes:
       - ../logs:/var/log/nginx;
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80" #needed host port >1024 to compile without root access (school pc)
+      - "8443:443"
     depends_on:
       - backend
       - vite
