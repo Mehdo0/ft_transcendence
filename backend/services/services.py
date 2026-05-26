@@ -1,53 +1,27 @@
 import random
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+
 import jwt
-from jwt import InvalidTokenError, encode, decode
-
-from fastapi import Depends, HTTPException, status, WebSocketException
+from core.database import get_user, add_user
+from core.exceptions import UserAlreadyExistsError
+from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
-
+from jwt import InvalidTokenError
+from schemas.data import ImagePayload, Token, User, UserRegister
 from services.ai_service import internal_make_ai_guess, load_word_list
-from schemas.data import ImagePayload, Token, User, UserInDB
-from core.database import db_cursor
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    DUMMY_HASH,
-    cookie_scheme,
     ALGORITHM,
+    DUMMY_HASH,
     SECRET_KEY,
+    cookie_scheme,
 )
-
-
-async def get_user_elo(username: str):
-    with db_cursor() as cursor:
-        cursor.execute("SELECT elo FROM users WHERE username = ?", (username,))
-        row = cursor.fetchone()
-        if row[0] is None:
-            raise ValueError("User not found")
 
 
 async def get_random_word() -> str:
     data = load_word_list()
     return random.choice(data)
-
-
-def add_user(username: str, hashed_password: str, email: str) -> User:
-    with db_cursor(writable=True) as cursor:
-        if username == "drawer":
-            username = f"drawer{random.randint(1000, 9999)}"
-        try:
-            cursor.execute(
-                """
-                INSERT INTO users (username, password, email, elo)
-                VALUES (?, ?, ?, 0)
-                """,
-                (username, hashed_password, email),
-            )
-        except sqlite3.IntegrityError:
-            raise ValueError("Username or email already in use")
-        return User(username=username, email=email, hashed_password=hashed_password)
 
 
 async def make_ai_guess(payload: ImagePayload, target_word: str):
@@ -60,40 +34,12 @@ async def make_ai_guess(payload: ImagePayload, target_word: str):
     return results
 
 
-async def get_ranking():
-    with db_cursor() as cursor:
-        try:
-            cursor.execute("SELECT username, elo FROM users ORDER BY elo DESC LIMIT 10")
-            row = cursor.fetchall()
-            result = [
-                {"username": player["username"], "elo": player["elo"]} for player in row
-            ]
-        except Exception as e:
-            print("Error:", e)
-        return result
-
-
-async def get_user(username: str) -> User | None:
-    with db_cursor() as cursor:
-        cursor.execute(
-            "SELECT username, password, email FROM users WHERE username = ?",
-            (username,),
-        )
-        row = cursor.fetchone()
-        if row is None:
-            return None  # User not found
-        return UserInDB(
-            username=row["username"],
-            hashed_password=row["password"],
-            email=row["email"],
-        )
-
-
 async def get_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    user = await authenticate_user(form_data.username, form_data.password)
-    if not user:
+    try:
+        user = authenticate_user(form_data.username, form_data.password)
+    except Exception:
         raise ValueError("couldnt authenticate")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -102,27 +48,24 @@ async def get_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-async def register_user(username: str, password: str, email: str):
-    username_test = await get_user(username)
+async def register_user(user_register: UserRegister):
+    username_test = get_user(user_register.username)
     if username_test:
-        raise ValueError("Username already used")
-    add_user(username, password, email)
-    if await get_user(username):
-        return {"user_created": username}
-    else:
-        raise ValueError("Error while adding user")
+        raise UserAlreadyExistsError
+    user = add_user(user_register)
+    return {"user_created": user.username}
 
 
 ### auth
 
 
-async def authenticate_user(username: str, hashed_password: str):
-    user = await get_user(username)
+def authenticate_user(username: str, hashed_password: str):
+    user = get_user(username)
     if not user:
         hashed_password != DUMMY_HASH  # preventing timing attack
-        return False
+        raise ValueError("User doesnt exist")
     if hashed_password != user.hashed_password:
-        return False
+        raise ValueError("Passwords dont match")
     return user
 
 
@@ -150,7 +93,7 @@ async def get_current_user(token: Annotated[str, Depends(cookie_scheme)]):
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
-    user = await get_user(username)
+    user = get_user(username)
     if user is None:
         raise credentials_exception
     return user

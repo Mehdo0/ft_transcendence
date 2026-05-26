@@ -1,47 +1,91 @@
-import sqlite3
-from contextlib import contextmanager
+import random
 
-from state.config import DB_NAME
+from models.models import Base, UserModel
+from schemas.data import User, UserRegister
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session, sessionmaker
 
+DB_NAME = "data/game_data.db"
+DATABASE_URL = f"sqlite+pysqlite:///{DB_NAME}"
 
-# provide `cursor` context,
-# takes boolean to specify write or read-only access
-@contextmanager
-def db_cursor(
-    writable=False,
-):
-    if writable:
-        conn = sqlite3.connect(DB_NAME)
-    else:
-        conn = sqlite3.connect(f"file:{DB_NAME}?mode=ro", uri=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,  # debug logs
+    connect_args={"check_same_thread": False},  # Necessary for fastAPI
+)
 
-    conn.row_factory = sqlite3.Row  # factorise le resultat en dictionnaire
-    cursor = conn.cursor()
-    try:
-        yield cursor
-        if writable:
-            conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+)
 
 
 def setup_database():
-    with db_cursor(writable=True) as cursor:
-        # ajoute les tables si elles n'existent pas encore
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                username TEXT PRIMARY KEY,
-                password TEXT,
-                email TEXT UNIQUE,
-                elo INTEGER
-            )
-        """)
+    Base.metadata.create_all(bind=engine)
 
-        # creation du super user (modo)
-        cursor.execute("""
-            INSERT OR IGNORE INTO users (username, password, email, elo)
-            VALUES ("modo", "modo_mdp", "modo@modo.com", 9999)
-        """)
+    with SessionLocal() as session:
+        existing_user = session.get(UserModel, "modo")
+        if existing_user is None:
+            modo = UserModel(
+                username="modo",
+                password="",
+                elo=9999,
+                email="modo@example.com",
+            )
+
+            session.add(modo)
+            session.commit()
+
+
+def add_user(user: UserRegister) -> User:
+    with SessionLocal() as session:
+        user = UserModel(
+            username=user.username,
+            password=user.password,
+            email=user.email,
+            elo=0,
+        )
+
+        session.add(user)
+        session.commit()
+
+        return User(
+            username=user.username,
+            email=user.email,
+            hashed_password=user.password,
+        )
+
+
+def get_ranking():
+    with SessionLocal() as session:
+        stmt = (
+            select(UserModel.username, UserModel.elo)
+            .order_by(UserModel.elo.desc())
+            .limit(10)
+        )
+
+        rows = session.execute(stmt).mappings().all()
+
+        return list(rows)
+
+
+def get_user_elo(username: str) -> int | None:
+    with SessionLocal() as session:
+        user = session.get(UserModel, username)
+
+        if user is None:
+            return None
+        return user.elo
+
+
+def get_user(username: str) -> User | None:
+    with SessionLocal() as session:
+        user = session.get(UserModel, username)
+        if user is None:
+            return None
+        return User(
+            username=user.username,
+            email=user.email,
+            hashed_password=user.password,
+        )

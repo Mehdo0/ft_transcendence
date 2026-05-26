@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import favicon from '$lib/draw_meter_logo.svg';
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
 
 	let { children } = $props();
 
@@ -15,8 +14,7 @@
 			method: 'POST',
 			credentials: 'same-origin'
 		});
-		login = false; // Update the UI state instantly
-		goto('/');
+		location.assign('/');
 	}
 
 	// Define the main navigation links for the app

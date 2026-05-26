@@ -1,3 +1,4 @@
+import asyncio
 import random
 import uuid
 
@@ -13,6 +14,7 @@ from state.state import (
     player_games,
     disconnected_players,
 )
+from asyncio import sleep
 
 
 router = APIRouter()
@@ -22,6 +24,8 @@ router = APIRouter()
 async def websocket_endpoint(websocket: WebSocket):
     try:
         token = websocket.cookies.get("access_token")
+        if token is None:
+            raise ValueError("no token found")
         username = get_username_from_ws_token(token)
     except Exception:
         return
@@ -42,16 +46,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     guess = await make_ai_guess(image_payload, games[game_id].word)
                     await websocket.send_json({"type": "ai_guess", "guess": guess})
                     opponent = get_opponent(username, game_id)
-                    await connections[opponent].send_json({"type": "opponent_guess", "guess": guess})
+                    await connections[opponent].send_json(
+                        {"type": "opponent_guess", "guess": guess}
+                    )
                     score = guess.get(games[game_id].word)
                     if score >= 1:
                         await end_game(websocket, opponent)
-            
 
     except WebSocketDisconnect:
         if game_id is None:
             raise ValueError("game_id not found")
         # asyncio.create_task(handle_disconnect_grace_period(username, game_id))
+
 
 def get_opponent(username: str, game_id: str):
     game = games[game_id]
@@ -59,11 +65,10 @@ def get_opponent(username: str, game_id: str):
         if player != username:
             return player
 
+
 async def end_game(websocket: WebSocket, opponent: str):
     await websocket.send_json({"type": "end_game", "status": "winner"})
     await connections[opponent].send_json({"type": "end_game", "status": "looser"})
-
-    
 
 
 async def handle_disconnect_grace_period(username: str, game_id: str):
