@@ -1,82 +1,55 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
     import { getWs, setWs } from '$lib/stores/ws';
-    import { game } from '$lib/stores/game.svelte';
+	import { onMount } from 'svelte';
 
-    function connect() {
-        console.log('Joining lobby...');
-        const ws = new WebSocket('/ws/');
-        setWs(ws);
-        ws.onopen = () => console.log('WebSocket connected');
-        ws.onmessage = (event) => {
-        console.log('serveur dit:', event.data);
-        const msg = JSON.parse(event.data);
-        switch (msg.type) {
-            case 'match_found':
-                console.log('Game found');
-                game.id = msg.game_id;
-                game.opponent = msg.opponent;
-                game.word = msg.word;
-                goto('/game/in-game');
-                break;
+    let lobbyCode = $state('');
 
+    onMount(() => {
+		console.log('connecting...');
+		const ws = new WebSocket('/ws/');
+		setWs(ws);
+		ws.onopen = () => {
+			console.log('WebSocket connected');
+		};
+		ws.onmessage = (event) => {
+			console.log('serveur dit:', event.data);
+			const msg = JSON.parse(event.data);
+			if (msg.type === 'lobby_details') {
+				let code = msg.code;
+				goto('/game/lobby/' + code);
+			}
+		};
+		ws.onclose = () => {
+			console.log('WebSocket closed');
+		};
+		ws.onerror = (event) => {
+			console.log('WebSocket error:', event);
+		};
+    })
+
+    function createLobby() {
+        let ws = getWs();
+        ws?.send(JSON.stringify({ type: 'create_lobby' }));
     }
-        };
-        ws.onclose = () => console.log('WebSocket closed');
-        ws.onerror = (event) => console.log('WebSocket error:', event);
+
+    function joinLobby() {
+        const code = lobbyCode.trim(); //a fix pour eviter injection, mauvais format etc
+        let ws = getWs();
+        ws?.send(JSON.stringify({type: 'join_lobby', code}));
     }
-
-    function findGame() {
-        const ws = getWs();
-        ws?.send(JSON.stringify({ type: 'find_player' }));
-    }
-
-    // let joinCode = $state('');
-    // let isCreating = $state(false);
-    // let isJoining = $state(false);
-    // let errorMessage = $state('');
-
-    // async function createLobby() {
-    //     isCreating = true;
-    //     errorMessage = '';
-    //     try {
-    //         const token = localStorage.getItem('access_token');
-    //         const response = await fetch('/api/create_lobby', {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Authorization': `Bearer ${token}`,
-    //                 'Content-Type': 'application/json'
-    //             }
-    //         });
-    //         if (response.ok) {
-    //             const data = await response.json();
-    //             const secretCode = data.code;
-    //             goto(`/game/lobby/${secretCode}`);
-    //         } else {
-    //             errorMessage = 'Failed to create lobby. Please try again.';
-    //         }
-    //     } catch (error) {
-    //         console.error(error);
-    //         errorMessage = 'Could not connect to the server.';
-    //     } finally {
-    //         isCreating = false;
-    //     }
-    // }
-
-    // function joinLobby() {
-    //     const cleanCode = joinCode.trim().toUpperCase();
-    //     if (!cleanCode) {
-    //         errorMessage = 'Please enter a valid lobby code.';
-    //         return;
-    //     }
-    //     isJoining = true;
-    //     goto(`/game/lobby/${cleanCode}`);
-    // }
 </script>
 
 <h1>Lobby</h1>
-<button onclick={connect}>Join Lobby</button>
-<button onclick={findGame}>Find Game</button>
+<button onclick={createLobby}>Create a Lobby</button>
+<input
+    type="text"
+    bind:value={lobbyCode}
+    maxlength="6"
+    placeholder="enter lobby code,ex. 123456"
+    
+/>
+<button onclick={joinLobby}>Join a Lobby (entry 6 digits code)</button> 
 
 <!-- <div class="private-container">
     <div class="private-card">
@@ -120,7 +93,7 @@
     </div>
 </div> -->
 
-<style>
+<!-- <style>
     .private-container {
         display: flex;
         justify-content: center;
@@ -288,4 +261,4 @@
             display: none;
         }
     }
-</style>
+</style> -->

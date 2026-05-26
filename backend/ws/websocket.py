@@ -38,6 +38,12 @@ async def websocket_endpoint(websocket: WebSocket):
             payload = await websocket.receive_json()
             type = payload.get("type")
             match type:
+                case "create_lobby"
+                    await create_lobby(username)
+                case "join_lobby"
+                    code = payload.get("code")
+                    if code:
+                        await join_lobby(username, code)
                 case "find_player":
                     await find_player(username)
                 case "image":
