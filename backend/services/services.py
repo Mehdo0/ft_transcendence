@@ -4,10 +4,11 @@ from typing import Annotated
 
 import jwt
 from core.database import get_user, add_user
+from core.exceptions import UserAlreadyExistsError
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
-from schemas.data import ImagePayload, Token, User
+from schemas.data import ImagePayload, Token, User, UserRegister
 from services.ai_service import internal_make_ai_guess, load_word_list
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -36,8 +37,9 @@ async def make_ai_guess(payload: ImagePayload, target_word: str):
 async def get_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    user = await authenticate_user(form_data.username, form_data.password)
-    if not user:
+    try:
+        user = authenticate_user(form_data.username, form_data.password)
+    except Exception:
         raise ValueError("couldnt authenticate")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -46,27 +48,24 @@ async def get_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
-async def register_user(username: str, password: str, email: str):
-    username_test = get_user(username)
+async def register_user(user_register: UserRegister):
+    username_test = get_user(user_register.username)
     if username_test:
-        raise ValueError("Username already used")
-    add_user(username, password, email)
-    if get_user(username):
-        return {"user_created": username}
-    else:
-        raise ValueError("Error while adding user")
+        raise UserAlreadyExistsError
+    user = add_user(user_register)
+    return {"user_created": user.username}
 
 
 ### auth
 
 
-async def authenticate_user(username: str, hashed_password: str):
+def authenticate_user(username: str, hashed_password: str):
     user = get_user(username)
     if not user:
         hashed_password != DUMMY_HASH  # preventing timing attack
-        return False
+        raise ValueError("User doesnt exist")
     if hashed_password != user.hashed_password:
-        return False
+        raise ValueError("Passwords dont match")
     return user
 
 

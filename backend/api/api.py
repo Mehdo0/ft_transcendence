@@ -14,6 +14,7 @@ from core.database import (
     add_user,
     get_ranking,
 )
+from core.exceptions import UserAlreadyExistsError
 from state.config import COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi import HTTPException, APIRouter, Depends, Response
 from schemas.data import UserRegister, ImagePayload, Token, User
@@ -40,7 +41,7 @@ async def API_get_word():
 async def API_get_user_stats(username: str):
     # Ask the database file to do the heavy lifting
     try:
-        elo = await get_user_elo(username)
+        elo = get_user_elo(username)
     except Exception as e:
         raise HTTPException(status_code=404, detail=e)
     return {"username": username, "Elo": elo}
@@ -97,12 +98,11 @@ async def API_get_users_me(
 @router.post("/api/register/")
 async def API_register(payload: UserRegister, response: Response):
     try:
-        result = await register_user(payload.username, payload.password, payload.email)
-    except ValueError as e:
-        msg = str(e)
-        if "already" in msg.lower():
-            raise HTTPException(406, msg)
-        raise HTTPException(400, msg)
+        result = await register_user(payload)
+    except UserAlreadyExistsError as e:
+        raise HTTPException(406, str(e))
+    except Exception as e:
+        raise HTTPException(500, str(e))
     access_token = create_access_token(
         data={"sub": payload.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),

@@ -1,7 +1,7 @@
 import random
 
 from models.models import Base, UserModel
-from schemas.data import User, UserInDB
+from schemas.data import User, UserRegister
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -11,7 +11,7 @@ DATABASE_URL = f"sqlite+pysqlite:///{DB_NAME}"
 engine = create_engine(
     DATABASE_URL,
     echo=True,  # debug logs
-    connect_args={"check_same_thread": False},
+    connect_args={"check_same_thread": False},  # Necessary for fastAPI
 )
 
 SessionLocal = sessionmaker(
@@ -41,25 +41,12 @@ def setup_database():
 setup_database()
 
 
-# Dependency/helper
-def get_session() -> Session:
+def add_user(user: UserRegister) -> User:
     with SessionLocal() as session:
-        yield session
-
-
-def add_user(username: str, hashed_password: str, email: str) -> User:
-    if username == "drawer":
-        username = f"drawer{random.randint(1000, 9999)}"
-    with SessionLocal() as session:
-        existing_user = session.get(UserModel, username)
-
-        if existing_user:
-            raise ValueError("This username is already taken.")
-
         user = UserModel(
-            username=username,
-            password=hashed_password,
-            email=email,
+            username=user.username,
+            password=user.password,
+            email=user.email,
             elo=0,
         )
 
@@ -100,7 +87,7 @@ def get_user(username: str) -> User | None:
         user = session.get(UserModel, username)
         if user is None:
             return None
-        return UserInDB(
+        return User(
             username=user.username,
             email=user.email,
             hashed_password=user.password,

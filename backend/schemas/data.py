@@ -50,11 +50,6 @@ class User(BaseModel):
     hashed_password: str
 
 
-class UserInDB(User):
-    username: str
-    hashed_password: str
-
-
 class Game(BaseModel):
     id: str
     game_state: GameState = GameState.CONNECTING
@@ -68,7 +63,7 @@ class ImagePayload(BaseModel):
 
 
 class UserRegister(BaseModel):
-    username: str = "drawer"
+    username: str
     password: str
     email: str
 
