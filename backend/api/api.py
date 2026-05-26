@@ -11,13 +11,12 @@ from services.services import (
 )
 from core.database import (
     get_user_elo,
-    add_user,
     get_ranking,
 )
 from core.exceptions import UserAlreadyExistsError
 from state.config import COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi import HTTPException, APIRouter, Depends, Response
-from schemas.data import UserRegister, ImagePayload, Token, User
+from schemas.data import UserRegister, ImagePayload, User
 
 router = APIRouter()
 
@@ -45,18 +44,6 @@ async def API_get_user_stats(username: str):
     except Exception as e:
         raise HTTPException(status_code=404, detail=e)
     return {"username": username, "Elo": elo}
-
-
-@router.post("/api/ai_guess/")
-async def API_ai_guess(payload: ImagePayload):
-    try:
-        results = await make_ai_guess(payload)  # get game and target word TODO
-    except Exception as e:
-        if e == "wrong payload":
-            raise HTTPException(400, e)
-        else:
-            raise HTTPException(500, e)
-    return {"guesses": results}
 
 
 @router.get("/api/get_ranking")
