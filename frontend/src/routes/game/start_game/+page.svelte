@@ -2,7 +2,7 @@
 	// Added state variables to make the UI react to the connection
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { getWs, setWs } from '$lib/stores/ws';
+	import { getWs } from '$lib/stores/ws';
 	import { game } from '$lib/stores/game.svelte';
 
 	let isConnected = $state(false);
@@ -10,14 +10,17 @@
 	let statusMessage = $state('Disconnected');
 
 	function connect() {
-		console.log('connecting...');
-		const ws = new WebSocket('/ws/');
-		setWs(ws);
-		ws.onopen = () => {
-			console.log('WebSocket connected');
-			isConnected = true;
-			statusMessage = 'Connected';
-		};
+        const ws = getWs();
+        if (!ws) return;
+		// ws.onopen = () => {
+		// 	console.log('WebSocket connected');
+		// 	isConnected = true;
+		// 	statusMessage = 'Connected';
+		// };
+		if (ws.readyState === WebSocket.OPEN) {
+        	isConnected = true;
+        	statusMessage = 'Connected';
+    	}
 		ws.onmessage = (event) => {
 			console.log('serveur dit:', event.data);
 			const msg = JSON.parse(event.data);

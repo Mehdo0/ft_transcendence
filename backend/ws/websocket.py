@@ -1,6 +1,7 @@
 import asyncio
 import random
 import uuid
+import string
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -15,6 +16,7 @@ from state.state import (
     matchmaking_queue,
     player_games,
     disconnected_players,
+    lobbies
 )
 from asyncio import sleep
 
@@ -38,12 +40,12 @@ async def websocket_endpoint(websocket: WebSocket):
             payload = await websocket.receive_json()
             type = payload.get("type")
             match type:
-                case "create_lobby"
-                    await create_lobby(username)
-                case "join_lobby"
+                case "create_lobby":
+                    await create_lobby(username, websocket)
+                case "join_lobby":
                     code = payload.get("code")
                     if code:
-                        await join_lobby(username, code)
+                        await join_lobby(username, code, websocket)
                 case "find_player":
                     await find_player(username)
                 case "image":
@@ -65,6 +67,20 @@ async def websocket_endpoint(websocket: WebSocket):
         if game_id is None:
             raise ValueError("game_id not found")
         # asyncio.create_task(handle_disconnect_grace_period(username, game_id))
+
+
+async def create_lobby(username: str, websocket: WebSocket): #still have to make sure that the code is deleted afeter 30 min or closed lobby
+    while True:
+        characters = string.ascii_uppercase + string.digits
+        code = ''.join(random.choices(characters, k=6))
+        if code not in lobbies:
+            lobbies.add(code)
+        await websocket.send_json({"type": "lobby_created", "code": code })
+        break
+
+async def join_lobby(username: str, code: str, websocket: WebSocket):
+        await websocket.send_json({"type": "lobby_joined", "code": code })
+
 
 
 def get_opponent(username: str, game_id: str):

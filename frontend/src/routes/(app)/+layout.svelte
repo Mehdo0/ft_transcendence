@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import favicon from '$lib/draw_meter_logo.svg';
 	import { onMount } from 'svelte';
+	 import { setWs } from '$lib/stores/ws';
 
 	let { children } = $props();
 
@@ -34,7 +35,11 @@
 		// If the backend recognizes the user, update the state to true
 		if (response.ok) {
 			login = true;
+			console.log('connecting...');
+			const ws = new WebSocket('/ws/');
+			setWs(ws);
 		}
+
 	});
 </script>
 

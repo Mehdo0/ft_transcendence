@@ -1,21 +1,24 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
-    import { getWs, setWs } from '$lib/stores/ws';
+    import { getWs } from '$lib/stores/ws';
 	import { onMount } from 'svelte';
 
     let lobbyCode = $state('');
 
     onMount(() => {
-		console.log('connecting...');
-		const ws = new WebSocket('/ws/');
-		setWs(ws);
+        const ws = getWs();
+        if (!ws) return;
 		ws.onopen = () => {
 			console.log('WebSocket connected');
 		};
 		ws.onmessage = (event) => {
 			console.log('serveur dit:', event.data);
 			const msg = JSON.parse(event.data);
-			if (msg.type === 'lobby_details') {
+			if (msg.type === 'lobby_created') {
+				let code = msg.code;
+				goto('/game/lobby/' + code);
+			}
+            if (msg.type === 'lobby_joined') {
 				let code = msg.code;
 				goto('/game/lobby/' + code);
 			}
