@@ -1,93 +1,63 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
+import { goto } from '$app/navigation';
+import { getWs } from '$lib/stores/ws';
+import { onMount } from 'svelte';
+import { page } from '$app/state';
+import { game } from '$lib/stores/game.svelte';
 
-	// SvelteKit automatically extracts the [code] from the URL folder name!
-	const lobbyCode = $page.params.code;
+const code = page.params.code;
+let players = $state<string[]>([]);
+let me = $state('');
+let isHost = $state(false);
 
-	// Dynamic state variables
-	let players = $state<{ username: string; isReady: boolean }[]>([]);
-	let isConnected = $state(false);
-	let myStatusReady = $state(false);
-	let errorMessage = $state('');
-	let ws: WebSocket;
+onMount(() => {
+    const ws = getWs();
+    if (!ws) return;
 
-	onMount(() => {
-		connectToLobby();
-	});
-
-	// Cleanup the WebSocket when the user leaves the page
-	onDestroy(() => {
-		if (ws && ws.readyState === WebSocket.OPEN) {
-			ws.close();
+	ws.send(JSON.stringify({ type: 'get_lobby', code }));
+    ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+		if (msg.type === 'lobby_info') {
+		    players = msg.players;
+		    me = msg.me;
+		    isHost = msg.host === msg.me;
 		}
-	});
-
-	function connectToLobby() {
-		const token = localStorage.getItem('access_token');
-		if (!token) {
-			errorMessage = 'You must be logged in to join a lobby.';
-			return;
+        if (msg.type === 'player_joined') {
+            players = [...players, msg.username];
+        }
+		if (msg.type === 'match_found') {
+		    game.id = msg.game_id;
+		    game.opponent = msg.opponent;
+		    game.word = msg.word;
+		    goto('/game/in-game');
 		}
+    };
+});
 
-		// Connect to a specific room endpoint on your FastAPI backend
-		// Make sure your Python backend has a route like @app.websocket("/ws/lobby/{code}")
-		ws = new WebSocket(`wss://localhost/api/ws/lobby/${lobbyCode}?token=${token}`);
-
-		ws.onopen = () => {
-			isConnected = true;
-			console.log(`Connected to lobby: ${lobbyCode}`);
-		};
-
-		ws.onmessage = (event) => {
-			const data = JSON.parse(event.data);
-
-			// Handle different messages from the Python backend
-			if (data.type === 'lobby_state') {
-				// Backend sends the current list of players in the room
-				players = data.players;
-			} else if (data.type === 'game_starting') {
-				// Both players are ready, redirect to the actual game canvas!
-				goto('/game/in-game');
-			} else if (data.type === 'error') {
-				errorMessage = data.message;
-			}
-		};
-
-		ws.onclose = () => {
-			isConnected = false;
-		};
-	}
-
-	function toggleReady() {
-		myStatusReady = !myStatusReady;
-		if (ws && ws.readyState === WebSocket.OPEN) {
-			// Tell the backend we are ready to play
-			ws.send(JSON.stringify({ type: 'set_ready', isReady: myStatusReady }));
-		}
-	}
-
-	function leaveLobby() {
-		goto('/game/lobby'); // Send them back to the main match selection
-	}
-
-	// Utility function to copy the code to the user's clipboard
-	function copyCode() {
-		navigator.clipboard.writeText(lobbyCode);
-		alert('Lobby code copied to clipboard!');
-	}
+function startGame() {
+    const ws = getWs();
+    ws?.send(JSON.stringify({ type: 'start_game', code }));
+}
 </script>
 
-<div class="room-container">
+<h1>Lobby {code}</h1>
+
+<ul>
+    {#each players as player}
+        <li>{player}</li>
+    {/each}
+</ul>
+
+{#if isHost && players.length === 2}
+    <button onclick={startGame}>Start game</button>
+{/if}
+
+<!-- <div class="room-container">
 	<div class="room-card">
-		<!-- Header & Code Display -->
 		<header class="room-header">
 			<h1 class="title">Private Match</h1>
 			<div class="code-box">
 				<span class="code-label">ROOM CODE</span>
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="code-value" onclick={copyCode} title="Click to copy">
 					{lobbyCode}
 					<svg
@@ -109,9 +79,7 @@
 			<div class="error-banner">{errorMessage}</div>
 		{/if}
 
-		<!-- The Player Slots (Since Ping Pong is 1 vs 1) -->
 		<div class="players-arena">
-			<!-- Player 1 Slot -->
 			<div class="player-slot {players[0]?.isReady ? 'ready' : ''}">
 				{#if players[0]}
 					<div class="avatar">P1</div>
@@ -125,7 +93,6 @@
 
 			<div class="vs-badge">VS</div>
 
-			<!-- Player 2 Slot -->
 			<div class="player-slot {players[1]?.isReady ? 'ready' : ''}">
 				{#if players[1]}
 					<div class="avatar">P2</div>
@@ -138,7 +105,6 @@
 			</div>
 		</div>
 
-		<!-- Actions -->
 		<div class="action-footer">
 			<button class="menu-btn secondary" onclick={leaveLobby}>Leave Room</button>
 
@@ -359,4 +325,4 @@
 		background-color: #f0f0f0;
 		color: #333;
 	}
-</style>
+</style> -->

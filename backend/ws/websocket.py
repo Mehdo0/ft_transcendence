@@ -46,6 +46,24 @@ async def websocket_endpoint(websocket: WebSocket):
                     code = payload.get("code")
                     if code:
                         await join_lobby(username, code, websocket)
+                case "get_lobby":
+                    code = payload.get("code")
+                    if code in lobbies:
+                        lobby = lobbies[code]
+                        await websocket.send_json({
+                            "type": "lobby_info",
+                            "players": lobby["players"],
+                            "host": lobby["host"],
+                            "me": username 
+                        })
+                case "start_game":
+                    code = payload.get("code")
+                    if code in lobbies:
+                        lobby = lobbies[code]
+                        if lobby["host"] == username and len(lobby["players"]) == 2:
+                            player1, player2 = lobby["players"][0], lobby["players"][1]
+                            await create_game(player1, player2)
+                            del lobbies[code]
                 case "find_player":
                     await find_player(username)
                 case "image":
@@ -64,8 +82,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         await end_game(websocket, username, opponent)
 
     except WebSocketDisconnect:
-        if game_id is None:
-            raise ValueError("game_id not found")
+        if username in player_games:
+            game_id = player_games[username]
+        disconnect(username)
         # asyncio.create_task(handle_disconnect_grace_period(username, game_id))
 
 
@@ -74,12 +93,26 @@ async def create_lobby(username: str, websocket: WebSocket): #still have to make
         characters = string.ascii_uppercase + string.digits
         code = ''.join(random.choices(characters, k=6))
         if code not in lobbies:
-            lobbies.add(code)
+            lobbies[code] = {"host": username, "players": [username]}
         await websocket.send_json({"type": "lobby_created", "code": code })
         break
 
 async def join_lobby(username: str, code: str, websocket: WebSocket):
-        await websocket.send_json({"type": "lobby_joined", "code": code })
+        if code not in lobbies:
+            await websocket.send_json({"type": "error", "message": "lobby not found" })
+            return
+        lobby = lobbies[code]
+        if len(lobby["players"]) >= 2:
+            await websocket.send_json({"type": "error", "message": "lobby already full"})
+            return
+        if username in lobby["players"]:
+            await websocket.send_json({"type": "error", "message": "player already in lobby"})
+            return
+        lobby["players"].append(username)
+        host = lobby["host"] 
+        await websocket.send_json({"type": "lobby_joined", "code": code})
+        await connections[host].send_json({"type": "player_joined", "username": username})
+            
 
 
 

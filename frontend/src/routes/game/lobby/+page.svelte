@@ -8,9 +8,6 @@
     onMount(() => {
         const ws = getWs();
         if (!ws) return;
-		ws.onopen = () => {
-			console.log('WebSocket connected');
-		};
 		ws.onmessage = (event) => {
 			console.log('serveur dit:', event.data);
 			const msg = JSON.parse(event.data);
@@ -94,9 +91,9 @@
             </div>
         </div>
     </div>
-</div> -->
+</div>
 
-<!-- <style>
+<style>
     .private-container {
         display: flex;
         justify-content: center;

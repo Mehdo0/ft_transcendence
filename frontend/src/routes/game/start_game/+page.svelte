@@ -12,11 +12,6 @@
 	function connect() {
         const ws = getWs();
         if (!ws) return;
-		// ws.onopen = () => {
-		// 	console.log('WebSocket connected');
-		// 	isConnected = true;
-		// 	statusMessage = 'Connected';
-		// };
 		if (ws.readyState === WebSocket.OPEN) {
         	isConnected = true;
         	statusMessage = 'Connected';
