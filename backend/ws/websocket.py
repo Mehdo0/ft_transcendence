@@ -35,6 +35,23 @@ async def websocket_endpoint(websocket: WebSocket):
         return
     await websocket.accept()
     connections[username] = websocket
+    #Did they just reconnect during a grace period?
+    if username in disconnected_players:
+        disconnected_players[username]["reconnected"] = True
+        del disconnected_players[username]
+        
+    #Are they already in an active game? (Send them the state so their UI updates)
+    if username in player_games:
+        game_id = player_games[username]
+        if game_id in games:
+            current_game = games[game_id]
+            opponent = get_opponent(username, game_id)
+            await websocket.send_json({
+                "type": "reconnect_game",
+                "game_id": current_game.id,
+                "opponent": opponent,
+                "word": current_game.word
+            })
     try:
         while True:
             payload = await websocket.receive_json()
@@ -77,15 +94,20 @@ async def websocket_endpoint(websocket: WebSocket):
                     await connections[opponent].send_json(
                         {"type": "opponent_guess", "guess": guess}
                     )
-                    score = guess.get(games[game_id].word)
-                    if score >= 1:
-                        await end_game(websocket, username, opponent)
+                    # score = guess.get(games[game_id].word)
+                    # if score >= 1:
+                    #     await end_game(websocket, username, opponent)
 
     except WebSocketDisconnect:
+        # Remove their active socket
+        connections.pop(username, None)
         if username in player_games:
             game_id = player_games[username]
-        disconnect(username)
-        # asyncio.create_task(handle_disconnect_grace_period(username, game_id))
+            # Start the 5-second countdown timer
+            asyncio.create_task(handle_disconnect_grace_period(username, game_id))
+        else:
+            # If they were just in the lobby or queue, delete them instantly
+            disconnect(username)
 
 
 async def create_lobby(username: str, websocket: WebSocket): #still have to make sure that the code is deleted afeter 30 min or closed lobby
@@ -151,6 +173,7 @@ async def handle_disconnect_grace_period(username: str, game_id: str):
     ):
         print(f"Player {username} abandoned the game. Removing them permanently.")
         del disconnected_players[username]
+        disconnect(username)
 
 
 async def find_player(username: str):

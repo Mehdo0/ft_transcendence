@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getWs } from "$lib/stores/ws";
+	import { getWs, setWs } from "$lib/stores/ws";
 	import { game } from "$lib/stores/game.svelte";
     import { goto } from '$app/navigation';
 	import { onMount} from 'svelte';
@@ -33,9 +33,12 @@
 
 
 	onMount(() => {
-    	const ws = getWs();
-    	if (!ws) return;
-
+    	let ws = getWs();
+    	if (!ws || ws.readyState !== WebSocket.OPEN) {
+			// Make sure this matches your actual backend URL
+			ws = new WebSocket('/ws/');
+			setWs(ws); // Save it back to your global store
+		}
     	ws.onmessage = (event) => {
     	  const msg = JSON.parse(event.data);
     	  switch (msg.type) {
@@ -43,6 +46,12 @@
     	      game.my_score = msg.guess[game.word];
 			  console.log('my_score:', game.my_score);
     	      break;
+			case 'reconnect_game':
+                game.id = msg.game_id;
+                game.opponent = msg.opponent;
+                game.word = msg.word;
+                console.log("Reconnected to active match!");
+                break;
     	    case 'opponent_guess':
     	      game.opponent_score = msg.guess[game.word];
 			  console.log('opponent_score:', game.opponent_score);
