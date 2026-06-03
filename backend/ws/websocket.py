@@ -60,9 +60,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 case "create_lobby":
                     await create_lobby(username, websocket)
                 case "join_lobby":
-                    code = payload.get("code")
-                    if code:
-                        await join_lobby(username, code, websocket)
+                    code = payload.get("code", "").upper().strip()
+                    if len(code) != 6 or not code.isalnum():
+                        await websocket.send_json({"type": "error", "message": "invalid code"})
+                        break
+                    await join_lobby(username, code, websocket)
                 case "get_lobby":
                     code = payload.get("code")
                     if code in lobbies:
@@ -94,9 +96,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     await connections[opponent].send_json(
                         {"type": "opponent_guess", "guess": guess}
                     )
-                    # score = guess.get(games[game_id].word)
-                    # if score >= 1:
-                    #     await end_game(websocket, username, opponent)
+                    score = guess.get(games[game_id].word)
+                    if score >= 0.5: #percent to change when AI will be fixed
+                        await end_game(websocket, username, opponent)
 
     except WebSocketDisconnect:
         # Remove their active socket
@@ -110,7 +112,7 @@ async def websocket_endpoint(websocket: WebSocket):
             disconnect(username)
 
 
-async def create_lobby(username: str, websocket: WebSocket): #still have to make sure that the code is deleted afeter 30 min or closed lobby
+async def create_lobby(username: str, websocket: WebSocket): #still have to make sure that the code is deleted after 30 min or closed lobby
     while True:
         characters = string.ascii_uppercase + string.digits
         code = ''.join(random.choices(characters, k=6))

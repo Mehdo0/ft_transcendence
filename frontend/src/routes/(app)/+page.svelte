@@ -47,9 +47,9 @@
 
 	<!-- Main Navigation Card -->
 	<main class="menu-card">
-		<a href="/game/start_game" class="menu-btn">Start game</a>
-		<a href="/game/lobby" class="menu-btn">Join lobby</a>
-		<a href="/ranking" class="menu-btn">Ranking</a>
+		<a href="/game/start_game" class="menu-btn">Play Now!</a>
+		<a href="/game/lobby" class="menu-btn">Private Game</a>
+		<a href="/ranking" class="menu-btn">Leaderboard</a>
 	</main>
 </div>
 

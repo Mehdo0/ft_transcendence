@@ -22,7 +22,7 @@
 	const navLinks = [
 		{ href: '/', label: 'Dashboard' },
 		{ href: '/game/start_game', label: 'Play Now!' },
-		{ href: '/game/lobby', label: 'Create Lobby' },
+		{ href: '/game/lobby', label: 'Private Game' },
 		{ href: '/ranking', label: 'Leaderboard' }
 	];
 

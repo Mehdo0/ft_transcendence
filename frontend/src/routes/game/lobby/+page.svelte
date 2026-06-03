@@ -34,38 +34,24 @@
     }
 
     function joinLobby() {
-        const code = lobbyCode.trim(); //a fix pour eviter injection, mauvais format etc
+        const code = lobbyCode.trim().toUpperCase();
+        if (code.length !== 6 || !code.split('').every(c => /[A-Z0-9]/.test(c))) return;
         let ws = getWs();
         ws?.send(JSON.stringify({type: 'join_lobby', code}));
     }
 </script>
 
-<h1>Lobby</h1>
-<button onclick={createLobby}>Create a Lobby</button>
-<input
-    type="text"
-    bind:value={lobbyCode}
-    maxlength="6"
-    placeholder="enter lobby code,ex. 123456"
-    
-/>
-<button onclick={joinLobby}>Join a Lobby (entry 6 digits code)</button> 
-
-<!-- <div class="private-container">
+<div class="private-container">
     <div class="private-card">
         <h1 class="title">Private Match</h1>
         <p class="subtitle">Play against your friends</p>
-
-        {#if errorMessage}
-            <div class="error-banner">{errorMessage}</div>
-        {/if}
 
         <div class="action-section">
             <div class="create-box">
                 <h3>Host a Game</h3>
                 <p>Generate a secure room and invite your friends via a secret code.</p>
-                <button class="menu-btn primary" onclick={createLobby} disabled={isCreating}>
-                    {isCreating ? 'Generating...' : 'Create Lobby'}
+                <button class="menu-btn primary" onclick={createLobby}>
+                    Create Lobby
                 </button>
             </div>
 
@@ -79,13 +65,14 @@
                 <div class="input-group">
                     <input
                         type="text"
-                        bind:value={joinCode}
-                        placeholder="e.g. A7X9B"
-                        maxlength="8"
+                        bind:value={lobbyCode}
+                        oninput={() => lobbyCode = lobbyCode.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)}
+                        placeholder="ex. AB12C3"
+                        maxlength="6"
                         onkeydown={(e) => e.key === 'Enter' && joinLobby()}
                     />
-                    <button class="menu-btn secondary" onclick={joinLobby} disabled={isJoining || !joinCode}>
-                        {isJoining ? 'Joining...' : 'Join'}
+                    <button class="menu-btn secondary" onclick={joinLobby} disabled={lobbyCode.length !== 6}>
+                        Join
                     </button>
                 </div>
             </div>
@@ -261,4 +248,4 @@
             display: none;
         }
     }
-</style> -->
+</style>

@@ -38,28 +38,21 @@ function startGame() {
     const ws = getWs();
     ws?.send(JSON.stringify({ type: 'start_game', code }));
 }
+
+function copyCode() {
+    navigator.clipboard.writeText(code);
+}
+
 </script>
 
-<h1>Lobby {code}</h1>
-
-<ul>
-    {#each players as player}
-        <li>{player}</li>
-    {/each}
-</ul>
-
-{#if isHost && players.length === 2}
-    <button onclick={startGame}>Start game</button>
-{/if}
-
-<!-- <div class="room-container">
+<div class="room-container">
 	<div class="room-card">
 		<header class="room-header">
-			<h1 class="title">Private Match</h1>
+			<h1 class="title">Private Game</h1>
 			<div class="code-box">
 				<span class="code-label">ROOM CODE</span>
 				<div class="code-value" onclick={copyCode} title="Click to copy">
-					{lobbyCode}
+					{code}
 					<svg
 						class="copy-icon"
 						viewBox="0 0 24 24"
@@ -75,16 +68,11 @@ function startGame() {
 			</div>
 		</header>
 
-		{#if errorMessage}
-			<div class="error-banner">{errorMessage}</div>
-		{/if}
-
 		<div class="players-arena">
-			<div class="player-slot {players[0]?.isReady ? 'ready' : ''}">
+			<div class="player-slot">
 				{#if players[0]}
 					<div class="avatar">P1</div>
-					<div class="name">{players[0].username}</div>
-					<div class="status">{players[0].isReady ? 'READY' : 'WAITING...'}</div>
+					<div class="name">{players[0]}</div>
 				{:else}
 					<div class="avatar empty">?</div>
 					<div class="name waiting">Waiting for host...</div>
@@ -93,11 +81,10 @@ function startGame() {
 
 			<div class="vs-badge">VS</div>
 
-			<div class="player-slot {players[1]?.isReady ? 'ready' : ''}">
+			<div class="player-slot">
 				{#if players[1]}
 					<div class="avatar">P2</div>
-					<div class="name">{players[1].username}</div>
-					<div class="status">{players[1].isReady ? 'READY' : 'WAITING...'}</div>
+					<div class="name">{players[1]}</div>
 				{:else}
 					<div class="avatar empty">?</div>
 					<div class="name waiting">Waiting for opponent...</div>
@@ -106,15 +93,9 @@ function startGame() {
 		</div>
 
 		<div class="action-footer">
-			<button class="menu-btn secondary" onclick={leaveLobby}>Leave Room</button>
-
-			<button
-				class="menu-btn primary {myStatusReady ? 'ready-state' : ''}"
-				onclick={toggleReady}
-				disabled={!isConnected}
-			>
-				{myStatusReady ? 'Cancel Ready' : 'Ready Up'}
-			</button>
+			{#if isHost && players.length === 2}
+				<button class="menu-btn primary" onclick={startGame}>Start game</button>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -189,15 +170,6 @@ function startGame() {
 		opacity: 0.5;
 	}
 
-	.error-banner {
-		color: red;
-		background-color: #fee;
-		padding: 1rem;
-		border-radius: 6px;
-		text-align: center;
-		font-weight: bold;
-	}
-
 	/* --- Player Arena (The 1v1 Layout) --- */
 	.players-arena {
 		display: flex;
@@ -240,12 +212,6 @@ function startGame() {
 		border: 2px dashed #bbb;
 	}
 
-	/* Glowing effect when a player is ready */
-	.player-slot.ready .avatar {
-		background-color: #2ecc71;
-		box-shadow: 0 0 20px rgba(46, 204, 113, 0.6);
-	}
-
 	.name {
 		font-size: 1.2rem;
 		font-weight: bold;
@@ -256,16 +222,6 @@ function startGame() {
 		color: #888;
 		font-style: italic;
 		font-weight: normal;
-	}
-
-	.status {
-		font-size: 0.85rem;
-		font-weight: bold;
-		color: #888;
-	}
-
-	.player-slot.ready .status {
-		color: #2ecc71;
 	}
 
 	.vs-badge {
@@ -307,14 +263,6 @@ function startGame() {
 		transform: translateY(-2px);
 	}
 
-	.menu-btn.primary.ready-state {
-		background-color: #e74c3c; /* Turns red to indicate "Cancel" */
-	}
-
-	.menu-btn.primary.ready-state:hover {
-		background-color: #c0392b;
-	}
-
 	.menu-btn.secondary {
 		background-color: white;
 		color: #555;
@@ -325,4 +273,4 @@ function startGame() {
 		background-color: #f0f0f0;
 		color: #333;
 	}
-</style> -->
+</style>
