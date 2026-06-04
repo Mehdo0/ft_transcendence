@@ -1,6 +1,7 @@
 import os
-from backend.database import setup_database
+from core.database import setup_database
 
 # DB var
 setup_database()
 os.makedirs("data", exist_ok=True)
+setup_database()

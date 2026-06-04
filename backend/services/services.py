@@ -1,37 +1,71 @@
-import sqlite3
-import jwt
+import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
+import jwt
+from core.database import get_user, add_user
+from core.exceptions import UserAlreadyExistsError
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
-
-from backend.data import Token, TokenData, User
-from backend.database import add_user, get_user
-from backend.global_var import (
-    DB_NAME,
+from jwt import InvalidTokenError
+from schemas.data import ImagePayload, Token, User, UserRegister
+from services.ai_service import internal_make_ai_guess, load_word_list
+from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
     DUMMY_HASH,
     SECRET_KEY,
-    app,
-    oauth2_scheme,
-    password_hash,
+    cookie_scheme,
 )
 
 
-def verify_password(plain_password, hashed_password):
-    return password_hash.verify(plain_password, hashed_password)
+async def get_random_word() -> str:
+    data = load_word_list()
+    return random.choice(data)
 
 
-def authenticate_user(username: str, password: str):
+async def make_ai_guess(payload: ImagePayload, target_word: str):
+    base64_str = payload.base64_string
+    if "data:image" not in base64_str:
+        raise ValueError("wrong payload")
+    results = internal_make_ai_guess(base64_str, target_word)
+    if not results:
+        raise ValueError("Bad AI output")
+    return results
+
+
+async def get_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+) -> Token:
+    try:
+        user = authenticate_user(form_data.username, form_data.password)
+    except Exception:
+        raise ValueError("couldnt authenticate")
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
+
+
+async def register_user(user_register: UserRegister):
+    username_test = get_user(user_register.username)
+    if username_test:
+        raise UserAlreadyExistsError
+    user = add_user(user_register)
+    return {"user_created": user.username}
+
+
+### auth
+
+
+def authenticate_user(username: str, hashed_password: str):
     user = get_user(username)
     if not user:
-        verify_password(password, DUMMY_HASH)  # preventing timing attacks
-        return False
-    if not verify_password(password, user.hashed_password):
-        return False
+        hashed_password != DUMMY_HASH  # preventing timing attack
+        raise ValueError("User doesnt exist")
+    if hashed_password != user.hashed_password:
+        raise ValueError("Passwords dont match")
     return user
 
 
@@ -46,7 +80,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(cookie_scheme)]):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -57,10 +91,9 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         username = payload.get("sub")
         if username is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
     except InvalidTokenError:
         raise credentials_exception
-    user = get_user(username=token_data.username)
+    user = get_user(username)
     if user is None:
         raise credentials_exception
     return user
@@ -86,42 +119,3 @@ async def get_current_active_user(
     if hasattr(current_user, "disabled") and current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
-
-@app.post("/token")
-async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-) -> Token:
-    user = authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return Token(access_token=access_token, token_type="bearer")
-
-
-@app.get("/users/me/")
-async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_active_user)],
-) -> User:
-    return current_user
-
-
-@app.post("/api/register/")
-async def registering(username: str, password: str):
-    username_test = get_user(username)
-    if username_test:
-        raise HTTPException(status_code=406, detail="Username already used")
-
-    add_user(username, password)
-
-    if get_user(username):
-        return {"user_created": username}
-    else:
-        raise HTTPException(status_code=500, detail="Error while adding user")

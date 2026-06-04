@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import Enum
 from pydantic import BaseModel, Field
 from fastapi import WebSocket
@@ -22,10 +21,16 @@ class PlayerState(str, Enum):
     PLAYING = "playing"
 
 
-@dataclass
-class Session(BaseModel):
-    ip_address: str
-    session_id: str
+class ClientWebsocketMessageType(str, Enum):
+    DRAWING = "drawing"
+    QUIT = "quit"
+
+
+class ServerWebsocketMessageType(str, Enum):
+    GAME_START = "game_start"
+    GAME_END = "game_end"
+    AI_GUESS = "ai_guess"
+    PLAYER_GUESS = "player_guess"
 
 
 class Token(BaseModel):
@@ -39,11 +44,9 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
+    email: str
     state: PlayerState | None = None
     disabled: bool | None = None
-
-
-class UserInDB(User):
     hashed_password: str
 
 
@@ -51,14 +54,19 @@ class Game(BaseModel):
     id: str
     game_state: GameState = GameState.CONNECTING
     game_type: GameType
-    players: list[User] = Field(default_factory=list)
+    players: list[str] = Field(default_factory=list)
+    word: str
+
 
 class ImagePayload(BaseModel):
     base64_string: str
 
+
 class UserRegister(BaseModel):
-    username: str = "drawer"
+    username: str
     password: str
+    email: str
+
 
 class ConnectionManager:
     def __init__(self):

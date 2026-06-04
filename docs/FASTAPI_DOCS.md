@@ -69,18 +69,7 @@ this will bind the login page URL to send an HTML form to the client
 
 ### database
 
-Using the sqlite3 lib we can connect and discuss with the database. The main concern is that when you fetch a DB the results are going to be plain numbers, but we need JSON formatted results. 
-
-This function :
-```py
-import sqlite3
-
-conn = sqlite3.connect(DB_NAME)
-conn.row_factory = sqlite3.Row
-cursor = conn.cursor()
-```
-
-row_factory is going to edit the data into JSON data.
+We are using SQLAlchemy to manage SQLite. Our models are in models/model.py and all database transactions happen in core/database.py
 
 ### docs
 
