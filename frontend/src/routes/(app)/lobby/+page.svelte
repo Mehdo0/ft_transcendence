@@ -13,11 +13,11 @@
 			const msg = JSON.parse(event.data);
 			if (msg.type === 'lobby_created') {
 				let code = msg.code;
-				goto('/game/lobby/' + code);
+				goto('/lobby/' + code);
 			}
             if (msg.type === 'lobby_joined') {
 				let code = msg.code;
-				goto('/game/lobby/' + code);
+				goto('/lobby/' + code);
 			}
 		};
 		ws.onclose = () => {

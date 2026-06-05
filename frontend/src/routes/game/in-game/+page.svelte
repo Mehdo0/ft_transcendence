@@ -1,6 +1,7 @@
 <script lang="ts">
     import { getWs, setWs } from "$lib/stores/ws";
     import { game } from "$lib/stores/game.svelte";
+    import favicon from '$lib/draw_meter_logo.svg';
     import { goto } from '$app/navigation';
     import { onMount } from 'svelte';
     
@@ -159,27 +160,36 @@
 <svelte:window onresize={resize} />
 
 <header class="game-header">
-    <div class="header-info">
+    
+    <div class="header-left">
         <h1>Draw!</h1>
-        <div class="badges">
-            <span class="badge">Word: <strong>{game.word}</strong></span>
-            <span class="badge">VS: <strong>{game.opponent}</strong></span>
+        <div class="vs-badge">
+            VS: <strong>{game.opponent}</strong>
         </div>
     </div>
-    <button class="surrender-btn" onclick={surrender}>
-        Surrender ⚑
-    </button>
+
+    <div class="header-center">
+        <span class="word-label">You are drawing</span>
+        <div class="target-word">{game.word}</div>
+    </div>
+
+    <div class="header-right">
+        <button class="surrender-btn" onclick={surrender}>
+            Surrender ⚑
+        </button>
+    </div>
+
 </header>
 
 {#if result}
   <div class="overlay">
     <div class="modal">
         {#if result === 'winner'}
-          <h2 class="win-text">🎉 You Won!</h2>
+          <h2 class="win-text">You Won!</h2>
           <p class="elo-text positive">+{elo_diff} Elo</p>
         {:else}
-          <h2 class="lose-text">💀 You Lost</h2>
-          <p class="elo-text negative">-{elo_diff} Elo</p>
+          <h2 class="lose-text">You Lost</h2>
+          <p class="elo-text negative">{elo_diff} Elo</p>
         {/if}
         <button class="primary-btn" onclick={() => goto('/')}>Back to Home</button>
     </div>
@@ -264,42 +274,83 @@
         color: #1f2937;
     }
 
-    /* --- NEW HEADER STYLES --- */
+    /* --- UPDATED HEADER STYLES --- */
     .game-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         padding: 1rem 2rem;
         background: #ffffff;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 15px rgba(138, 43, 226, 0.08); /* Soft purple shadow */
         margin-bottom: 1rem;
     }
 
-    .header-info {
+    .header-left {
         display: flex;
         align-items: center;
-        gap: 2rem;
+        gap: 1.5rem;
+        flex: 1; /* Ensures perfect centering for the middle element */
     }
 
     .game-header h1 {
         margin: 0;
         color: blueviolet;
-        font-size: 1.8rem;
-        font-weight: 700;
+        font-size: 2rem;
+        font-weight: 800;
         letter-spacing: -0.5px;
     }
 
-    .badges {
-        display: flex;
-        gap: 1rem;
-    }
-
-    .badge {
-        background: #f3f4f6;
-        padding: 0.5rem 1rem;
+    .vs-badge {
+        background: #f0f4ff; /* Very soft light blue */
+        color: #4b5563;
+        padding: 0.5rem 1.2rem;
         border-radius: 20px;
         font-size: 0.95rem;
-        color: #374151;
+        border: 1px solid #dbeafe;
+    }
+
+    .vs-badge strong {
+        color: #1f2937;
+        font-weight: 700;
+    }
+
+    /* THE NEW WORD DISPLAY */
+    .header-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex: 2; 
+        text-align: center;
+    }
+
+    .word-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #9ca3af;
+        letter-spacing: 2px;
+        margin-bottom: 0.2rem;
+    }
+
+    .target-word {
+        font-size: 2.8rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        line-height: 1.1;
+        /* The colorful blue-to-purple gradient */
+        background: linear-gradient(135deg, #006dfe 0%, blueviolet 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        /* Adds a soft glowing effect behind the text */
+        filter: drop-shadow(0px 4px 8px rgba(138, 43, 226, 0.25));
+    }
+
+    .header-right {
+        display: flex;
+        justify-content: flex-end;
+        flex: 1;
     }
 
     .surrender-btn {
