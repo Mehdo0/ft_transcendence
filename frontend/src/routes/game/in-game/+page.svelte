@@ -74,11 +74,14 @@
               game.opponent_score = msg.guess[game.word];
               sessionStorage.setItem('draw_opp_score', game.opponent_score.toString());
               break;
-            case 'end_game':
-                elo_diff = msg.elo_diff;
-                result = msg.status;
-                clearSessionData(); // Wipe the memory for the next game
-                break;
+            // case 'end_game':
+            //     elo_diff = msg.elo_diff;
+            //     result = msg.status;
+            //     clearSessionData(); // Wipe the memory for the next game
+            //     setTimeout(() => {
+            //         goto('/'); 
+            //     }, 5000);
+            //     break;
           }
         };
     });
@@ -191,6 +194,9 @@
           <h2 class="lose-text">You Lost</h2>
           <p class="elo-text negative">{elo_diff} Elo</p>
         {/if}
+        <p style="color: #6b7280; font-size: 0.9rem; margin-top: 1rem;">
+            Returning to home in 5 seconds...
+        </p>
         <button class="primary-btn" onclick={() => goto('/')}>Back to Home</button>
     </div>
   </div>
