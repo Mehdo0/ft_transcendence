@@ -120,7 +120,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                     score = guess.get(games[game_id].word) or 0
                     games[game_id].scores[user.username] = score
-                    if score >= 0.5:  # percent to change when AI will be fixed
+                    if score >= 50:  # percent to change when AI will be fixed
                         await end_game(websocket, user, opponent)
                 case "surrender":
                     game_id = player_games.get(user.username)

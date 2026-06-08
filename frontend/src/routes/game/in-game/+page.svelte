@@ -169,6 +169,7 @@
         if (!trait) return;
         redoStack.push(trait);
         redraw();
+        makeAiGuess();
     }
 
     function redo() {
@@ -176,6 +177,7 @@
         if (!trait) return;
         stack.push(trait);
         redraw();
+        makeAiGuess();
     }
 
     function eraser() {
