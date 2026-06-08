@@ -1,38 +1,66 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
-import { getWs } from '$lib/stores/ws';
+import { getWs, setWs } from '$lib/stores/ws';
 import { onMount } from 'svelte';
 import { page } from '$app/state';
 import { game } from '$lib/stores/game.svelte';
+	import { get } from 'svelte/store';
 
 const code = page.params.code;
 let players = $state<string[]>([]);
 let me = $state('');
 let isHost = $state(false);
+let copied = $state(false);
+
+function clearSessionData() {
+        sessionStorage.removeItem('players');
+        sessionStorage.removeItem('isHost');
+    }
 
 onMount(() => {
-    const ws = getWs();
-    if (!ws) return;
+	const savedPlayers = sessionStorage.getItem('players');
+	if (savedPlayers) players = JSON.parse(savedPlayers);
+	
+	const savedHost = sessionStorage.getItem('isHost');
+	if (savedHost) isHost = savedHost === 'true';
 
-	ws.send(JSON.stringify({ type: 'get_lobby', code }));
-    ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-		if (msg.type === 'lobby_info') {
-		    players = msg.players;
-		    me = msg.me;
-		    isHost = msg.host === msg.me;
-		}
-        if (msg.type === 'player_joined') {
-            players = [...players, msg.username];
-        }
-		if (msg.type === 'match_found') {
-		    game.id = msg.game_id;
-		    game.opponent = msg.opponent;
-		    game.word = msg.word;
-		    goto('/game/in-game');
-		}
-    };
+	let ws = getWs();
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        ws = new WebSocket('/ws/');
+        setWs(ws);
+		ws.onopen = () => {
+            ws.send(JSON.stringify({ type: 'get_lobby', code }));
+    	};
+    } 
+	else{
+		ws.send(JSON.stringify({ type: 'get_lobby', code }));
+		
+	}
+	ws.addEventListener('message', handleMessage);
 });
+
+function handleMessage(event : MessageEvent<any>){
+	const msg = JSON.parse(event.data);
+	console.log(msg);
+	if (msg.type === 'lobby_info') {
+		players = msg.players;
+		me = msg.me;
+		isHost = msg.host === msg.me;
+		sessionStorage.setItem('isHost', isHost.toString());
+		sessionStorage.setItem('players', JSON.stringify(players));
+	}
+	if (msg.type === 'player_joined') {
+		players = [...players, msg.username];
+		sessionStorage.setItem('players', JSON.stringify(players));
+	}
+	if (msg.type === 'match_found') {
+		game.id = msg.game_id;
+		game.opponent = msg.opponent;
+		game.word = msg.word;
+		clearSessionData();
+		goto('/game/in-game');
+	}
+}
 
 function startGame() {
     const ws = getWs();
@@ -41,6 +69,8 @@ function startGame() {
 
 function copyCode() {
     navigator.clipboard.writeText(code);
+	copied = true;
+	setTimeout(() => (copied = false), 2000);
 }
 
 </script>
@@ -52,18 +82,7 @@ function copyCode() {
 			<div class="code-box">
 				<span class="code-label">ROOM CODE</span>
 				<div class="code-value" onclick={copyCode} title="Click to copy">
-					{code}
-					<svg
-						class="copy-icon"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path
-							d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-						></path>
-					</svg>
+					{code}{copied ? '✅' : '📋'}
 				</div>
 			</div>
 		</header>
@@ -73,6 +92,9 @@ function copyCode() {
 				{#if players[0]}
 					<div class="avatar">P1</div>
 					<div class="name">{players[0]}</div>
+				{:else if isHost}
+					<div class="avatar">P1</div>
+					<div class="name">{me}</div>
 				{:else}
 					<div class="avatar empty">?</div>
 					<div class="name waiting">Waiting for host...</div>

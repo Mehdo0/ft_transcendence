@@ -2,7 +2,8 @@
 	import { page } from '$app/stores';
 	import favicon from '$lib/draw_meter_logo.svg';
 	import { onMount } from 'svelte';
-	 import { setWs } from '$lib/stores/ws';
+	import { setWs } from '$lib/stores/ws';
+	import '../../app.css'
 
 	let { children } = $props();
 
@@ -95,7 +96,6 @@
 		margin: 0;
 		padding: 0;
 		font-family: 'Source Sans Pro', Verdana, sans-serif;
-		background-color: lightblue;
 		color: #333;
 	}
 
@@ -108,7 +108,7 @@
 
 	/* Navbar Styling */
 	.navbar {
-		background-color: white;
+		background-color: var(--background);
 		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 		position: sticky;
 		top: 0;
@@ -131,7 +131,7 @@
 		align-items: center;
 		gap: 12px;
 		text-decoration: none;
-		color: blueviolet;
+		color: var(--primary);
 	}
 
 	.nav-logo {
@@ -156,7 +156,7 @@
 
 	.nav-link {
 		text-decoration: none;
-		color: #555;
+		color: var(--text);
 		font-weight: 600;
 		font-size: 1rem;
 		padding: 0.5rem 0;
@@ -165,11 +165,11 @@
 	}
 
 	.nav-link:hover {
-		color: blueviolet;
+		color: var(--primary);
 	}
 
 	.nav-link.active {
-		color: blueviolet;
+		color: var(--primary);
 	}
 
 	.nav-link.active::after {
@@ -179,7 +179,7 @@
 		left: 0;
 		width: 100%;
 		height: 3px;
-		background-color: blueviolet;
+		background-color: var(--primary);
 		border-radius: 2px;
 	}
 
@@ -192,19 +192,19 @@
 
 	.btn-login {
 		text-decoration: none;
-		color: #555;
+		color: var(--text);
 		font-weight: 600;
 		transition: color 0.2s ease;
 	}
 
 	.btn-login:hover {
-		color: blueviolet;
+		color: var(--primary);
 	}
 
 	.btn-register {
 		text-decoration: none;
-		background-color: blueviolet;
-		color: white;
+		background-color: var(--primary);
+		color: var(--background);
 		padding: 0.5rem 1.2rem;
 		border-radius: 6px;
 		font-weight: 600;
@@ -212,7 +212,7 @@
 	}
 
 	.btn-register:hover {
-		background-color: #7a1cd1;
+		background-color: var(--primary-hover);
 	}
 
 	/* FIXED: Reset default button styling so it looks clean */
@@ -223,13 +223,13 @@
 		cursor: pointer;
 		font-family: inherit;
 		font-size: 1rem;
-		color: #e74c3c;
+		color: var(--error-text);
 		font-weight: 600;
 		transition: color 0.2s ease;
 	}
 
 	.btn-logout:hover {
-		color: #c0392b;
+		color: var(--error-text-hover);
 	}
 
 	/* Main Content Area */

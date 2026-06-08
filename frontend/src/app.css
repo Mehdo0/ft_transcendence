@@ -1,0 +1,20 @@
+:root {
+    --primary: blueviolet;
+    --primary-hover: #7a1cd1;
+
+    --accent: aquamarine;
+
+    --text: #333;
+    --text-muted: #666;
+
+    --shadow: #333;
+
+    --background: white;
+
+    --error-bg: #fee;
+    --error-text: red;
+    --error-text-hover: #c0392b;
+
+    --disabled-bg: #ccc;
+    --disabled-border: #999;
+}
