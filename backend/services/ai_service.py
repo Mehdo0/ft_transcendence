@@ -15,11 +15,6 @@ checkpoint = torch.load(BRAIN_PATH, map_location=device, weights_only=False)
 
 
 def load_word_list():
-    checkpoint_classes = checkpoint.get("classes", [])
-
-    if checkpoint_classes:
-        return checkpoint_classes
-
     file_path = os.path.join(BASE_DIR, WORD_LIST)
 
     if not os.path.exists(file_path):
@@ -52,9 +47,6 @@ class PositionalEncoding(nn.Module):
         self.register_buffer("pe", pe.unsqueeze(0))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if x.size(1) > self.pe.size(1):
-            raise ValueError(f"Sequence too long: {x.size(1)} > {self.pe.size(1)}")
-
         return x + self.pe[:, : x.size(1)]
 
 
@@ -95,10 +87,6 @@ class QuickDrawTransformer(nn.Module):
 
 word_list = load_word_list()
 model_config = checkpoint["model_config"]
-
-if model_config["num_classes"] != len(word_list):
-    raise ValueError("AI checkpoint classes do not match model config")
-
 model = QuickDrawTransformer(**model_config).to(device)
 model.load_state_dict(checkpoint["model_state_dict"])
 model.eval()
@@ -112,9 +100,6 @@ def internal_make_ai_guess(strokes: list, target_word: str):
 
     if target_word not in word_list:
         return {target_word: 0.0}
-
-    src = src.to(device)
-    mask = mask.to(device)
 
     with torch.no_grad():
         logits = model(src, src_key_padding_mask=mask)

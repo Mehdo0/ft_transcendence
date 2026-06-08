@@ -18,7 +18,7 @@ def strokes_to_tensor(strokes: list):
         return src, mask, False
 
     movements = movements[:MAX_POINTS]
-    src = torch.from_numpy(movements).unsqueeze(0).to(dtype=torch.float32)
+    src = torch.from_numpy(movements).unsqueeze(0)
     mask = torch.zeros((1, len(movements)), dtype=torch.bool)
 
     return src, mask, True
