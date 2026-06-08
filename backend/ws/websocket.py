@@ -221,7 +221,7 @@ def cancel_timer(game_id: str):
 
 
 async def game_timer(game_id: str):
-    await sleep(60)
+    await asyncio.sleep(60)
     if game_id in games:
         await end_game_by_timeout(game_id)
 
