@@ -215,13 +215,13 @@
     }
 
     .menu-btn.primary {
-        background-color: blueviolet;
+        background-color: var(--primary);
         color: white;
         border: none;
     }
 
     .menu-btn.primary:hover:not(:disabled) {
-        background-color: #7a1cd1;
+        background-color: var(--primary);
         transform: translateY(-2px);
     }
 

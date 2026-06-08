@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	let username = $state('Loading...');
+	let loggedIn = $state(false);
+	let username = $state('');
 	let errorMessage = $state('');
 
 	function clearSessionData() {
@@ -23,9 +24,11 @@
 			if (response.ok) {
 				const userData = await response.json();
 				username = userData.username;
+				loggedIn = true;
 			} else {
 				errorMessage = 'You are not logged in.';
 				username = 'Guest';
+				loggedIn = false;
 			}
 		} catch (error) {
 			errorMessage = 'Could not connect to the backend server.';
@@ -45,7 +48,7 @@
 <div class="dashboard-wrapper">
 	<!-- Welcome Header -->
 	<header class="dashboard-header">
-		<p>Welcome back, <strong>{username}</strong>!</p>
+		<p>Welcome <strong>{username + ' '}</strong>!</p>
 
 		{#if errorMessage}
 			<div class="error-banner">
@@ -56,9 +59,27 @@
 
 	<!-- Main Navigation Card -->
 	<main class="menu-card">
-		<a href="/start_game" class="menu-btn">Play Now!</a>
-		<a href="/lobby" class="menu-btn">Private Game</a>
-		<a href="/ranking" class="menu-btn">Leaderboard</a>
+    <a
+        href={loggedIn ? "/start_game" : undefined}
+        class="menu-btn"
+        class:disabled={!loggedIn}
+        aria-disabled={!loggedIn}
+    >
+        Play Now!
+    </a>
+
+    <a
+        href={loggedIn ? "/lobby" : undefined}
+        class="menu-btn"
+        class:disabled={!loggedIn}
+        aria-disabled={!loggedIn}
+    >
+        Private Game
+    </a>
+
+    <a href="/ranking" class="menu-btn">
+        Leaderboard
+    </a>
 	</main>
 </div>
 
@@ -109,10 +130,10 @@
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		background-color: white;
-		color: blueviolet;
+		background-color: var(--background);
+		color: var(--primary);
 		text-decoration: none;
-		border: 3px solid aquamarine;
+		border: 3px solid var(--accent);
 		border-radius: 8px;
 		height: 50px;
 		font-size: 1.1rem;
@@ -122,8 +143,22 @@
 	}
 
 	.menu-btn:hover {
-		background-color: aquamarine;
-		color: #333;
+		background-color: var(--accent);
+		color: var(--text);
 		transform: translateY(-2px); /* Slight lift effect on hover */
+	}
+
+	.menu-btn.disabled {
+		background-color: var(--background);
+		color: var(--text);
+		border-color: var(--text-muted);
+		cursor: not-allowed;
+		pointer-events: none;
+		transform: none;
+	}
+
+	.menu-btn.disabled:hover {
+		background-color: var(--background);
+		color: var(--text-muted);
 	}
 </style>
