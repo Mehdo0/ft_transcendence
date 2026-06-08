@@ -10,7 +10,7 @@ DATABASE_URL = f"sqlite+pysqlite:///{DB_NAME}"
 
 engine = create_engine(
     DATABASE_URL,
-    echo=True,  # debug logs
+    echo=False,  # debug logs
     connect_args={"check_same_thread": False},  # Necessary for fastAPI
 )
 
@@ -64,19 +64,8 @@ def get_ranking():
             .order_by(UserModel.elo.desc())
             .limit(10)
         )
-
         rows = session.execute(stmt).mappings().all()
-
         return list(rows)
-
-
-async def get_user_elo(username: str) -> int | None:
-    with SessionLocal() as session:
-        user = session.get(UserModel, username)
-
-        if user is None:
-            return None
-        return user.elo
 
 
 def get_user(username: str) -> User | None:
@@ -88,12 +77,14 @@ def get_user(username: str) -> User | None:
             username=user.username,
             email=user.email,
             hashed_password=user.password,
+            elo=user.elo,
         )
 
-def update_user_elo(username: str, new_elo: int):
+
+def update_user_elo(user: User, new_elo: int):
     with SessionLocal() as session:
-        user = session.get(UserModel, username)
-        if user is None:
+        userInDb = session.get(UserModel, user.username)
+        if userInDb is None:
             return
-        user.elo = new_elo
+        userInDb.elo = new_elo
         session.commit()
