@@ -1,13 +1,16 @@
 <script lang="ts">
     import { goto } from '$app/navigation';
-    import { getWs } from '$lib/stores/ws';
+    import { getWs, setWs } from '$lib/stores/ws';
 	import { onMount } from 'svelte';
 
     let lobbyCode = $state('');
 
     onMount(() => {
-        const ws = getWs();
-        if (!ws) return;
+        let ws = getWs();
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            ws = new WebSocket('/ws/');
+            setWs(ws);
+        }
 		ws.onmessage = (event) => {
 			console.log('serveur dit:', event.data);
 			const msg = JSON.parse(event.data);
