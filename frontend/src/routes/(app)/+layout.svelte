@@ -21,8 +21,8 @@
 	// Define the main navigation links for the app
 	const navLinks = [
 		{ href: '/', label: 'Dashboard' },
-		{ href: '/game/start_game', label: 'Play Now!' },
-		{ href: '/game/lobby', label: 'Private Game' },
+		{ href: '/start_game', label: 'Play Now!' },
+		{ href: '/lobby', label: 'Private Game' },
 		{ href: '/ranking', label: 'Leaderboard' }
 	];
 

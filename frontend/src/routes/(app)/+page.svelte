@@ -4,7 +4,16 @@
 	let username = $state('Loading...');
 	let errorMessage = $state('');
 
+	function clearSessionData() {
+        sessionStorage.removeItem('draw_stack');
+        sessionStorage.removeItem('draw_my_score');
+        sessionStorage.removeItem('draw_opp_score');
+        sessionStorage.removeItem('draw_word');
+        sessionStorage.removeItem('draw_opponent');
+    }
+
 	onMount(async () => {
+		clearSessionData();
 		try {
 			const response = await fetch('/api/users/me/', {
 				method: 'GET',
@@ -47,8 +56,8 @@
 
 	<!-- Main Navigation Card -->
 	<main class="menu-card">
-		<a href="/game/start_game" class="menu-btn">Play Now!</a>
-		<a href="/game/lobby" class="menu-btn">Private Game</a>
+		<a href="/start_game" class="menu-btn">Play Now!</a>
+		<a href="/lobby" class="menu-btn">Private Game</a>
 		<a href="/ranking" class="menu-btn">Leaderboard</a>
 	</main>
 </div>
