@@ -98,7 +98,11 @@ async def websocket_endpoint(websocket: WebSocket):
                             lobby["host"] == user.username
                             and len(lobby["players"]) == 2
                         ):
-                            player1, player2 = lobby["players"][0], lobby["players"][1]
+                            player1 = get_user(lobby["players"][0])
+                            player2 = get_user(lobby["players"][1])
+                            if player1 is None or player2 is None:
+                                print("lobby player not found")
+                                assert False
                             await create_game(player1, player2)
                             del lobbies[code]
                 case "find_player":
