@@ -109,6 +109,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     score = guess.get(games[game_id].word)
                     if score >= 0.5:  # percent to change when AI will be fixed
                         await end_game(websocket, user, opponent)
+                case "surrender":
+                    game_id = player_games.get(user.username)
+                    if game_id is None or game_id not in games:
+                        continue
+                    opponent = get_opponent(user, game_id)
+                    await finish_game_by_forfeit(
+                        game_id, opponent, user, "opponent_surrendered"
+                    )
 
     except WebSocketDisconnect:
         # Remove their active socket
@@ -208,6 +216,39 @@ async def handle_disconnect_grace_period(user: User, game_id: str):
         print(f"Player {user.username} abandoned the game. Removing them permanently.")
         del disconnected_players[user.username]
         disconnect(user)
+        if game_id in games:
+            opponent = get_opponent(user, game_id)
+            await finish_game_by_forfeit(game_id, opponent, user, "opponent_left")
+        else:
+            disconnect(user)
+
+
+async def finish_game_by_forfeit(game_id: str, winner: User, loser: User, reason: str):
+    if game_id not in games:
+        return  # already finished / cleaned up
+    diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
+    _, new_elo_l = await calculate_new_elo(loser, winner, 0)
+    update_user_elo(winner, new_elo_w)
+    update_user_elo(loser, new_elo_l)
+    # Notify the winner if they are still connected
+    if winner.username in connections:
+        await connections[winner.username].send_json(
+            {
+                "type": "end_game",
+                "status": "winner",
+                "elo_diff": diff_w,
+                "new_elo": new_elo_w,
+                "reason": reason,
+            }
+        )
+    cleanup_game(game_id, winner, loser)
+
+
+def cleanup_game(game_id: str, *users: User):
+    games.pop(game_id, None)
+    for u in users:
+        player_games.pop(u.username, None)
+        disconnected_players.pop(u.username, None)
 
 
 async def find_player(user: User):

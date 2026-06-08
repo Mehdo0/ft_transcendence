@@ -1,6 +1,6 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
-import { getWs } from '$lib/stores/ws';
+import { getWs, setWs } from '$lib/stores/ws';
 import { onMount } from 'svelte';
 import { page } from '$app/state';
 import { game } from '$lib/stores/game.svelte';
@@ -11,12 +11,17 @@ let me = $state('');
 let isHost = $state(false);
 
 onMount(() => {
-    const ws = getWs();
-    if (!ws) return;
-
+    let ws = getWs();
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+		ws = new WebSocket('/ws/');
+		setWs(ws);
+	}
+	if (ws)
+		console.log("HELLO")
 	ws.send(JSON.stringify({ type: 'get_lobby', code }));
     ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
+		console.log(msg);
 		if (msg.type === 'lobby_info') {
 		    players = msg.players;
 		    me = msg.me;
