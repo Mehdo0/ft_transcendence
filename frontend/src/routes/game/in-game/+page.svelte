@@ -18,8 +18,26 @@
     let redoStack = $state<Trait[]>([]);
 
     let lineWidth = $state(1);
-    let result = $state<'winner' | 'looser' | null>(null);
+    let result = $state<'winner' | 'looser' | 'draw' | null>(null);
     let elo_diff = $state(0);
+    let timeLeft = $state(60);
+    let endsAt = 0;
+    let timerId: ReturnType<typeof setInterval> | null = null;
+
+    function tick() {
+        timeLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+    }
+
+    function startTimer() {
+        if (timerId) clearInterval(timerId);
+        tick();
+        timerId = setInterval(tick, 250);
+    }
+
+    function stopTimer() {
+        if (timerId) clearInterval(timerId);
+        timerId = null;
+    }
 
     const COLORS = [
         '#ff0000', '#00ff00', '#0000ff', '#ffff00', 
@@ -31,6 +49,7 @@
         sessionStorage.removeItem('draw_opp_score');
         sessionStorage.removeItem('draw_word');
         sessionStorage.removeItem('draw_opponent');
+        sessionStorage.removeItem('draw_ends_at');
     }
 
     onMount(() => {
@@ -49,6 +68,9 @@
         const savedOpponent = sessionStorage.getItem('draw_opponent');
         if (savedOpponent) game.opponent = savedOpponent;
 
+        const savedEndsAt = sessionStorage.getItem('draw_ends_at');
+        endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 60000;
+        startTimer();
 
         let ws = getWs();
         if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -69,21 +91,29 @@
                 game.word = msg.word;
                 sessionStorage.setItem('draw_word', game.word);
                 sessionStorage.setItem('draw_opponent', game.opponent);
+                if (msg.time_left != null) {
+                    endsAt = Date.now() + msg.time_left * 1000;
+                    sessionStorage.setItem('draw_ends_at', String(endsAt));
+                    startTimer();
+                }
                 break;
             case 'opponent_guess':
               game.opponent_score = msg.guess[game.word];
               sessionStorage.setItem('draw_opp_score', game.opponent_score.toString());
               break;
-            // case 'end_game':
-            //     elo_diff = msg.elo_diff;
-            //     result = msg.status;
-            //     clearSessionData(); // Wipe the memory for the next game
-            //     setTimeout(() => {
-            //         goto('/'); 
-            //     }, 5000);
-            //     break;
+            case 'end_game':
+                stopTimer();
+                elo_diff = msg.elo_diff;
+                result = msg.status;
+                clearSessionData(); // Wipe the memory for the next game
+                setTimeout(() => {
+                    goto('/');
+                }, 5000);
+                break;
           }
         };
+
+        return () => stopTimer();
     });
 
     $effect(() => {
@@ -99,6 +129,8 @@
 
     function surrender() {
         if (confirm("Are you sure you want to forfeit the match?")) {
+            const ws = getWs();
+            ws?.send(JSON.stringify({ type: "surrender" }));
             clearSessionData(); // Wipe memory if they quit on purpose
             goto('/');
         }
@@ -172,6 +204,9 @@
     </div>
 
     <div class="header-center">
+        <div class="timer" class:low={timeLeft <= 10}>
+            {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+        </div>
         <span class="word-label">You are drawing</span>
         <div class="target-word">{game.word}</div>
     </div>
@@ -190,6 +225,9 @@
         {#if result === 'winner'}
           <h2 class="win-text">You Won!</h2>
           <p class="elo-text positive">+{elo_diff} Elo</p>
+        {:else if result === 'draw'}
+          <h2 class="draw-text">Égalité</h2>
+          <p class="elo-text">Aucun changement d'Elo</p>
         {:else}
           <h2 class="lose-text">You Lost</h2>
           <p class="elo-text negative">{elo_diff} Elo</p>
@@ -276,7 +314,6 @@
     :global(body) {
         margin: 0;
         font-family: system-ui, sans-serif;
-        background: #f4f5f7;
         color: #1f2937;
     }
 
@@ -328,6 +365,31 @@
         justify-content: center;
         flex: 2; 
         text-align: center;
+    }
+
+    .timer {
+        font-size: 1.6rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        color: #4b5563;
+        margin-bottom: 0.2rem;
+        transition: color 0.2s ease;
+    }
+
+    .timer.low {
+        color: #ef4444;
+        animation: timer-pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes timer-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.12); }
+    }
+
+    .draw-text {
+        color: #6b7280;
+        font-size: 2.5rem;
+        margin: 0;
     }
 
     .word-label {

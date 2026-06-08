@@ -61,7 +61,6 @@
 	/* Clean, modern, static CSS */
 	:global(body) {
 		font-family: 'Source Sans Pro', sans-serif;
-		background-color: lightblue;
 		margin: 0;
 		padding: 0;
 	}

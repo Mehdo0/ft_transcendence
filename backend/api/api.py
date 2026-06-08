@@ -1,22 +1,21 @@
 from datetime import timedelta
-from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
-from services.services import (
-    get_random_word,
-    make_ai_guess,
-    get_access_token,
-    register_user,
-    get_current_active_user,
-    create_access_token,
-)
+
 from core.database import (
-    get_user_elo,
     get_ranking,
 )
 from core.exceptions import UserAlreadyExistsError
-from state.config import COOKIE_SECURE, ACCESS_TOKEN_EXPIRE_MINUTES
-from fastapi import HTTPException, APIRouter, Depends, Response
-from schemas.data import UserRegister, ImagePayload, User
+from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi.security import OAuth2PasswordRequestForm
+from schemas.data import User, UserRegister
+from services.services import (
+    create_access_token,
+    get_access_token,
+    get_current_active_user,
+    get_random_word,
+    register_user,
+)
+from state.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE
 
 router = APIRouter()
 
@@ -37,13 +36,8 @@ async def API_get_word():
 
 # get user stats
 @router.get("/api/users/{username}/stats")
-async def API_get_user_stats(username: str):
-    # Ask the database file to do the heavy lifting
-    try:
-        elo = get_user_elo(username)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=e)
-    return {"username": username, "Elo": elo}
+async def API_get_user_stats(user: Annotated[User, Depends()]):
+    return {"username": user.username, "Elo": user.elo}
 
 
 @router.get("/api/get_ranking")

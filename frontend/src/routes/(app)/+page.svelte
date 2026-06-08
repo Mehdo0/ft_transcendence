@@ -65,9 +65,7 @@
 </div>
 
 <style>
-	/* You can remove this global body style if you are already handling it in +layout.svelte */
 	:global(body) {
-		background-color: lightblue;
 		margin: 0;
 		font-family: Verdana, Geneva, Tahoma, sans-serif;
 	}

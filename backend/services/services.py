@@ -1,3 +1,4 @@
+from posix import PRIO_USER
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -40,7 +41,7 @@ async def get_access_token(
     try:
         user = authenticate_user(form_data.username, form_data.password)
     except Exception:
-        raise ValueError("couldnt authenticate")
+        raise ValueError("could not authenticate")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
@@ -99,14 +100,17 @@ async def get_current_user(token: Annotated[str, Depends(cookie_scheme)]):
     return user
 
 
-def get_username_from_ws_token(token: str) -> str:
+def get_user_from_ws_token(token: str) -> User:
     try:
         # Decode the token exactly like we did in the HTTP bouncer
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
         if username is None:
             raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-        return username
+        user = get_user(username)
+        if user is None:
+            raise WebSocketException(code=status.HTTP_404_NOT_FOUND)
+        return user
     except jwt.InvalidTokenError:
         # If the token is fake or expired, instantly kill the connection
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
