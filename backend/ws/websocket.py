@@ -85,7 +85,7 @@ async def ai_guess(user, payload, websocket) -> bool:
     )
     score = guess.get(games[game_id].word) or 0
     games[game_id].scores[user.username] = score
-    if score >= 50:  # percent to change when AI will be fixed
+    if score >= 99:  # percent to change when AI will be fixed
         await end_game(websocket, user, opponent)
     return True
 

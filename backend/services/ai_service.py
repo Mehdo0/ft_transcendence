@@ -9,39 +9,61 @@ from state.config import BASE_DIR, WORD_LIST
 from utils.drawing_parse import strokes_to_tensor
 
 
+BRAIN_PATH = os.path.join(BASE_DIR, "ai_brain", "transformers.pth")
+device = torch.device("cpu")
+checkpoint = torch.load(BRAIN_PATH, map_location=device, weights_only=False)
+
+
 def load_word_list():
-    FILE_PATH = os.path.join(BASE_DIR, WORD_LIST)
-    if not os.path.exists(FILE_PATH):
+    checkpoint_classes = checkpoint.get("classes", [])
+
+    if checkpoint_classes:
+        return checkpoint_classes
+
+    file_path = os.path.join(BASE_DIR, WORD_LIST)
+
+    if not os.path.exists(file_path):
         raise ValueError(WORD_LIST, "doesnt exist")
-    with open(FILE_PATH) as inp:
+
+    with open(file_path) as inp:
         data = []
+
         for line in inp:
             word = line.strip()
+
             if word:
                 data.append(word)
+
     if not data:
         raise ValueError(WORD_LIST, "is empty")
+
     return data
 
+
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model: int, max_len: int = 200):
+    def __init__(self, d_model: int, max_len: int):
         super().__init__()
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
-        )
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         self.register_buffer("pe", pe.unsqueeze(0))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.size(1) > self.pe.size(1):
+            raise ValueError(f"Sequence too long: {x.size(1)} > {self.pe.size(1)}")
+
         return x + self.pe[:, : x.size(1)]
+
 
 class QuickDrawTransformer(nn.Module):
     def __init__(
         self,
         num_classes: int,
+        input_size: int = 4,
+        max_len: int = 128,
         d_model: int = 128,
         nhead: int = 4,
         num_layers: int = 4,
@@ -49,8 +71,8 @@ class QuickDrawTransformer(nn.Module):
         dropout: float = 0.1,
     ):
         super().__init__()
-        self.input_projection = nn.Linear(3, d_model)
-        self.pos_encoder = PositionalEncoding(d_model)
+        self.input_projection = nn.Linear(input_size, d_model)
+        self.pos_encoder = PositionalEncoding(d_model, max_len)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
@@ -70,14 +92,17 @@ class QuickDrawTransformer(nn.Module):
         mean_pooled = masked_x.sum(dim=1) / actual_lengths
         return self.fc_out(mean_pooled)
 
-word_list = load_word_list()
-device = torch.device("cpu")
-model = QuickDrawTransformer(num_classes=len(word_list)).to(device)
 
-BRAIN_PATH = os.path.join(BASE_DIR, "ai_brain", "transformers.pth")
-weights = torch.load(BRAIN_PATH, map_location=device, weights_only=True)
-model.load_state_dict(weights)
+word_list = load_word_list()
+model_config = checkpoint["model_config"]
+
+if model_config["num_classes"] != len(word_list):
+    raise ValueError("AI checkpoint classes do not match model config")
+
+model = QuickDrawTransformer(**model_config).to(device)
+model.load_state_dict(checkpoint["model_state_dict"])
 model.eval()
+
 
 def internal_make_ai_guess(strokes: list, target_word: str):
     src, mask, has_drawing = strokes_to_tensor(strokes)
@@ -85,14 +110,15 @@ def internal_make_ai_guess(strokes: list, target_word: str):
     if not has_drawing:
         return {target_word: 0.0}
 
+    if target_word not in word_list:
+        return {target_word: 0.0}
+
+    src = src.to(device)
+    mask = mask.to(device)
+
     with torch.no_grad():
         logits = model(src, src_key_padding_mask=mask)
         probabilities = F.softmax(logits, dim=1)
-        
-
-
-    if target_word not in word_list:
-        return {target_word: 0.0}
 
     target_index = word_list.index(target_word)
     target_score = round(probabilities[0][target_index].item() * 100, 2)
