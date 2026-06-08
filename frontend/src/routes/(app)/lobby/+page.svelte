@@ -1,24 +1,24 @@
 <script lang="ts">
-    import { goto } from '$app/navigation';
-    import { getWs, setWs } from '$lib/stores/ws';
+	import { goto } from '$app/navigation';
+	import { getWs, setWs } from '$lib/stores/ws';
 	import { onMount } from 'svelte';
 
-    let lobbyCode = $state('');
+	let lobbyCode = $state('');
 
-    onMount(() => {
-        let ws = getWs();
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            ws = new WebSocket('/ws/');
-            setWs(ws);
-        }
+	onMount(() => {
+		let ws = getWs();
+		if (!ws || ws.readyState !== WebSocket.OPEN) {
+			ws = new WebSocket('/ws/');
+			setWs(ws);
+		}
 		ws.onmessage = (event) => {
-			console.log('serveur dit:', event.data);
+			console.log('server says:', event.data);
 			const msg = JSON.parse(event.data);
 			if (msg.type === 'lobby_created') {
 				let code = msg.code;
 				goto('/lobby/' + code);
 			}
-            if (msg.type === 'lobby_joined') {
+			if (msg.type === 'lobby_joined') {
 				let code = msg.code;
 				goto('/lobby/' + code);
 			}
@@ -29,226 +29,173 @@
 		ws.onerror = (event) => {
 			console.log('WebSocket error:', event);
 		};
-    })
+	});
 
-    function createLobby() {
-        let ws = getWs();
-        ws?.send(JSON.stringify({ type: 'create_lobby' }));
-    }
+	function createLobby() {
+		let ws = getWs();
+		ws?.send(JSON.stringify({ type: 'create_lobby' }));
+	}
 
-    function joinLobby() {
-        const code = lobbyCode.trim().toUpperCase();
-        if (code.length !== 6 || !code.split('').every(c => /[A-Z0-9]/.test(c))) return;
-        let ws = getWs();
-        ws?.send(JSON.stringify({type: 'join_lobby', code}));
-    }
+	function joinLobby() {
+		const code = lobbyCode.trim().toUpperCase();
+		if (code.length !== 6 || !code.split('').every((c) => /[A-Z0-9]/.test(c))) return;
+		let ws = getWs();
+		ws?.send(JSON.stringify({ type: 'join_lobby', code }));
+	}
 </script>
 
+<svelte:head>
+	<title>Private Match — Draw Meter</title>
+</svelte:head>
+
 <div class="private-container">
-    <div class="private-card">
-        <h1 class="title">Private Match</h1>
-        <p class="subtitle">Play against your friends</p>
+	<div class="nb-card private-card">
+		<h1 class="title">Private Match</h1>
+		<p class="subtitle">Play against your friends</p>
 
-        <div class="action-section">
-            <div class="create-box">
-                <h3>Host a Game</h3>
-                <p>Generate a secure room and invite your friends via a secret code.</p>
-                <button class="menu-btn primary" onclick={createLobby}>
-                    Create Lobby
-                </button>
-            </div>
+		<div class="action-section">
+			<div class="action-box">
+				<h3>Host a Game</h3>
+				<p>Generate a secure room and invite your friends via a secret code.</p>
+				<button class="nb-btn nb-btn--primary action-btn" onclick={createLobby}>
+					Create Lobby
+				</button>
+			</div>
 
-            <div class="divider-vertical"></div>
-            <hr class="divider-horizontal" />
+			<div class="divider" aria-hidden="true">
+				<span>OR</span>
+			</div>
 
-            <div class="join-box">
-                <h3>Join a Game</h3>
-                <p>Enter a secret code provided by the host to join their lobby.</p>
+			<div class="action-box">
+				<h3>Join a Game</h3>
+				<p>Enter a secret code provided by the host to join their lobby.</p>
 
-                <div class="input-group">
-                    <input
-                        type="text"
-                        bind:value={lobbyCode}
-                        oninput={() => lobbyCode = lobbyCode.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)}
-                        placeholder="ex. AB12C3"
-                        maxlength="6"
-                        onkeydown={(e) => e.key === 'Enter' && joinLobby()}
-                    />
-                    <button class="menu-btn secondary" onclick={joinLobby} disabled={lobbyCode.length !== 6}>
-                        Join
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+				<div class="input-group">
+					<input
+						class="nb-input nb-input--mono code-input"
+						type="text"
+						bind:value={lobbyCode}
+						oninput={() =>
+							(lobbyCode = lobbyCode
+								.toUpperCase()
+								.replace(/[^A-Z0-9]/g, '')
+								.slice(0, 6))}
+						placeholder="AB12C3"
+						maxlength="6"
+						aria-label="Lobby code"
+						onkeydown={(e) => e.key === 'Enter' && joinLobby()}
+					/>
+					<button
+						class="nb-btn nb-btn--accent action-btn"
+						onclick={joinLobby}
+						disabled={lobbyCode.length !== 6}
+					>
+						Join
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <style>
-    .private-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 70vh;
-        padding: 2rem;
-    }
+	.private-container {
+		flex: 1;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: var(--space-6) 0;
+	}
 
-    .private-card {
-        background-color: white;
-        width: 100%;
-        max-width: 800px;
-        padding: 3rem;
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
+	.private-card {
+		width: 100%;
+		max-width: 760px;
+		box-shadow: var(--shadow-lg);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
 
-    .title {
-        color: blueviolet;
-        margin: 0;
-        font-size: 2.5rem;
-        text-align: center;
-    }
+	.title {
+		margin: 0;
+		font-size: var(--fs-2xl);
+		text-align: center;
+		text-transform: uppercase;
+	}
 
-    .subtitle {
-        color: #666;
-        margin-top: 5px;
-        margin-bottom: 2rem;
-        font-size: 1.1rem;
-    }
+	.subtitle {
+		color: var(--c-muted);
+		margin: var(--space-1) 0 var(--space-6);
+		font-size: var(--fs-lg);
+	}
 
-    .error-banner {
-        color: red;
-        background-color: #fee;
-        padding: 1rem;
-        border-radius: 6px;
-        margin-bottom: 2rem;
-        width: 100%;
-        text-align: center;
-        font-weight: bold;
-        box-sizing: border-box;
-    }
+	.action-section {
+		display: flex;
+		width: 100%;
+		gap: var(--space-5);
+		align-items: stretch;
+	}
 
-    .action-section {
-        display: flex;
-        width: 100%;
-        gap: 2rem;
-        align-items: stretch;
-    }
+	.action-box {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		padding: var(--space-5);
+		background: var(--c-bg-alt);
+		border: var(--border);
+	}
 
-    .create-box, .join-box {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: 1.5rem;
-        background-color: #f8f9fa;
-        border-radius: 12px;
-        border: 1px solid #eee;
-    }
+	h3 {
+		margin: 0 0 var(--space-3);
+		font-size: var(--fs-xl);
+		text-transform: uppercase;
+	}
 
-    h3 {
-        color: #333;
-        margin-top: 0;
-        font-size: 1.4rem;
-    }
+	p {
+		color: var(--c-muted);
+		font-size: var(--fs-sm);
+		line-height: 1.5;
+		margin: 0 0 var(--space-5);
+	}
 
-    p {
-        color: #666;
-        font-size: 0.95rem;
-        line-height: 1.4;
-        margin-bottom: 1.5rem;
-    }
+	.divider {
+		display: flex;
+		align-items: center;
+		font-family: var(--font-display);
+		font-weight: var(--fw-display);
+		font-size: var(--fs-sm);
+		color: var(--c-muted);
+	}
 
-    .divider-vertical {
-        width: 1px;
-        background-color: #ddd;
-    }
+	.divider span {
+		background: var(--c-bg);
+		border: var(--border);
+		padding: var(--space-1) var(--space-2);
+	}
 
-    .divider-horizontal {
-        display: none;
-        border: 0;
-        height: 1px;
-        background-color: #ddd;
-        width: 100%;
-        margin: 1rem 0;
-    }
+	.input-group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
 
-    .input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
+	.code-input {
+		text-align: center;
+		font-size: var(--fs-xl);
+	}
 
-    input[type="text"] {
-        padding: 12px 15px;
-        font-size: 1.2rem;
-        border: 2px solid #ccc;
-        border-radius: 8px;
-        outline: none;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        font-family: inherit;
-        transition: border-color 0.2s;
-    }
+	.action-btn {
+		width: 100%;
+		height: 52px;
+	}
 
-    input[type="text"]:focus {
-        border-color: blueviolet;
-    }
-
-    .menu-btn {
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 55px;
-        font-size: 1.1rem;
-        font-weight: bold;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-family: inherit;
-    }
-
-    .menu-btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    .menu-btn.primary {
-        background-color: var(--primary);
-        color: white;
-        border: none;
-    }
-
-    .menu-btn.primary:hover:not(:disabled) {
-        background-color: var(--primary);
-        transform: translateY(-2px);
-    }
-
-    .menu-btn.secondary {
-        background-color: white;
-        color: blueviolet;
-        border: 3px solid aquamarine;
-    }
-
-    .menu-btn.secondary:hover:not(:disabled) {
-        background-color: aquamarine;
-        color: #333;
-        transform: translateY(-2px);
-    }
-
-    @media (max-width: 768px) {
-        .action-section {
-            flex-direction: column;
-        }
-        .divider-vertical {
-            display: none;
-        }
-        .divider-horizontal {
-            display: none;
-        }
-    }
+	@media (max-width: 768px) {
+		.action-section {
+			flex-direction: column;
+		}
+		.divider {
+			justify-content: center;
+		}
+	}
 </style>

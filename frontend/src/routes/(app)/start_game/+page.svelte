@@ -1,5 +1,4 @@
 <script lang="ts">
-	// Added state variables to make the UI react to the connection
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getWs } from '$lib/stores/ws';
@@ -10,14 +9,14 @@
 	let statusMessage = $state('Disconnected');
 
 	function connect() {
-        const ws = getWs();
-        if (!ws) return;
+		const ws = getWs();
+		if (!ws) return;
 		if (ws.readyState === WebSocket.OPEN) {
-        	isConnected = true;
-        	statusMessage = 'Connected';
-    	}
+			isConnected = true;
+			statusMessage = 'Connected';
+		}
 		ws.onmessage = (event) => {
-			console.log('serveur dit:', event.data);
+			console.log('server says:', event.data);
 			const msg = JSON.parse(event.data);
 			if (msg.type === 'match_found') {
 				isSearching = false;
@@ -53,8 +52,12 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Matchmaking — Draw Meter</title>
+</svelte:head>
+
 <div class="lobby-container">
-	<div class="lobby-card">
+	<div class="nb-card lobby-card">
 		<h1 class="title">Matchmaking</h1>
 
 		<div class="status-box" class:connected={isConnected} class:searching={isSearching}>
@@ -62,141 +65,88 @@
 			<span class="status-text">{statusMessage}</span>
 		</div>
 
-		<div class="button-group">
-			<button class="menu-btn secondary" onclick={findGame} disabled={!isConnected || isSearching}>
-				{isSearching ? 'Searching...' : 'Find Game'}
-			</button>
-		</div>
+		<button
+			class="nb-btn nb-btn--primary find-btn"
+			onclick={findGame}
+			disabled={!isConnected || isSearching}
+		>
+			{isSearching ? 'Searching…' : 'Find Game'}
+		</button>
 	</div>
 </div>
 
 <style>
 	.lobby-container {
+		flex: 1;
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		min-height: 70vh; /* Keeps it perfectly centered on the screen */
-		padding: 2rem;
+		padding: var(--space-6) 0;
 	}
 
 	.lobby-card {
-		background-color: var(--background);
 		width: 100%;
-		max-width: 450px;
-		padding: 3rem;
-		border-radius: 12px;
-		box-shadow: 0 8px 24px var(--shadow);
+		max-width: 440px;
+		box-shadow: var(--shadow-lg);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2rem;
+		gap: var(--space-6);
 	}
 
 	.title {
-		color: var(--primary);
 		margin: 0;
-		font-size: 2.5rem;
+		font-size: var(--fs-2xl);
 		text-align: center;
+		text-transform: uppercase;
 	}
 
-	/* --- Status Indicator Styling --- */
 	.status-box {
-		display: flex;
+		display: inline-flex;
 		align-items: center;
-		gap: 12px;
-		background-color: var(--background);
-		padding: 12px 24px;
-		border-radius: 30px;
-		font-weight: 600;
-		color: var(--text-muted);
-		border: 1px solid var(--background);
-		transition: all 0.3s ease;
+		gap: var(--space-3);
+		background: var(--c-bg-alt);
+		padding: var(--space-2) var(--space-4);
+		border: var(--border);
+		box-shadow: var(--shadow-sm);
+		font-family: var(--font-mono);
+		font-weight: var(--fw-bold);
+		font-size: var(--fs-sm);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.status-dot {
-		width: 14px;
-		height: 14px;
-		border-radius: 50%;
-		background-color: var(--background); /* Default grey */
-		transition: background-color 0.3s ease;
+		width: 12px;
+		height: 12px;
+		background: var(--c-muted);
+		border: 2px solid var(--c-ink);
 	}
 
-	/* Turn dot green when connected */
 	.status-box.connected .status-dot {
-		background-color: #2ecc71;
+		background: var(--c-success);
 	}
 
-	/* Turn dot yellow and pulsate when searching */
 	.status-box.searching .status-dot {
-		background-color: #f1c40f;
-		animation: pulse 1.5s infinite;
+		background: var(--c-accent);
+		animation: blink 1s steps(2, start) infinite;
 	}
 
-	@keyframes pulse {
-		0% {
-			transform: scale(0.95);
-			opacity: 0.8;
-			box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.7);
-		}
-		70% {
-			transform: scale(1.1);
-			opacity: 1;
-			box-shadow: 0 0 0 10px rgba(241, 196, 15, 0);
-		}
-		100% {
-			transform: scale(0.95);
-			opacity: 0.8;
-			box-shadow: 0 0 0 0 rgba(241, 196, 15, 0);
+	@keyframes blink {
+		50% {
+			background: var(--c-highlight);
 		}
 	}
 
-	/* --- Button Styling --- */
-	.button-group {
+	.find-btn {
 		width: 100%;
-		display: flex;
-		flex-direction: column;
+		height: 56px;
+		font-size: var(--fs-lg);
 	}
 
-	.menu-btn {
-		width: 100%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		height: 60px;
-		font-size: 1.2rem;
-		font-weight: bold;
-		border-radius: 8px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		font-family: inherit;
-	}
-
-	.menu-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.menu-btn.primary {
-		background-color: blueviolet;
-		color: white;
-		border: none;
-		box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
-	}
-
-	.menu-btn.primary:hover:not(:disabled) {
-		background-color: #7a1cd1;
-		transform: translateY(-2px);
-	}
-
-	.menu-btn.secondary {
-		background-color: white;
-		color: blueviolet;
-		border: 3px solid aquamarine;
-	}
-
-	.menu-btn.secondary:hover:not(:disabled) {
-		background-color: aquamarine;
-		color: #333;
-		transform: translateY(-2px);
+	@media (prefers-reduced-motion: reduce) {
+		.status-box.searching .status-dot {
+			animation: none;
+		}
 	}
 </style>
