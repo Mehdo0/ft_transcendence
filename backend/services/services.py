@@ -30,7 +30,7 @@ async def make_ai_guess(payload: ImagePayload, target_word: str):
         raise ValueError("wrong payload")
     results = internal_make_ai_guess(base64_str, target_word)
     if not results:
-        raise ValueError("Bad AI output")
+        raise ValueError("Bad AI output")
     return results
 
 
@@ -74,7 +74,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=9999999999)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
