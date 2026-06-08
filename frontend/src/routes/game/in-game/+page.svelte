@@ -23,6 +23,10 @@
     let timeLeft = $state(60);
     let endsAt = 0;
     let timerId: ReturnType<typeof setInterval> | null = null;
+    let pointsSinceLastGuess = $state(0);
+    
+    
+    const GUESS_EVERY_POINTS = 10;
 
     function tick() {
         timeLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
@@ -192,6 +196,14 @@
         const ws = getWs();
         ws?.send(JSON.stringify({ type: "guess", strokes: stack }));
     }
+
+    function finishStroke() {
+    if (!last) return;
+
+    last = null;
+    pointsSinceLastGuess = 0;
+    makeAiGuess();
+    }
 </script>
 <svelte:window onresize={resize} />
 
@@ -279,11 +291,8 @@
             redoStack = [];
             last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
         }}
-        onpointerup={() => {
-            last = null;
-            makeAiGuess();
-        }}
-        onpointerleave={() => (last = null)}
+        onpointerup={finishStroke}
+        onpointerleave={finishStroke}
         onpointermove={(e) => {
             if (e.buttons !== 1 || !last) return;
 
@@ -298,6 +307,12 @@
 
             stack[stack.length - 1].points.push({ x: e.offsetX / ratio, y: e.offsetY / ratio });
             last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+            pointsSinceLastGuess += 1;
+
+            if (pointsSinceLastGuess >= GUESS_EVERY_POINTS) {
+                pointsSinceLastGuess = 0;
+                makeAiGuess();
+            }
         }}
     ></canvas>
 
