@@ -54,6 +54,7 @@ def add_user(user: UserRegister) -> User:
             username=user.username,
             email=user.email,
             hashed_password=user.password,
+            elo=user.elo,
         )
 
 

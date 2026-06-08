@@ -61,11 +61,11 @@
 </script>
 
 <svelte:head>
-	<title>Register - Ping Pong Hub</title>
+	<title>Register — Draw Meter</title>
 </svelte:head>
 
 <div class="auth-container">
-	<main class="auth-card">
+	<main class="nb-card auth-card">
 		<h1 class="title">Register</h1>
 		<p class="subtitle">Join the competition</p>
 
@@ -77,6 +77,7 @@
 			<div class="field">
 				<label for="username">Username</label>
 				<input
+					class="nb-input"
 					id="username"
 					type="text"
 					autocomplete="username"
@@ -84,7 +85,7 @@
 					aria-invalid={!!errors.username}
 					aria-describedby={errors.username ? 'username-err' : undefined}
 					disabled={loading}
-					placeholder="e.g., player42"
+					placeholder="e.g., picasso42"
 				/>
 				{#if errors.username}
 					<span class="field-error" id="username-err" aria-live="polite">{errors.username}</span>
@@ -94,6 +95,7 @@
 			<div class="field">
 				<label for="email">Email</label>
 				<input
+					class="nb-input"
 					id="email"
 					type="email"
 					autocomplete="email"
@@ -111,6 +113,7 @@
 			<div class="field">
 				<label for="password">Password</label>
 				<input
+					class="nb-input"
 					id="password"
 					type="password"
 					autocomplete="new-password"
@@ -128,6 +131,7 @@
 			<div class="field">
 				<label for="confirm">Confirm Password</label>
 				<input
+					class="nb-input"
 					id="confirm"
 					type="password"
 					autocomplete="new-password"
@@ -144,7 +148,7 @@
 				{/if}
 			</div>
 
-			<button type="submit" class="menu-btn primary" disabled={loading}>
+			<button type="submit" class="nb-btn nb-btn--primary submit-btn" disabled={loading}>
 				{loading ? 'Registering...' : 'Register'}
 			</button>
 		</form>
@@ -156,152 +160,90 @@
 </div>
 
 <style>
-	/* Centers the card exactly like the Lobby and Dashboard pages */
 	.auth-container {
+		flex: 1;
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		min-height: 70vh;
-		padding: 2rem;
+		padding: var(--space-6) 0;
 	}
 
-	/* The signature white card with a soft shadow */
 	.auth-card {
-		background-color: white;
 		width: 100%;
-		max-width: 450px;
-		padding: 3rem;
-		border-radius: 12px;
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-		display: flex;
-		flex-direction: column;
-		box-sizing: border-box;
+		max-width: 460px;
+		box-shadow: var(--shadow-lg);
 	}
 
 	.title {
-		color: blueviolet;
-		margin: 0;
-		font-size: 2.2rem;
+		margin: 0 0 var(--space-1);
+		font-size: var(--fs-2xl);
 		text-align: center;
+		text-transform: uppercase;
 	}
 
 	.subtitle {
 		text-align: center;
-		color: #666;
-		margin-top: 5px;
-		margin-bottom: 2rem;
-		font-size: 1.05rem;
+		color: var(--c-muted);
+		margin: 0 0 var(--space-6);
 	}
 
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: 1.2rem;
+		gap: var(--space-5);
 	}
 
 	.field {
 		display: flex;
 		flex-direction: column;
-		gap: 0.4rem;
+		gap: var(--space-2);
 	}
 
 	label {
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: #444;
+		font-family: var(--font-display);
+		font-weight: var(--fw-bold);
+		font-size: var(--fs-sm);
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
 	}
 
-	input {
-		padding: 12px 15px;
-		border: 2px solid #ddd;
-		border-radius: 8px;
-		font-size: 1rem;
-		background: #fafafa;
-		font-family: inherit;
-		transition: all 0.2s ease;
-	}
-
-	input:focus {
-		outline: none;
-		border-color: blueviolet;
-		background: white;
-		box-shadow: 0 0 0 3px rgba(138, 43, 226, 0.1);
-	}
-
-	input[aria-invalid='true'] {
-		border-color: #e74c3c;
-		background: #fdf5f5;
-	}
-
-	input:disabled {
-		background: #eee;
-		color: #999;
-		cursor: not-allowed;
-		border-color: #ddd;
+	.nb-input[aria-invalid='true'] {
+		border-color: var(--c-danger);
+		box-shadow: var(--shadow-sm);
 	}
 
 	.field-error {
-		color: #e74c3c;
-		font-size: 0.85rem;
-		font-weight: 500;
+		color: var(--c-danger);
+		font-family: var(--font-mono);
+		font-size: var(--fs-xs);
+		font-weight: var(--fw-bold);
 	}
 
 	.server-error {
-		background: #fee;
-		color: red;
-		padding: 1rem;
-		border-radius: 6px;
-		margin-bottom: 1.5rem;
-		font-size: 0.95rem;
-		font-weight: bold;
+		background: var(--c-danger);
+		color: var(--c-on-danger);
+		padding: var(--space-3) var(--space-4);
+		border: var(--border);
+		box-shadow: var(--shadow-sm);
+		margin-bottom: var(--space-5);
+		font-size: var(--fs-sm);
+		font-weight: var(--fw-bold);
 		text-align: center;
 	}
 
-	/* Matches the primary buttons from your other pages */
-	.menu-btn.primary {
-		margin-top: 1rem;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		height: 55px;
-		font-size: 1.1rem;
-		font-weight: bold;
-		border-radius: 8px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		font-family: inherit;
-		background-color: blueviolet;
-		color: white;
-		border: none;
-	}
-
-	.menu-btn.primary:hover:not(:disabled) {
-		background-color: #7a1cd1;
-		transform: translateY(-2px);
-	}
-
-	.menu-btn.primary:disabled {
-		background-color: #a074d6;
-		cursor: not-allowed;
-		transform: none;
+	.submit-btn {
+		width: 100%;
+		margin-top: var(--space-2);
 	}
 
 	.alt {
-		margin-top: 2rem;
-		font-size: 0.95rem;
+		margin: var(--space-6) 0 0;
+		font-size: var(--fs-sm);
 		text-align: center;
-		color: #666;
+		color: var(--c-muted);
 	}
 
 	.alt a {
-		color: blueviolet;
-		font-weight: bold;
-		text-decoration: none;
-		transition: color 0.2s;
-	}
-
-	.alt a:hover {
-		color: #7a1cd1;
-		text-decoration: underline;
+		font-weight: var(--fw-bold);
 	}
 </style>

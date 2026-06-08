@@ -1,623 +1,708 @@
 <script lang="ts">
-    import { getWs, setWs } from "$lib/stores/ws";
-    import { game } from "$lib/stores/game.svelte";
-    import favicon from '$lib/draw_meter_logo.svg';
-    import { goto } from '$app/navigation';
-    import { onMount } from 'svelte';
-    
-    type Point = { x: number; y: number };
-    type Trait = { color: string; width: number; points: Point[] };
+	import { getWs, setWs } from '$lib/stores/ws';
+	import { game } from '$lib/stores/game.svelte';
+	import favicon from '$lib/draw_meter_logo.svg';
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 
-    let canvas: HTMLCanvasElement = $state()!;
-    let ratio = $state(1);
-    let context: CanvasRenderingContext2D = $state()!;
-    let last = $state<Point | null>(null);
-    let selectedColor = $state('#000000');
-    let lastSelectedColor = $state('#000000');
-    let stack = $state<Trait[]>([]);
-    let redoStack = $state<Trait[]>([]);
+	type Point = { x: number; y: number };
+	type Trait = { color: string; width: number; points: Point[] };
 
-    let lineWidth = $state(1);
-    let result = $state<'winner' | 'looser' | 'draw' | null>(null);
-    let elo_diff = $state(0);
-    let timeLeft = $state(60);
-    let endsAt = 0;
-    let timerId: ReturnType<typeof setInterval> | null = null;
-    let pointsSinceLastGuess = $state(0);
-    
-    
-    const GUESS_EVERY_POINTS = 10;
+	let canvas: HTMLCanvasElement = $state()!;
+	let ratio = $state(1);
+	let context: CanvasRenderingContext2D = $state()!;
+	let last = $state<Point | null>(null);
+	let selectedColor = $state('#000000');
+	let lastSelectedColor = $state('#000000');
+	let stack = $state<Trait[]>([]);
+	let redoStack = $state<Trait[]>([]);
 
-    function tick() {
-        timeLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
-    }
+	let lineWidth = $state(1);
+	let result = $state<'winner' | 'looser' | 'draw' | null>(null);
+	let elo_diff = $state(0);
+	let timeLeft = $state(60);
+	let endsAt = 0;
+	let timerId: ReturnType<typeof setInterval> | null = null;
 
-    function startTimer() {
-        if (timerId) clearInterval(timerId);
-        tick();
-        timerId = setInterval(tick, 250);
-    }
+	function tick() {
+		timeLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+	}
 
-    function stopTimer() {
-        if (timerId) clearInterval(timerId);
-        timerId = null;
-    }
+	function startTimer() {
+		if (timerId) clearInterval(timerId);
+		tick();
+		timerId = setInterval(tick, 250);
+	}
 
-    const COLORS = [
-        '#ff0000', '#00ff00', '#0000ff', '#ffff00', 
-        '#00ffff', '#ff00ff', '#000000', '#808080', '#ff8000'
-    ];
-    function clearSessionData() {
-        sessionStorage.removeItem('draw_stack');
-        sessionStorage.removeItem('draw_my_score');
-        sessionStorage.removeItem('draw_opp_score');
-        sessionStorage.removeItem('draw_word');
-        sessionStorage.removeItem('draw_opponent');
-        sessionStorage.removeItem('draw_ends_at');
-    }
+	function stopTimer() {
+		if (timerId) clearInterval(timerId);
+		timerId = null;
+	}
 
-    onMount(() => {
-        const savedStack = sessionStorage.getItem('draw_stack');
-        if (savedStack) stack = JSON.parse(savedStack);
-        
-        const savedMyScore = sessionStorage.getItem('draw_my_score');
-        if (savedMyScore) game.my_score = parseFloat(savedMyScore);
-        
-        const savedOppScore = sessionStorage.getItem('draw_opp_score');
-        if (savedOppScore) game.opponent_score = parseFloat(savedOppScore);
+	const COLORS = [
+		'#ff0000',
+		'#00ff00',
+		'#0000ff',
+		'#ffff00',
+		'#00ffff',
+		'#ff00ff',
+		'#000000',
+		'#808080',
+		'#ff8000'
+	];
+	function clearSessionData() {
+		sessionStorage.removeItem('draw_stack');
+		sessionStorage.removeItem('draw_my_score');
+		sessionStorage.removeItem('draw_opp_score');
+		sessionStorage.removeItem('draw_word');
+		sessionStorage.removeItem('draw_opponent');
+		sessionStorage.removeItem('draw_ends_at');
+	}
 
-        const savedWord = sessionStorage.getItem('draw_word');
-        if (savedWord) game.word = savedWord;
-        
-        const savedOpponent = sessionStorage.getItem('draw_opponent');
-        if (savedOpponent) game.opponent = savedOpponent;
+	onMount(() => {
+		const savedStack = sessionStorage.getItem('draw_stack');
+		if (savedStack) stack = JSON.parse(savedStack);
 
-        const savedEndsAt = sessionStorage.getItem('draw_ends_at');
-        endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 60000;
-        startTimer();
+		const savedMyScore = sessionStorage.getItem('draw_my_score');
+		if (savedMyScore) game.my_score = parseFloat(savedMyScore);
 
-        let ws = getWs();
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            ws = new WebSocket('/ws/');
-            setWs(ws);
-        }
+		const savedOppScore = sessionStorage.getItem('draw_opp_score');
+		if (savedOppScore) game.opponent_score = parseFloat(savedOppScore);
 
-        ws.onmessage = (event) => {
-          const msg = JSON.parse(event.data);
-          switch (msg.type) {
-            case 'ai_guess':
-              game.my_score = msg.guess[game.word];
-              sessionStorage.setItem('draw_my_score', game.my_score.toString());
-              break;
-            case 'reconnect_game':
-                game.id = msg.game_id;
-                game.opponent = msg.opponent;
-                game.word = msg.word;
-                sessionStorage.setItem('draw_word', game.word);
-                sessionStorage.setItem('draw_opponent', game.opponent);
-                if (msg.time_left != null) {
-                    endsAt = Date.now() + msg.time_left * 1000;
-                    sessionStorage.setItem('draw_ends_at', String(endsAt));
-                    startTimer();
-                }
-                break;
-            case 'opponent_guess':
-              game.opponent_score = msg.guess[game.word];
-              sessionStorage.setItem('draw_opp_score', game.opponent_score.toString());
-              break;
-            case 'end_game':
-                stopTimer();
-                elo_diff = msg.elo_diff;
-                result = msg.status;
-                clearSessionData(); // Wipe the memory for the next game
-                setTimeout(() => {
-                    goto('/');
-                }, 5000);
-                break;
-          }
-        };
+		const savedWord = sessionStorage.getItem('draw_word');
+		if (savedWord) game.word = savedWord;
 
-        return () => stopTimer();
-    });
+		const savedOpponent = sessionStorage.getItem('draw_opponent');
+		if (savedOpponent) game.opponent = savedOpponent;
 
-    $effect(() => {
-        sessionStorage.setItem('draw_stack', JSON.stringify(stack));
-    });
+		const savedEndsAt = sessionStorage.getItem('draw_ends_at');
+		endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 60000;
+		startTimer();
 
-    $effect(() => {
-        if (canvas) {
-            context = canvas.getContext('2d')!;
-            resize(); 
-        }
-    });
+		let ws = getWs();
+		if (!ws || ws.readyState !== WebSocket.OPEN) {
+			ws = new WebSocket('/ws/');
+			setWs(ws);
+		}
 
-    function surrender() {
-        if (confirm("Are you sure you want to forfeit the match?")) {
-            const ws = getWs();
-            ws?.send(JSON.stringify({ type: "surrender" }));
-            clearSessionData(); // Wipe memory if they quit on purpose
-            goto('/');
-        }
-    }
+		ws.onmessage = (event) => {
+			const msg = JSON.parse(event.data);
+			switch (msg.type) {
+				case 'ai_guess':
+					game.my_score = msg.guess[game.word];
+					sessionStorage.setItem('draw_my_score', game.my_score.toString());
+					break;
+				case 'reconnect_game':
+					game.id = msg.game_id;
+					game.opponent = msg.opponent;
+					game.word = msg.word;
+					sessionStorage.setItem('draw_word', game.word);
+					sessionStorage.setItem('draw_opponent', game.opponent);
+					if (msg.time_left != null) {
+						endsAt = Date.now() + msg.time_left * 1000;
+						sessionStorage.setItem('draw_ends_at', String(endsAt));
+						startTimer();
+					}
+					break;
+				case 'opponent_guess':
+					game.opponent_score = msg.guess[game.word];
+					sessionStorage.setItem('draw_opp_score', game.opponent_score.toString());
+					break;
+				case 'end_game':
+					stopTimer();
+					elo_diff = msg.elo_diff;
+					result = msg.status;
+					clearSessionData();
+					setTimeout(() => {
+						goto('/');
+					}, 5000);
+					break;
+			}
+		};
 
-    function resize() {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = canvas.clientWidth * dpr;
-        canvas.height = canvas.clientHeight * dpr;
-        ratio = canvas.width;
-        context.scale(dpr, dpr);
-        redraw();
-    }
+		return () => stopTimer();
+	});
 
-    function redraw() {
-        context.clearRect(0, 0, canvas.width, canvas.height);
+	$effect(() => {
+		sessionStorage.setItem('draw_stack', JSON.stringify(stack));
+	});
 
-        for (const trait of stack) {
-            if (trait.points.length === 0) continue;
+	$effect(() => {
+		if (canvas) {
+			context = canvas.getContext('2d')!;
+			resize();
+		}
+	});
 
-            context.strokeStyle = trait.color;
-            context.lineWidth = trait.width * canvas.clientWidth;
-            context.lineCap = 'round';
-            context.lineJoin = 'round';
-            context.beginPath();
-            context.moveTo(trait.points[0].x * ratio, trait.points[0].y * ratio);
-            for (let i = 1; i < trait.points.length; i++) {
-                context.lineTo(trait.points[i].x * ratio, trait.points[i].y * ratio);
-            }
-            context.stroke();
-        }
-    }
+	function surrender() {
+		if (confirm('Are you sure you want to forfeit the match?')) {
+			const ws = getWs();
+			ws?.send(JSON.stringify({ type: 'surrender' }));
+			clearSessionData();
+			goto('/');
+		}
+	}
 
-    function undo() {
-        const trait = stack.pop();
-        if (!trait) return;
-        redoStack.push(trait);
-        redraw();
-        makeAiGuess();
-    }
+	function resize() {
+		const dpr = window.devicePixelRatio || 1;
+		canvas.width = canvas.clientWidth * dpr;
+		canvas.height = canvas.clientHeight * dpr;
+		ratio = canvas.width;
+		context.scale(dpr, dpr);
+		redraw();
+	}
 
-    function redo() {
-        const trait = redoStack.pop();
-        if (!trait) return;
-        stack.push(trait);
-        redraw();
-        makeAiGuess();
-    }
+	function redraw() {
+		context.clearRect(0, 0, canvas.width, canvas.height);
 
-    function eraser() {
-        selectedColor = '#ffffff';
-    }
+		for (const trait of stack) {
+			if (trait.points.length === 0) continue;
 
-    function pencil() {
-        selectedColor = lastSelectedColor;
-    }
+			context.strokeStyle = trait.color;
+			context.lineWidth = trait.width * canvas.clientWidth;
+			context.lineCap = 'round';
+			context.lineJoin = 'round';
+			context.beginPath();
+			context.moveTo(trait.points[0].x * ratio, trait.points[0].y * ratio);
+			for (let i = 1; i < trait.points.length; i++) {
+				context.lineTo(trait.points[i].x * ratio, trait.points[i].y * ratio);
+			}
+			context.stroke();
+		}
+	}
 
-    function makeAiGuess() {
-        const ws = getWs();
-        ws?.send(JSON.stringify({ type: "guess", strokes: stack }));
-    }
+	function undo() {
+		const trait = stack.pop();
+		if (!trait) return;
+		redoStack.push(trait);
+		redraw();
+		makeAiGuess();
+	}
 
-    function finishStroke() {
-    if (!last) return;
+	function redo() {
+		const trait = redoStack.pop();
+		if (!trait) return;
+		stack.push(trait);
+		redraw();
+		makeAiGuess();
+	}
 
-    last = null;
-    pointsSinceLastGuess = 0;
-    makeAiGuess();
-    }
+	function eraser() {
+		selectedColor = '#ffffff';
+	}
+
+	function pencil() {
+		selectedColor = lastSelectedColor;
+	}
+
+	function makeAiGuess() {
+		const ws = getWs();
+		const image = canvas.toDataURL();
+		ws?.send(JSON.stringify({ type: 'image', image }));
+	}
 </script>
+
 <svelte:window onresize={resize} />
 
 <header class="game-header">
-    
-    <div class="header-left">
-        <h1>Draw!</h1>
-        <div class="vs-badge">
-            VS: <strong>{game.opponent}</strong>
-        </div>
-    </div>
+	<div class="header-left">
+		<h1>Draw!</h1>
+		<div class="vs-badge">
+			VS <strong>{game.opponent}</strong>
+		</div>
+	</div>
 
-    <div class="header-center">
-        <div class="timer" class:low={timeLeft <= 10}>
-            {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-        </div>
-        <span class="word-label">You are drawing</span>
-        <div class="target-word">{game.word}</div>
-    </div>
+	<div class="header-center">
+		<div class="timer" class:low={timeLeft <= 10}>
+			{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+		</div>
+		<span class="word-label">You are drawing</span>
+		<div class="target-word">{game.word}</div>
+	</div>
 
-    <div class="header-right">
-        <button class="surrender-btn" onclick={surrender}>
-            Surrender ⚑
-        </button>
-    </div>
-
+	<div class="header-right">
+		<button class="nb-btn nb-btn--danger" onclick={surrender}> Surrender ⚑ </button>
+	</div>
 </header>
 
 {#if result}
-  <div class="overlay">
-    <div class="modal">
-        {#if result === 'winner'}
-          <h2 class="win-text">You Won!</h2>
-          <p class="elo-text positive">+{elo_diff} Elo</p>
-        {:else if result === 'draw'}
-          <h2 class="draw-text">Égalité</h2>
-          <p class="elo-text">Aucun changement d'Elo</p>
-        {:else}
-          <h2 class="lose-text">You Lost</h2>
-          <p class="elo-text negative">{elo_diff} Elo</p>
-        {/if}
-        <p style="color: #6b7280; font-size: 0.9rem; margin-top: 1rem;">
-            Returning to home in 5 seconds...
-        </p>
-        <button class="primary-btn" onclick={() => goto('/')}>Back to Home</button>
-    </div>
-  </div>
+	<div class="overlay">
+		<div
+			class="modal"
+			class:modal--win={result === 'winner'}
+			class:modal--lose={result === 'looser'}
+			class:modal--draw={result === 'draw'}
+		>
+			{#if result === 'winner'}
+				<h2 class="result-text">You Won!</h2>
+				<p class="elo-text positive">+{elo_diff} Elo</p>
+			{:else if result === 'draw'}
+				<h2 class="result-text">Draw</h2>
+				<p class="elo-text">No Elo change</p>
+			{:else}
+				<h2 class="result-text">You Lost</h2>
+				<p class="elo-text negative">{elo_diff} Elo</p>
+			{/if}
+			<p class="return-note">Returning to home in 5 seconds…</p>
+			<button class="nb-btn nb-btn--primary" onclick={() => goto('/')}>Back to Home</button>
+		</div>
+	</div>
 {/if}
 
 <div class="game">
-    <div class="tools">
-        {#each COLORS as c}
-            <button
-                class="swatch"
-                style="background:{c}"
-                title={c}
-                onclick={() => {
-                    selectedColor = c;
-                    lastSelectedColor = c;
-                }}
-                aria-label={c}
-            ></button>
-        {/each}
-        <button class:active={selectedColor !== '#ffffff'} onclick={pencil}>✏️</button>
-        <input
-            type="color"
-            bind:value={selectedColor}
-            oninput={() => (lastSelectedColor = selectedColor)}
-        />
-        <button class:active={selectedColor === '#ffffff'} onclick={eraser}>🧹</button>
-        <input class="width" type="range" min="1" max="20" step="0.5" bind:value={lineWidth} />
-        <button onclick={undo} disabled={stack.length === 0}>↶</button>
-        <button onclick={redo} disabled={redoStack.length === 0}>↷</button>
-    </div>
+	<div class="tools">
+		{#each COLORS as c (c)}
+			<button
+				class="swatch"
+				style="background:{c}"
+				title={c}
+				onclick={() => {
+					selectedColor = c;
+					lastSelectedColor = c;
+				}}
+				aria-label={c}
+			></button>
+		{/each}
+		<button
+			class:active={selectedColor !== '#ffffff'}
+			onclick={pencil}
+			aria-label="Pencil"
+			title="Pencil">✏️</button
+		>
+		<input
+			type="color"
+			bind:value={selectedColor}
+			oninput={() => (lastSelectedColor = selectedColor)}
+			aria-label="Pick a color"
+			title="Pick a color"
+		/>
+		<button
+			class:active={selectedColor === '#ffffff'}
+			onclick={eraser}
+			aria-label="Eraser"
+			title="Eraser">🧹</button
+		>
+		<input
+			class="width"
+			type="range"
+			min="1"
+			max="20"
+			step="0.5"
+			bind:value={lineWidth}
+			aria-label="Brush size"
+			title="Brush size"
+		/>
+		<button onclick={undo} disabled={stack.length === 0} aria-label="Undo" title="Undo">↶</button>
+		<button onclick={redo} disabled={redoStack.length === 0} aria-label="Redo" title="Redo"
+			>↷</button
+		>
+	</div>
 
-    <canvas
-        bind:this={canvas}
-        onpointerdown={(e) => {
-            stack.push({
-                color: selectedColor,
-                width: lineWidth / 100,
-                points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }]
-            });
+	<canvas
+		bind:this={canvas}
+		onpointerdown={(e) => {
+			stack.push({
+				color: selectedColor,
+				width: lineWidth / 100,
+				points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }]
+			});
 
-            redoStack = [];
-            last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
-        }}
-        onpointerup={finishStroke}
-        onpointerleave={finishStroke}
-        onpointermove={(e) => {
-            if (e.buttons !== 1 || !last) return;
+			redoStack = [];
+			last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+		}}
+		onpointerup={() => {
+			last = null;
+			makeAiGuess();
+		}}
+		onpointerleave={() => (last = null)}
+		onpointermove={(e) => {
+			if (e.buttons !== 1 || !last) return;
 
-            context.strokeStyle = selectedColor;
-            context.lineWidth = stack[stack.length - 1].width * canvas.clientWidth;
-            context.lineCap = 'round';
-            context.lineJoin = 'round';
-            context.beginPath();
-            context.moveTo(last.x * ratio, last.y * ratio);
-            context.lineTo(e.offsetX * ratio, e.offsetY * ratio);
-            context.stroke();
+			context.strokeStyle = selectedColor;
+			context.lineWidth = stack[stack.length - 1].width * canvas.clientWidth;
+			context.lineCap = 'round';
+			context.lineJoin = 'round';
+			context.beginPath();
+			context.moveTo(last.x * ratio, last.y * ratio);
+			context.lineTo(e.offsetX * ratio, e.offsetY * ratio);
+			context.stroke();
 
-            stack[stack.length - 1].points.push({ x: e.offsetX / ratio, y: e.offsetY / ratio });
-            last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
-            pointsSinceLastGuess += 1;
+			stack[stack.length - 1].points.push({ x: e.offsetX / ratio, y: e.offsetY / ratio });
+			last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+		}}
+	></canvas>
 
-            if (pointsSinceLastGuess >= GUESS_EVERY_POINTS) {
-                pointsSinceLastGuess = 0;
-                makeAiGuess();
-            }
-        }}
-    ></canvas>
-
-    <div class="bars">
-        <div class="loaderBar">
-            <div class="loaderBar-fill" style="height: {game.my_score}%"></div>
-        </div>
-        <div class="loaderBar loaderBar--opponent">
-            <div class="loaderBar-fill" style="height: {game.opponent_score}%"></div>
-        </div>
-    </div>
+	<div class="bars">
+		<div class="meter">
+			<span class="meter-value">{Math.round(game.my_score ?? 0)}%</span>
+			<div class="loaderBar">
+				<div class="loaderBar-fill" style="height: {game.my_score ?? 0}%"></div>
+			</div>
+			<span class="meter-label meter-label--you">You</span>
+		</div>
+		<div class="meter">
+			<span class="meter-value">{Math.round(game.opponent_score ?? 0)}%</span>
+			<div class="loaderBar loaderBar--opponent">
+				<div class="loaderBar-fill" style="height: {game.opponent_score ?? 0}%"></div>
+			</div>
+			<span class="meter-label meter-label--opponent">{game.opponent || 'Rival'}</span>
+		</div>
+	</div>
 </div>
 
 <style>
-    :global(body) {
-        margin: 0;
-        font-family: system-ui, sans-serif;
-        color: #1f2937;
-    }
+	.game-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: var(--space-4) var(--space-6);
+		background: var(--c-bg);
+		border-bottom: var(--border-lg);
+		margin-bottom: var(--space-5);
+	}
 
-    /* --- UPDATED HEADER STYLES --- */
-    .game-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 2rem;
-        background: #ffffff;
-        box-shadow: 0 4px 15px rgba(138, 43, 226, 0.08); /* Soft purple shadow */
-        margin-bottom: 1rem;
-    }
+	.header-left {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+		flex: 1;
+	}
 
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        flex: 1; /* Ensures perfect centering for the middle element */
-    }
+	.game-header h1 {
+		margin: 0;
+		font-size: var(--fs-2xl);
+		text-transform: uppercase;
+	}
 
-    .game-header h1 {
-        margin: 0;
-        color: blueviolet;
-        font-size: 2rem;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-    }
+	.vs-badge {
+		background: var(--c-bg-alt);
+		color: var(--c-muted);
+		padding: var(--space-2) var(--space-3);
+		border: var(--border);
+		box-shadow: var(--shadow-sm);
+		font-family: var(--font-mono);
+		font-size: var(--fs-sm);
+		font-weight: var(--fw-bold);
+		text-transform: uppercase;
+	}
 
-    .vs-badge {
-        background: #f0f4ff; /* Very soft light blue */
-        color: #4b5563;
-        padding: 0.5rem 1.2rem;
-        border-radius: 20px;
-        font-size: 0.95rem;
-        border: 1px solid #dbeafe;
-    }
+	.vs-badge strong {
+		color: var(--c-ink);
+	}
 
-    .vs-badge strong {
-        color: #1f2937;
-        font-weight: 700;
-    }
+	.header-center {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		flex: 2;
+		text-align: center;
+		gap: var(--space-1);
+	}
 
-    /* THE NEW WORD DISPLAY */
-    .header-center {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        flex: 2; 
-        text-align: center;
-    }
+	.timer {
+		font-family: var(--font-mono);
+		font-size: var(--fs-2xl);
+		font-weight: var(--fw-bold);
+		font-variant-numeric: tabular-nums;
+		color: var(--c-ink);
+		transition: color var(--transition);
+	}
 
-    .timer {
-        font-size: 1.6rem;
-        font-weight: 800;
-        font-variant-numeric: tabular-nums;
-        color: #4b5563;
-        margin-bottom: 0.2rem;
-        transition: color 0.2s ease;
-    }
+	.timer.low {
+		color: var(--c-danger);
+		animation: timer-pulse 1s ease-in-out infinite;
+	}
 
-    .timer.low {
-        color: #ef4444;
-        animation: timer-pulse 1s ease-in-out infinite;
-    }
+	@keyframes timer-pulse {
+		0%,
+		100% {
+			transform: scale(1);
+		}
+		50% {
+			transform: scale(1.12);
+		}
+	}
 
-    @keyframes timer-pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.12); }
-    }
+	.word-label {
+		font-size: var(--fs-xs);
+		text-transform: uppercase;
+		font-weight: var(--fw-bold);
+		color: var(--c-muted);
+		letter-spacing: 0.2em;
+	}
 
-    .draw-text {
-        color: #6b7280;
-        font-size: 2.5rem;
-        margin: 0;
-    }
+	.target-word {
+		font-family: var(--font-display);
+		font-size: var(--fs-2xl);
+		font-weight: var(--fw-display);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		line-height: 1.1;
+		background: var(--c-accent);
+		color: var(--c-ink);
+		border: var(--border);
+		box-shadow: var(--shadow-sm);
+		padding: var(--space-1) var(--space-4);
+	}
 
-    .word-label {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        font-weight: 700;
-        color: #9ca3af;
-        letter-spacing: 2px;
-        margin-bottom: 0.2rem;
-    }
+	.header-right {
+		display: flex;
+		justify-content: flex-end;
+		flex: 1;
+	}
 
-    .target-word {
-        font-size: 2.8rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        line-height: 1.1;
-        /* The colorful blue-to-purple gradient */
-        background: linear-gradient(135deg, #006dfe 0%, blueviolet 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        /* Adds a soft glowing effect behind the text */
-        filter: drop-shadow(0px 4px 8px rgba(138, 43, 226, 0.25));
-    }
+	.overlay {
+		position: fixed;
+		inset: 0;
+		background: var(--c-scrim);
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		z-index: 1000;
+	}
 
-    .header-right {
-        display: flex;
-        justify-content: flex-end;
-        flex: 1;
-    }
+	.modal {
+		background: var(--c-bg);
+		padding: var(--space-7) var(--space-8);
+		text-align: center;
+		border: var(--border-lg);
+		box-shadow: var(--shadow-lg);
+		animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+	}
 
-    .surrender-btn {
-        background: transparent;
-        border: 2px solid #ef4444;
-        color: #ef4444;
-        padding: 0.6rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
+	.modal--win {
+		background: var(--c-success);
+	}
+	.modal--lose {
+		background: var(--c-danger);
+		color: var(--c-on-danger);
+	}
+	.modal--draw {
+		background: var(--c-accent);
+	}
 
-    .surrender-btn:hover {
-        background: #ef4444;
-        color: white;
-    }
+	@keyframes popIn {
+		0% {
+			transform: translate(6px, 6px);
+			box-shadow: none;
+		}
+		100% {
+			transform: translate(0, 0);
+			box-shadow: var(--shadow-lg);
+		}
+	}
 
-    /* --- NEW MODAL OVERLAY STYLES --- */
-    .overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(17, 24, 39, 0.7);
-        backdrop-filter: blur(4px);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    }
+	.result-text {
+		font-size: var(--fs-3xl);
+		margin: 0;
+		text-transform: uppercase;
+	}
 
-    .modal {
-        background: white;
-        padding: 3rem 4rem;
-        border-radius: 16px;
-        text-align: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
+	.elo-text {
+		font-family: var(--font-mono);
+		font-size: var(--fs-lg);
+		font-weight: var(--fw-bold);
+		margin: var(--space-3) 0 var(--space-6);
+	}
 
-    @keyframes popIn {
-        0% { transform: scale(0.8); opacity: 0; }
-        100% { transform: scale(1); opacity: 1; }
-    }
+	.return-note {
+		font-size: var(--fs-sm);
+		margin: 0 0 var(--space-5);
+		opacity: 0.85;
+	}
 
-    .win-text {
-        color: #10b981;
-        font-size: 2.5rem;
-        margin: 0;
-    }
+	.game {
+		--canvas-side: 50vmin;
+		--tool-size: calc(var(--canvas-side) * 0.1);
+		--tool-gap: 0.5rem;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: var(--space-6);
+		padding: var(--space-4);
+	}
 
-    .lose-text {
-        color: #ef4444;
-        font-size: 2.5rem;
-        margin: 0;
-    }
+	canvas {
+		width: var(--canvas-side);
+		height: var(--canvas-side);
+		background: var(--c-bg);
+		border: var(--border-lg);
+		box-shadow: var(--shadow);
+		cursor: crosshair;
+		touch-action: none;
+	}
 
-    .elo-text {
-        font-size: 1.3rem;
-        font-weight: bold;
-        margin: 1rem 0 2.5rem;
-        color: #6b7280;
-    }
+	.tools {
+		display: grid;
+		grid-template-columns: repeat(3, var(--tool-size));
+		gap: var(--tool-gap);
+	}
 
-    .elo-text.positive { color: #10b981; }
-    .elo-text.negative { color: #ef4444; }
+	.tools > * {
+		width: var(--tool-size);
+		height: var(--tool-size);
+		margin: 0;
+		padding: 0;
+		border: var(--border);
+		background: var(--c-bg);
+		cursor: pointer;
+		font-size: calc(var(--tool-size) * 0.5);
+		line-height: 1;
+		box-shadow: var(--shadow-sm);
+		transition:
+			transform var(--transition),
+			box-shadow var(--transition);
+	}
 
-    .primary-btn {
-        background: blueviolet;
-        color: white;
-        border: none;
-        padding: 0.8rem 2rem;
-        font-size: 1.1rem;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: background 0.2s;
-    }
+	.tools > *:hover:not(:disabled) {
+		transform: translate(calc(-1 * var(--nudge)), calc(-1 * var(--nudge)));
+		box-shadow: var(--shadow);
+	}
 
-    .primary-btn:hover {
-        background: #7a1cd1;
-    }
+	.tools > *:active:not(:disabled) {
+		transform: translate(var(--press), var(--press));
+		box-shadow: none;
+	}
 
-    /* --- EXISTING GAME STYLES --- */
-    .game {
-        --canvas-side: 50vmin;
-        --tool-size: calc(var(--canvas-side) * 0.1);
-        --tool-gap: 0.5rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 1.5rem;
-        padding: 1rem;
-    }
+	.tools > .active {
+		background: var(--c-accent);
+		box-shadow: none;
+		transform: translate(var(--press), var(--press));
+	}
 
-    canvas {
-        width: var(--canvas-side);
-        height: var(--canvas-side);
-        background: #ffffff;
-        border: 2px solid #d1d5db;
-        border-radius: 12px;
-        cursor: crosshair;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
+	.tools > *:disabled {
+		opacity: 0.35;
+		box-shadow: none;
+		cursor: not-allowed;
+	}
 
-    .tools {
-        display: grid;
-        grid-template-columns: repeat(3, var(--tool-size));
-        gap: var(--tool-gap);
-    }
+	.tools > .swatch {
+		font-size: 0;
+	}
 
-    .tools > * {
-        width: var(--tool-size);
-        height: var(--tool-size);
-        margin: 0;
-        padding: 0;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        background: #ffffff;
-        cursor: pointer;
-        font-size: calc(var(--tool-size) * 0.5);
-        line-height: 1;
-        box-sizing: border-box;
-        transition: transform 0.1s;
-    }
+	.tools > input[type='color'] {
+		padding: 2px;
+	}
 
-    .tools > *:hover:not(:disabled) {
-        transform: scale(1.05);
-    }
+	.tools > .width {
+		grid-column: 1 / -1;
+		width: 100%;
+		height: auto;
+		box-shadow: none;
+		background: transparent;
+		border: none;
+		accent-color: var(--c-primary);
+	}
 
-    .tools > .active {
-        border: 2px solid #1f2937;
-        background: #f3f4f6;
-    }
+	.tools > .width:hover:not(:disabled) {
+		transform: none;
+	}
 
-    .tools > *:disabled {
-        opacity: 0.3;
-        cursor: not-allowed;
-    }
+	.bars {
+		display: flex;
+		gap: var(--space-4);
+	}
 
-    .tools > .width {
-        grid-column: 1 / -1;
-        width: 100%;
-    }
+	.meter {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-2);
+	}
 
-    .bars {
-        display: flex;
-        gap: var(--tool-gap);
-    }
+	.meter-value {
+		font-family: var(--font-mono);
+		font-size: var(--fs-lg);
+		font-weight: var(--fw-bold);
+		font-variant-numeric: tabular-nums;
+	}
 
-    .loaderBar {
-        width: var(--tool-size);
-        height: var(--canvas-side);
-        background: #f9f9f9;
-        border-radius: 10px;
-        border: 2px solid #006dfe;
-        position: relative;
-        overflow: hidden;
-    }
+	.meter-label {
+		font-family: var(--font-display);
+		font-size: var(--fs-xs);
+		font-weight: var(--fw-bold);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		max-width: calc(var(--tool-size) * 1.6);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 
-    .loaderBar-fill {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        border-radius: 5px;
-        background: repeating-linear-gradient(45deg, #0031f2 0 30px, #006dfe 0 40px);
-        background-size: 200% 200%;
-        background-position: center bottom;
-        transition: height 0.3s ease;
-    }
+	.meter-label--you {
+		color: var(--c-primary);
+	}
+	.meter-label--opponent {
+		color: var(--c-danger);
+	}
 
-    .loaderBar--opponent {
-        background: #fef2f2;
-        border-color: #dc2626;
-    }
+	.loaderBar {
+		width: var(--tool-size);
+		height: var(--canvas-side);
+		background: var(--c-bg-alt);
+		border: var(--border);
+		box-shadow: var(--shadow-sm);
+		position: relative;
+		overflow: hidden;
+	}
 
-    .loaderBar--opponent .loaderBar-fill {
-        background: repeating-linear-gradient(45deg, #991b1b 0 30px, #dc2626 0 40px);
-        background-size: 200% 200%;
-        background-position: center bottom;
-    }
+	.loaderBar-fill {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		width: 100%;
+		background: repeating-linear-gradient(
+			45deg,
+			var(--c-primary) 0 14px,
+			var(--c-primary-dark) 14px 28px
+		);
+		transition: height 0.3s ease;
+	}
+
+	.loaderBar--opponent .loaderBar-fill {
+		background: repeating-linear-gradient(
+			45deg,
+			var(--c-danger) 0 14px,
+			var(--c-danger-dark) 14px 28px
+		);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.timer.low {
+			animation: none;
+		}
+		.modal {
+			animation: none;
+		}
+	}
+
+	@media (max-width: 760px) {
+		.game-header {
+			flex-direction: column;
+			gap: var(--space-3);
+			padding: var(--space-4);
+		}
+
+		.header-left,
+		.header-center,
+		.header-right {
+			flex: none;
+			justify-content: center;
+		}
+
+		.header-left {
+			flex-wrap: wrap;
+		}
+
+		.game {
+			--canvas-side: 78vmin;
+			flex-wrap: wrap;
+		}
+
+		.modal {
+			padding: var(--space-6) var(--space-5);
+			margin: var(--space-4);
+		}
+	}
 </style>
