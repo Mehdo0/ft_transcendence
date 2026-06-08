@@ -24,11 +24,10 @@ async def get_random_word() -> str:
     return random.choice(data)
 
 
-async def make_ai_guess(payload: ImagePayload, target_word: str):
-    base64_str = payload.base64_string
-    if "data:image" not in base64_str:
+async def make_ai_guess(strokes: list, target_word: str):
+    if not isinstance(strokes, list):
         raise ValueError("wrong payload")
-    results = internal_make_ai_guess(base64_str, target_word)
+    results = internal_make_ai_guess(strokes, target_word)
     if not results:
         raise ValueError("Bad AI output")
     return results

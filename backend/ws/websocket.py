@@ -60,8 +60,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     await start_game(payload, user)
                 case "find_player":
                     await find_player(user)
-                case "image":
-                    if not await receive_image(user, payload, websocket):
+                case "guess":
+                    if not await ai_guess(user, payload, websocket):
                         continue
                 case "surrender":
                     if not await surrender_game(user):
@@ -70,6 +70,24 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         # Remove their active socket
         disconnect_user(user)
+
+
+async def ai_guess(user, payload, websocket) -> bool:
+    game_id = player_games.get(user.username)
+    if game_id is None or game_id not in games:
+        return False
+    strokes = payload.get("strokes", [])
+    guess = await make_ai_guess(strokes, games[game_id].word)
+    await websocket.send_json({"type": "ai_guess", "guess": guess})
+    opponent = get_opponent(user, game_id)
+    await connections[opponent.username].send_json(
+        {"type": "opponent_guess", "guess": guess}
+    )
+    score = guess.get(games[game_id].word) or 0
+    games[game_id].scores[user.username] = score
+    if score >= 50:  # percent to change when AI will be fixed
+        await end_game(websocket, user, opponent)
+    return True
 
 
 def disconnect_user(user):
@@ -90,24 +108,6 @@ async def surrender_game(user) -> bool:
         return False
     opponent = get_opponent(user, game_id)
     await finish_game_by_forfeit(game_id, opponent, user, "opponent_surrendered")
-    return True
-
-
-async def receive_image(user, payload, websocket) -> bool:
-    game_id = player_games.get(user.username)
-    if game_id is None or game_id not in games:
-        return False
-    image_payload = ImagePayload(base64_string=payload.get("image"))
-    guess = await make_ai_guess(image_payload, games[game_id].word)
-    await websocket.send_json({"type": "ai_guess", "guess": guess})
-    opponent = get_opponent(user, game_id)
-    await connections[opponent.username].send_json(
-        {"type": "opponent_guess", "guess": guess}
-    )
-    score = guess.get(games[game_id].word) or 0
-    games[game_id].scores[user.username] = score
-    if score >= 0.5:  # percent to change when AI will be fixed
-        await end_game(websocket, user, opponent)
     return True
 
 
