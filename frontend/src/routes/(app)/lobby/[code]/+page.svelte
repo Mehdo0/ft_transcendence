@@ -10,6 +10,7 @@ const code = page.params.code;
 let players = $state<string[]>([]);
 let me = $state('');
 let isHost = $state(false);
+let copied = $state(false);
 
 function clearSessionData() {
         sessionStorage.removeItem('players');
@@ -68,7 +69,8 @@ function startGame() {
 
 function copyCode() {
     navigator.clipboard.writeText(code);
-	alert("code copied !")
+	copied = true;
+	setTimeout(() => (copied = false), 2000);
 }
 
 </script>
@@ -80,7 +82,7 @@ function copyCode() {
 			<div class="code-box">
 				<span class="code-label">ROOM CODE</span>
 				<div class="code-value" onclick={copyCode} title="Click to copy">
-					{code}📋
+					{code}{copied ? '✅' : '📋'}
 				</div>
 			</div>
 		</header>
