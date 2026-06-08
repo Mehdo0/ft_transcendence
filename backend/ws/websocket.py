@@ -16,7 +16,8 @@ from state.state import (
     matchmaking_queue,
     player_games,
     disconnected_players,
-    lobbies
+    lobbies,
+    game_timers
 )
 from asyncio import sleep
 
@@ -46,11 +47,14 @@ async def websocket_endpoint(websocket: WebSocket):
         if game_id in games:
             current_game = games[game_id]
             opponent = get_opponent(username, game_id)
+            loop = asyncio.get_running_loop()
+            time_left = max(0, round(current_game.ends_at - loop.time())) if current_game.ends_at else None
             await websocket.send_json({
                 "type": "reconnect_game",
                 "game_id": current_game.id,
                 "opponent": opponent,
-                "word": current_game.word
+                "word": current_game.word,
+                "time_left": time_left
             })
     try:
         while True:
@@ -96,7 +100,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     await connections[opponent].send_json(
                         {"type": "opponent_guess", "guess": guess}
                     )
-                    score = guess.get(games[game_id].word)
+                    score = guess.get(games[game_id].word) or 0
+                    games[game_id].scores[username] = score
                     if score >= 0.5: #percent to change when AI will be fixed
                         await end_game(websocket, username, opponent)
                 case "surrender":
@@ -154,12 +159,69 @@ def get_opponent(username: str, game_id: str):
 
 
 async def end_game(websocket: WebSocket, username: str, opponent: str):
+    game_id = player_games.get(username)
     diff_winner, new_elo_winner = await calculate_new_elo(username, opponent, 1)
     diff_loser, new_elo_loser = await calculate_new_elo(opponent, username, 0)
     await websocket.send_json({"type": "end_game", "status": "winner", "elo_diff": diff_winner, "new_elo": new_elo_winner})
     await connections[opponent].send_json({"type": "end_game", "status": "looser", "elo_diff": diff_loser, "new_elo": new_elo_loser})
     update_user_elo(username, new_elo_winner)
     update_user_elo(opponent, new_elo_loser)
+    if game_id:
+        cancel_timer(game_id)
+        cleanup_game(game_id, username, opponent)
+
+
+def cancel_timer(game_id: str):
+    task = game_timers.pop(game_id, None)
+    if task is not None:
+        task.cancel()
+
+
+async def game_timer(game_id: str):
+    await sleep(60)
+    if game_id in games:
+        await end_game_by_timeout(game_id)
+
+
+async def end_game_by_timeout(game_id: str):
+    if game_id not in games:
+        return
+    game = games[game_id]
+    player1, player2 = game.players[0], game.players[1]
+    score1 = game.scores.get(player1, 0)
+    score2 = game.scores.get(player2, 0)
+
+    if score1 == score2:
+        # Draw: no Elo change
+        for player in (player1, player2):
+            if player in connections:
+                await connections[player].send_json({
+                    "type": "end_game",
+                    "status": "draw",
+                    "elo_diff": 0,
+                    "reason": "timeout",
+                })
+        cancel_timer(game_id)
+        cleanup_game(game_id, player1, player2)
+        return
+
+    winner, loser = (player1, player2) if score1 > score2 else (player2, player1)
+    diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
+    diff_l, new_elo_l = await calculate_new_elo(loser, winner, 0)
+    update_user_elo(winner, new_elo_w)
+    update_user_elo(loser, new_elo_l)
+    if winner in connections:
+        await connections[winner].send_json({
+            "type": "end_game", "status": "winner",
+            "elo_diff": diff_w, "new_elo": new_elo_w, "reason": "timeout",
+        })
+    if loser in connections:
+        await connections[loser].send_json({
+            "type": "end_game", "status": "looser",
+            "elo_diff": diff_l, "new_elo": new_elo_l, "reason": "timeout",
+        })
+    cancel_timer(game_id)
+    cleanup_game(game_id, winner, loser)
 
 
 async def calculate_new_elo(username1: str, username2: str, result: int):
@@ -191,6 +253,7 @@ async def handle_disconnect_grace_period(username: str, game_id: str):
 async def finish_game_by_forfeit(game_id: str, winner: str, loser: str, reason: str):
     if game_id not in games:
         return  # already finished / cleaned up
+    cancel_timer(game_id)
     diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
     diff_l, new_elo_l = await calculate_new_elo(loser, winner, 0)
     update_user_elo(winner, new_elo_w)
@@ -234,9 +297,14 @@ async def create_game(player1: str, player2: str):
         word=get_random_word(),
     )
 
+    loop = asyncio.get_running_loop()
+    game.ends_at = loop.time() + 60
+
     games[game.id] = game
     player_games[player1] = game.id
     player_games[player2] = game.id
+
+    game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
     await connections[player1].send_json(
         {
@@ -244,6 +312,7 @@ async def create_game(player1: str, player2: str):
             "game_id": game.id,
             "opponent": player2,
             "word": game.word,
+            "duration": 60,
         }
     )
 
@@ -253,6 +322,7 @@ async def create_game(player1: str, player2: str):
             "game_id": game.id,
             "opponent": player1,
             "word": game.word,
+            "duration": 60,
         }
     )
 
