@@ -1,4 +1,3 @@
-from posix import PRIO_USER
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
