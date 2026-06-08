@@ -85,19 +85,19 @@ async def websocket_endpoint(websocket: WebSocket):
                             del lobbies[code]
                 case "find_player":
                     await find_player(username)
-                case "image":
+                case "guess":
                     game_id = player_games.get(username)
                     if game_id is None or game_id not in games:
                         continue
-                    image_payload = ImagePayload(base64_string=payload.get("image"))
-                    guess = await make_ai_guess(image_payload, games[game_id].word)
+                    strokes = payload.get("strokes", [])
+                    guess = await make_ai_guess(strokes, games[game_id].word)
                     await websocket.send_json({"type": "ai_guess", "guess": guess})
                     opponent = get_opponent(username, game_id)
                     await connections[opponent].send_json(
                         {"type": "opponent_guess", "guess": guess}
                     )
                     score = guess.get(games[game_id].word)
-                    if score >= 0.5: #percent to change when AI will be fixed
+                    if score >= 50: #percent to change when AI will be fixed
                         await end_game(websocket, username, opponent)
 
     except WebSocketDisconnect:

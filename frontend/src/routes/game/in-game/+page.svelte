@@ -74,14 +74,14 @@
               game.opponent_score = msg.guess[game.word];
               sessionStorage.setItem('draw_opp_score', game.opponent_score.toString());
               break;
-            // case 'end_game':
-            //     elo_diff = msg.elo_diff;
-            //     result = msg.status;
-            //     clearSessionData(); // Wipe the memory for the next game
-            //     setTimeout(() => {
-            //         goto('/'); 
-            //     }, 5000);
-            //     break;
+            case 'end_game':
+                elo_diff = msg.elo_diff;
+                result = msg.status;
+                clearSessionData(); // Wipe the memory for the next game
+                setTimeout(() => {
+                    goto('/'); 
+                }, 5000);
+                break;
           }
         };
     });
@@ -156,8 +156,7 @@
 
     function makeAiGuess() {
         const ws = getWs();
-        const image = canvas.toDataURL();
-        ws?.send(JSON.stringify({ type: "image", image }));
+        ws?.send(JSON.stringify({ type: "guess", strokes: stack }));
     }
 </script>
 <svelte:window onresize={resize} />
