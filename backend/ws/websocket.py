@@ -16,6 +16,7 @@ from state.state import (
     player_games,
     disconnected_players,
     lobbies,
+    game_timers,
 )
 
 
@@ -44,12 +45,19 @@ async def websocket_endpoint(websocket: WebSocket):
         if game_id in games:
             current_game = games[game_id]
             opponent = get_opponent(user, game_id)
+            loop = asyncio.get_running_loop()
+            time_left = (
+                max(0, round(current_game.ends_at - loop.time()))
+                if current_game.ends_at
+                else None
+            )
             await websocket.send_json(
                 {
                     "type": "reconnect_game",
                     "game_id": current_game.id,
                     "opponent": opponent.username,
                     "word": current_game.word,
+                    "time_left": time_left,
                 }
             )
         else:
@@ -90,7 +98,11 @@ async def websocket_endpoint(websocket: WebSocket):
                             lobby["host"] == user.username
                             and len(lobby["players"]) == 2
                         ):
-                            player1, player2 = lobby["players"][0], lobby["players"][1]
+                            player1 = get_user(lobby["players"][0])
+                            player2 = get_user(lobby["players"][1])
+                            if player1 is None or player2 is None:
+                                print("lobby player not found")
+                                assert False
                             await create_game(player1, player2)
                             del lobbies[code]
                 case "find_player":
@@ -106,7 +118,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     await connections[opponent.username].send_json(
                         {"type": "opponent_guess", "guess": guess}
                     )
-                    score = guess.get(games[game_id].word)
+                    score = guess.get(games[game_id].word) or 0
+                    games[game_id].scores[user.username] = score
                     if score >= 0.5:  # percent to change when AI will be fixed
                         await end_game(websocket, user, opponent)
                 case "surrender":
@@ -175,6 +188,7 @@ def get_opponent(user: User, game_id: str) -> User:
 
 
 async def end_game(websocket: WebSocket, player: User, opponent: User):
+    game_id = player_games.get(player.username)
     diff_winner, new_elo_winner = await calculate_new_elo(player, opponent, 1)
     diff_loser, new_elo_loser = await calculate_new_elo(opponent, player, 0)
     await websocket.send_json(
@@ -195,6 +209,78 @@ async def end_game(websocket: WebSocket, player: User, opponent: User):
     )
     update_user_elo(player, new_elo_winner)
     update_user_elo(opponent, new_elo_loser)
+    if game_id:
+        cancel_timer(game_id)
+        cleanup_game(game_id, player, opponent)
+
+
+def cancel_timer(game_id: str):
+    task = game_timers.pop(game_id, None)
+    if task is not None:
+        task.cancel()
+
+
+async def game_timer(game_id: str):
+    await asyncio.sleep(60)
+    if game_id in games:
+        await end_game_by_timeout(game_id)
+
+
+async def end_game_by_timeout(game_id: str):
+    if game_id not in games:
+        return
+    game = games[game_id]
+    name1, name2 = game.players[0], game.players[1]
+    score1 = game.scores.get(name1, 0)
+    score2 = game.scores.get(name2, 0)
+
+    user1, user2 = get_user(name1), get_user(name2)
+    if user1 is None or user2 is None:
+        assert False  # both players should exist
+
+    if score1 == score2:
+        # Draw: no Elo change
+        for name in (name1, name2):
+            if name in connections:
+                await connections[name].send_json(
+                    {
+                        "type": "end_game",
+                        "status": "draw",
+                        "elo_diff": 0,
+                        "reason": "timeout",
+                    }
+                )
+        cancel_timer(game_id)
+        cleanup_game(game_id, user1, user2)
+        return
+
+    winner, loser = (user1, user2) if score1 > score2 else (user2, user1)
+    diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
+    diff_l, new_elo_l = await calculate_new_elo(loser, winner, 0)
+    update_user_elo(winner, new_elo_w)
+    update_user_elo(loser, new_elo_l)
+    if winner.username in connections:
+        await connections[winner.username].send_json(
+            {
+                "type": "end_game",
+                "status": "winner",
+                "elo_diff": diff_w,
+                "new_elo": new_elo_w,
+                "reason": "timeout",
+            }
+        )
+    if loser.username in connections:
+        await connections[loser.username].send_json(
+            {
+                "type": "end_game",
+                "status": "looser",
+                "elo_diff": diff_l,
+                "new_elo": new_elo_l,
+                "reason": "timeout",
+            }
+        )
+    cancel_timer(game_id)
+    cleanup_game(game_id, winner, loser)
 
 
 async def calculate_new_elo(player1: User, player2: User, result: int):
@@ -226,6 +312,7 @@ async def handle_disconnect_grace_period(user: User, game_id: str):
 async def finish_game_by_forfeit(game_id: str, winner: User, loser: User, reason: str):
     if game_id not in games:
         return  # already finished / cleaned up
+    cancel_timer(game_id)
     diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
     _, new_elo_l = await calculate_new_elo(loser, winner, 0)
     update_user_elo(winner, new_elo_w)
@@ -274,9 +361,14 @@ async def create_game(player1: User, player2: User):
         word=get_random_word(),
     )
 
+    loop = asyncio.get_running_loop()
+    game.ends_at = loop.time() + 60
+
     games[game.id] = game
     player_games[player1.username] = game.id
     player_games[player2.username] = game.id
+
+    game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
     await connections[player1.username].send_json(
         {
@@ -284,6 +376,7 @@ async def create_game(player1: User, player2: User):
             "game_id": game.id,
             "opponent": player2.username,
             "word": game.word,
+            "duration": 60,
         }
     )
 
@@ -293,6 +386,7 @@ async def create_game(player1: User, player2: User):
             "game_id": game.id,
             "opponent": player1.username,
             "word": game.word,
+            "duration": 60,
         }
     )
 

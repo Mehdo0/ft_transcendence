@@ -56,6 +56,8 @@ class Game(BaseModel):
     game_type: GameType
     players: list[str] = Field(default_factory=list)
     word: str
+    scores: dict[str, float] = Field(default_factory=dict)
+    ends_at: float | None = None
 
 
 class ImagePayload(BaseModel):

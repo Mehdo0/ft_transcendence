@@ -11,6 +11,8 @@
         sessionStorage.removeItem('draw_opp_score');
         sessionStorage.removeItem('draw_word');
         sessionStorage.removeItem('draw_opponent');
+		sessionStorage.removeItem('isHost');
+		sessionStorage.removeItem('players');
     }
 
 	onMount(async () => {
