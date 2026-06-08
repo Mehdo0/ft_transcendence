@@ -278,7 +278,6 @@
     :global(body) {
         margin: 0;
         font-family: system-ui, sans-serif;
-        background: #f4f5f7;
         color: #1f2937;
     }
 

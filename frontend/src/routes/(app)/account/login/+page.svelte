@@ -90,7 +90,7 @@
 		justify-content: center;
 		align-items: center;
 		min-height: 100vh;
-		background-color: lightblue;
+		background-color: #f4f5f7;
 		font-family: Verdana, Geneva, Tahoma, sans-serif;
 	}
 

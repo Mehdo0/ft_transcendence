@@ -95,7 +95,6 @@
 		margin: 0;
 		padding: 0;
 		font-family: 'Source Sans Pro', Verdana, sans-serif;
-		background-color: lightblue;
 		color: #333;
 	}
 
