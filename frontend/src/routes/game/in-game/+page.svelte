@@ -74,14 +74,14 @@
               game.opponent_score = msg.guess[game.word];
               sessionStorage.setItem('draw_opp_score', game.opponent_score.toString());
               break;
-            // case 'end_game':
-            //     elo_diff = msg.elo_diff;
-            //     result = msg.status;
-            //     clearSessionData(); // Wipe the memory for the next game
-            //     setTimeout(() => {
-            //         goto('/'); 
-            //     }, 5000);
-            //     break;
+            case 'end_game':
+                elo_diff = msg.elo_diff;
+                result = msg.status;
+                clearSessionData(); // Wipe the memory for the next game
+                setTimeout(() => {
+                    goto('/');
+                }, 5000);
+                break;
           }
         };
     });
@@ -99,6 +99,8 @@
 
     function surrender() {
         if (confirm("Are you sure you want to forfeit the match?")) {
+            const ws = getWs();
+            ws?.send(JSON.stringify({ type: "surrender" }));
             clearSessionData(); // Wipe memory if they quit on purpose
             goto('/');
         }
