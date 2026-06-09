@@ -116,9 +116,6 @@
 					elo_diff = msg.elo_diff;
 					result = msg.status;
 					clearSessionData();
-					setTimeout(() => {
-						goto('/');
-					}, 5000);
 					break;
 			}
 		};

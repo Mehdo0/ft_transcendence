@@ -52,7 +52,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 case "join_lobby":
                     code = payload.get("code", "").upper().strip()
                     if not await validate_code(code, websocket):
-                        break
+                        continue
                     await join_lobby(user, code, websocket)
                 case "get_lobby":
                     await get_lobby_info(payload, websocket, user)
@@ -149,9 +149,8 @@ async def get_lobby_info(payload, websocket, user):
 async def validate_code(code, websocket) -> bool:
     if len(code) != 6 or not code.isalnum():
         await websocket.send_json({"type": "error", "message": "invalid code"})
-        return True
-    else:
         return False
+    return True
 
 
 async def reconnect_user(user, websocket):

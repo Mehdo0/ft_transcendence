@@ -5,9 +5,19 @@
 
 	let lobbyCode = $state('');
 
+	function send(msg: object) {
+		const ws = getWs();
+		if (!ws) return;
+		if (ws.readyState === WebSocket.OPEN) {
+			ws.send(JSON.stringify(msg));
+		} else if (ws.readyState === WebSocket.CONNECTING) {
+			ws.addEventListener('open', () => ws.send(JSON.stringify(msg)), { once: true });
+		}
+	}
+
 	onMount(() => {
 		let ws = getWs();
-		if (!ws || ws.readyState !== WebSocket.OPEN) {
+		if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
 			ws = new WebSocket('/ws/');
 			setWs(ws);
 		}
@@ -15,12 +25,10 @@
 			console.log('server says:', event.data);
 			const msg = JSON.parse(event.data);
 			if (msg.type === 'lobby_created') {
-				let code = msg.code;
-				goto('/lobby/' + code);
+				goto('/lobby/' + msg.code);
 			}
 			if (msg.type === 'lobby_joined') {
-				let code = msg.code;
-				goto('/lobby/' + code);
+				goto('/lobby/' + msg.code);
 			}
 		};
 		ws.onclose = () => {
@@ -32,15 +40,13 @@
 	});
 
 	function createLobby() {
-		let ws = getWs();
-		ws?.send(JSON.stringify({ type: 'create_lobby' }));
+		send({ type: 'create_lobby' });
 	}
 
 	function joinLobby() {
 		const code = lobbyCode.trim().toUpperCase();
 		if (code.length !== 6 || !code.split('').every((c) => /[A-Z0-9]/.test(c))) return;
-		let ws = getWs();
-		ws?.send(JSON.stringify({ type: 'join_lobby', code }));
+		send({ type: 'join_lobby', code });
 	}
 </script>
 
