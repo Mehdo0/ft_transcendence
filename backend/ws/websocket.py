@@ -349,10 +349,9 @@ async def finish_game_by_forfeit(game_id: str, winner: User, loser: User, reason
         return  # already finished / cleaned up
     cancel_timer(game_id)
     diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
-    _, new_elo_l = await calculate_new_elo(loser, winner, 0)
+    diff_l, new_elo_l = await calculate_new_elo(loser, winner, 0)
     update_user_elo(winner, new_elo_w)
     update_user_elo(loser, new_elo_l)
-    # Notify the winner if they are still connected
     if winner.username in connections:
         await connections[winner.username].send_json(
             {
@@ -360,6 +359,16 @@ async def finish_game_by_forfeit(game_id: str, winner: User, loser: User, reason
                 "status": "winner",
                 "elo_diff": diff_w,
                 "new_elo": new_elo_w,
+                "reason": reason,
+            }
+        )
+    if loser.username in connections:
+        await connections[loser.username].send_json(
+            {
+                "type": "end_game",
+                "status": "looser",
+                "elo_diff": diff_l,
+                "new_elo": new_elo_l,
                 "reason": reason,
             }
         )

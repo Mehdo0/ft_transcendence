@@ -138,8 +138,6 @@
 		if (confirm('Are you sure you want to forfeit the match?')) {
 			const ws = getWs();
 			ws?.send(JSON.stringify({ type: 'surrender' }));
-			clearSessionData();
-			goto('/');
 		}
 	}
 
