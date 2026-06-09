@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	let loggedIn = $state(false);
 	let username = $state('');
-	let errorMessage = $state('');
 
 	function clearSessionData() {
 		sessionStorage.removeItem('draw_stack');
@@ -22,62 +20,30 @@
 				method: 'GET',
 				credentials: 'same-origin'
 			});
-
 			if (response.ok) {
 				const userData = await response.json();
 				username = userData.username;
-				loggedIn = true;
-			} else {
-				errorMessage = 'You are not logged in.';
-				username = 'Guest';
-				loggedIn = false;
 			}
-		} catch (error) {
-			errorMessage = 'Could not connect to the backend server.';
-			username = 'Guest';
+		} catch {
+			// backend unreachable, stay as guest
 		}
 	});
-
-	async function handleLogout() {
-		await fetch('/api/logout', {
-			credentials: 'same-origin',
-			method: 'POST'
-		});
-		window.location.reload();
-	}
 </script>
 
 <div class="dashboard-wrapper">
 	<header class="dashboard-header">
 		<p class="eyebrow">Draw Meter</p>
-		<h1>Welcome <span class="name-tag">{username || '…'}</span></h1>
-
-		{#if errorMessage}
-			<div class="error-banner" role="alert">
-				{errorMessage}
-			</div>
-		{:else if loggedIn}
-			<p class="tagline">Draw fast. Win first. Outsmart the AI.</p>
-		{/if}
+		<h1>Welcome <span class="name-tag">{username || 'Guest'}</span></h1>
+		<p class="tagline">Draw fast. Win first. Outsmart the AI.</p>
 	</header>
 
 	<main class="menu-card">
-		<a
-			href={loggedIn ? '/start_game' : undefined}
-			class="menu-tile menu-tile--play"
-			class:disabled={!loggedIn}
-			aria-disabled={!loggedIn}
-		>
+		<a href="/start_game" class="menu-tile menu-tile--play">
 			<span class="tile-label">Play Now!</span>
 			<span class="tile-arrow" aria-hidden="true">→</span>
 		</a>
 
-		<a
-			href={loggedIn ? '/lobby' : undefined}
-			class="menu-tile menu-tile--private"
-			class:disabled={!loggedIn}
-			aria-disabled={!loggedIn}
-		>
+		<a href="/lobby" class="menu-tile menu-tile--private">
 			<span class="tile-label">Private Game</span>
 			<span class="tile-arrow" aria-hidden="true">→</span>
 		</a>
@@ -86,12 +52,6 @@
 			<span class="tile-label">Leaderboard</span>
 			<span class="tile-arrow" aria-hidden="true">→</span>
 		</a>
-
-		{#if !loggedIn}
-			<p class="locked-note">
-				<a href="/account/login">Log in</a> to start playing.
-			</p>
-		{/if}
 	</main>
 </div>
 
@@ -200,39 +160,18 @@
 		transition: transform var(--transition);
 	}
 
-	.menu-tile:hover:not(.disabled) {
+	.menu-tile:hover {
 		transform: translate(calc(-1 * var(--nudge)), calc(-1 * var(--nudge)));
 		box-shadow: var(--shadow-lg);
 	}
 
-	.menu-tile:hover:not(.disabled) .tile-arrow {
+	.menu-tile:hover .tile-arrow {
 		transform: translateX(var(--space-2));
 	}
 
-	.menu-tile:active:not(.disabled) {
+	.menu-tile:active {
 		transform: translate(var(--press), var(--press));
 		box-shadow: none;
-	}
-
-	.menu-tile.disabled {
-		background: var(--c-bg-alt);
-		color: var(--c-muted);
-		border-color: var(--c-muted);
-		box-shadow: none;
-		cursor: not-allowed;
-		pointer-events: none;
-		transform: none;
-	}
-
-	.locked-note {
-		text-align: center;
-		font-size: var(--fs-sm);
-		color: var(--c-muted);
-		margin: var(--space-1) 0 0;
-	}
-
-	.locked-note a {
-		font-weight: var(--fw-bold);
 	}
 
 	@media (max-width: 720px) {
