@@ -250,7 +250,6 @@
 				<h2 class="result-text">You Lost</h2>
 				<p class="elo-text negative">{elo_diff} Elo</p>
 			{/if}
-			<p class="return-note">Returning to home in 5 seconds…</p>
 			<button class="nb-btn nb-btn--primary" onclick={() => goto('/')}>Back to Home</button>
 		</div>
 	</div>
@@ -516,11 +515,7 @@
 		margin: var(--space-3) 0 var(--space-6);
 	}
 
-	.return-note {
-		font-size: var(--fs-sm);
-		margin: 0 0 var(--space-5);
-		opacity: 0.85;
-	}
+
 
 	.game {
 		--canvas-side: 50vmin;
@@ -707,7 +702,28 @@
 
 		.game {
 			--canvas-side: 78vmin;
-			flex-wrap: wrap;
+			display: grid;
+			grid-template-columns: auto auto;
+			gap: var(--space-3) var(--space-4);
+			padding: var(--space-3);
+			justify-content: center;
+			justify-items: center;
+			align-items: center;
+		}
+
+		canvas {
+			grid-column: 1 / -1;
+			grid-row: 1;
+		}
+
+		.tools {
+			grid-column: 1;
+			grid-row: 2;
+		}
+
+		.bars {
+			grid-column: 2;
+			grid-row: 2;
 		}
 
 		.modal {
