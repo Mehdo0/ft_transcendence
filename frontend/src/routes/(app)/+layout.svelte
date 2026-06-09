@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import favicon from '$lib/draw_meter_logo.svg';
 	import { onMount } from 'svelte';
-	import { setWs } from '$lib/stores/ws';
+	import { getWs, setWs } from '$lib/stores/ws';
 
 	let { children } = $props();
 
@@ -46,9 +46,11 @@
 
 		if (response.ok) {
 			login = true;
-			console.log('connecting...');
-			const ws = new WebSocket('/ws/');
-			setWs(ws);
+			const existing = getWs();
+			if (!existing || existing.readyState >= WebSocket.CLOSING) {
+				const ws = new WebSocket('/ws/');
+				setWs(ws);
+			}
 		}
 	});
 </script>

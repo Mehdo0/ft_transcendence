@@ -80,9 +80,9 @@ async def ai_guess(user, payload, websocket) -> bool:
     guess = await make_ai_guess(strokes, games[game_id].word)
     await websocket.send_json({"type": "ai_guess", "guess": guess})
     opponent = get_opponent(user, game_id)
-    await connections[opponent.username].send_json(
-        {"type": "opponent_guess", "guess": guess}
-    )
+    opp_ws = connections.get(opponent.username)
+    if opp_ws:
+        await opp_ws.send_json({"type": "opponent_guess", "guess": guess})
     score = guess.get(games[game_id].word) or 0
     games[game_id].scores[user.username] = score
     if score >= 99:  # percent to change when AI will be fixed
@@ -319,7 +319,7 @@ async def end_game_by_timeout(game_id: str):
 
 
 async def calculate_new_elo(player1: User, player2: User, result: int):
-    moyenne = (player1.elo + player1.elo) / 2
+    moyenne = (player1.elo + player2.elo) / 2
     K = 40 - round(moyenne / 50)
     E = 1 / (1 + 10 ** ((player2.elo - player1.elo) / 400))
     new_elo = round(player1.elo + (K * (result - E)))
@@ -385,11 +385,16 @@ def cleanup_game(game_id: str, *users: User):
 async def find_player(user: User):
     queue = matchmaking_queue["TWO_PLAYER_AI"]
 
-    if (len(queue)) >= 1:
-        opponent = get_user(queue.pop(0))
+    if user.username in player_games or user.username in queue:
+        return
+
+    if len(queue) >= 1:
+        opponent_name = queue.pop(0)
+        opponent = get_user(opponent_name)
         if opponent is None:
-            print("opponent not found")
-            assert False
+            await connections[user.username].send_json({"type": "waiting"})
+            queue.append(user.username)
+            return
         await create_game(opponent, user)
     else:
         queue.append(user.username)
