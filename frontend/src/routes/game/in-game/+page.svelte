@@ -83,6 +83,7 @@
           switch (msg.type) {
             case 'ai_guess':
               game.my_score = msg.guess[game.word];
+              console.log(game.my_score);
               sessionStorage.setItem('draw_my_score', game.my_score.toString());
               break;
             case 'reconnect_game':
