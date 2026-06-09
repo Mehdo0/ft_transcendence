@@ -3,6 +3,7 @@ from typing import Annotated
 
 from core.database import (
     get_ranking,
+    get_user,
 )
 from core.exceptions import UserAlreadyExistsError
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -36,7 +37,10 @@ async def API_get_word():
 
 # get user stats
 @router.get("/api/users/{username}/stats")
-async def API_get_user_stats(user: Annotated[User, Depends()]):
+async def API_get_user_stats(username: str):
+    user = get_user(username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return {"username": user.username, "Elo": user.elo}
 
 

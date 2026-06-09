@@ -25,7 +25,7 @@
 				game.id = msg.game_id;
 				game.opponent = msg.opponent;
 				game.word = msg.word;
-				sessionStorage.setItem('draw_ends_at', String(Date.now() + (msg.duration ?? 60) * 1000));
+				sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
 				goto('/game/in-game');
 			}
 		};

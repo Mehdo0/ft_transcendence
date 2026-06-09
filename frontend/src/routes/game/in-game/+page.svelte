@@ -21,6 +21,12 @@
 	let result = $state<'winner' | 'looser' | 'draw' | null>(null);
 	let elo_diff = $state(0);
 	let timeLeft = $state(60);
+
+	let showCountdown = $state(false);
+	let countdownNum = $state(3);
+	let myUsername = $state('');
+	let myElo = $state<number | null>(null);
+	let opponentElo = $state<number | null>(null);
 	let endsAt = 0;
 	let timerId: ReturnType<typeof setInterval> | null = null;
 	let pointsSinceLastGuess = $state(0);
@@ -72,6 +78,8 @@
 		const savedOppScore = sessionStorage.getItem('draw_opp_score');
 		if (savedOppScore) game.opponent_score = parseFloat(savedOppScore);
 
+		const isReconnect = !!sessionStorage.getItem('draw_word');
+
 		const savedWord = sessionStorage.getItem('draw_word');
 		if (savedWord) game.word = savedWord;
 
@@ -79,8 +87,24 @@
 		if (savedOpponent) game.opponent = savedOpponent;
 
 		const savedEndsAt = sessionStorage.getItem('draw_ends_at');
-		endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 60000;
+		endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 63000;
 		startTimer();
+
+		if (!isReconnect) {
+			showCountdown = true;
+			fetch('/api/users/me/', { credentials: 'same-origin' })
+				.then((r) => (r.ok ? r.json() : null))
+				.then((d) => { if (d) { myUsername = d.username; myElo = d.elo; } })
+				.catch(() => {});
+			fetch(`/api/users/${game.opponent}/stats`, { credentials: 'same-origin' })
+				.then((r) => (r.ok ? r.json() : null))
+				.then((d) => { if (d) opponentElo = d.Elo; })
+				.catch(() => {});
+			setTimeout(() => { countdownNum = 2; }, 1000);
+			setTimeout(() => { countdownNum = 1; }, 2000);
+			setTimeout(() => { countdownNum = 0; }, 3000);
+			setTimeout(() => { showCountdown = false; }, 3600);
+		}
 
 		let ws = getWs();
 		if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -208,6 +232,37 @@
 </script>
 
 <svelte:window onresize={resize} />
+
+{#if showCountdown}
+	<div class="cd-page" data-count={countdownNum} aria-live="assertive" aria-atomic="true">
+		<div class="cd-top">
+			<div class="cd-half cd-you">
+				<span class="cd-tag">Player 01</span>
+				<span class="cd-pname">{myUsername || 'You'}</span>
+				<span class="cd-pelo">{myElo !== null ? myElo : '—'}<em>ELO</em></span>
+			</div>
+			<div class="cd-separator"></div>
+			<div class="cd-half cd-opp">
+				<span class="cd-tag">Player 02</span>
+				<span class="cd-pname">{game.opponent}</span>
+				<span class="cd-pelo">{opponentElo !== null ? opponentElo : '—'}<em>ELO</em></span>
+			</div>
+		</div>
+
+		<div class="cd-mid">
+			{#key countdownNum}
+				<div class="cd-num" class:cd-go={countdownNum === 0}>
+					{countdownNum === 0 ? 'GO!' : countdownNum}
+				</div>
+			{/key}
+		</div>
+
+		<div class="cd-bot">
+			<span class="cd-draw-tag">Draw</span>
+			<span class="cd-draw-word">{game.word}</span>
+		</div>
+	</div>
+{/if}
 
 <header class="game-header">
 	<div class="header-left">
@@ -727,6 +782,207 @@
 		.modal {
 			padding: var(--space-6) var(--space-5);
 			margin: var(--space-4);
+		}
+	}
+
+	/* ── Countdown full-page ──────────────────────────────── */
+
+	.cd-page {
+		position: fixed;
+		inset: 0;
+		z-index: 900;
+		display: grid;
+		grid-template-rows: 28vh 1fr 18vh;
+		background: var(--c-bg);
+		overflow: hidden;
+	}
+
+	/* TOP — player duel */
+	.cd-top {
+		display: flex;
+		border-bottom: var(--border-lg);
+	}
+
+	.cd-half {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		padding: var(--space-5) var(--space-7);
+		gap: var(--space-2);
+		animation: cdHalfIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+	}
+
+	.cd-you { animation-delay: 0s; }
+
+	.cd-opp {
+		align-items: flex-end;
+		text-align: right;
+		animation-delay: 0.06s;
+	}
+
+	@keyframes cdHalfIn {
+		from { transform: translateY(-24px); opacity: 0; }
+		to   { transform: none; opacity: 1; }
+	}
+
+	.cd-separator {
+		width: var(--border-w-lg);
+		background: var(--c-ink);
+		flex-shrink: 0;
+	}
+
+	.cd-tag {
+		font-family: var(--font-mono);
+		font-size: var(--fs-xs);
+		font-weight: var(--fw-bold);
+		text-transform: uppercase;
+		letter-spacing: 0.22em;
+		color: var(--c-muted);
+	}
+
+	.cd-pname {
+		font-family: var(--font-display);
+		font-weight: var(--fw-display);
+		font-size: clamp(1.6rem, 4.5vw, 3.5rem);
+		text-transform: uppercase;
+		line-height: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 42vw;
+	}
+
+	.cd-you .cd-pname { color: var(--c-primary); }
+	.cd-opp .cd-pname { color: var(--c-danger); }
+
+	.cd-pelo {
+		font-family: var(--font-mono);
+		font-weight: var(--fw-bold);
+		font-size: var(--fs-xl);
+		color: var(--c-ink);
+	}
+
+	.cd-pelo em {
+		font-style: normal;
+		font-size: var(--fs-xs);
+		font-weight: var(--fw-regular);
+		color: var(--c-muted);
+		margin-left: var(--space-1);
+		letter-spacing: 0.12em;
+	}
+
+	/* MIDDLE — the number, full width, color shifts per count */
+	.cd-mid {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-bottom: var(--border-lg);
+	}
+
+	.cd-page[data-count="3"] .cd-mid { background: var(--c-accent); }
+	.cd-page[data-count="2"] .cd-mid { background: var(--c-bg-alt); }
+	.cd-page[data-count="1"] .cd-mid { background: var(--c-danger); }
+	.cd-page[data-count="0"] .cd-mid { background: var(--c-success); }
+
+	.cd-num {
+		font-family: var(--font-display);
+		font-weight: var(--fw-display);
+		font-size: min(48vh, 40vw);
+		line-height: 1;
+		color: var(--c-ink);
+		user-select: none;
+		pointer-events: none;
+		animation: cdNumStamp 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+	}
+
+	.cd-page[data-count="1"] .cd-num { color: #ffffff; }
+
+	.cd-num.cd-go {
+		font-size: min(22vh, 18vw);
+		animation: cdGoBlast 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
+	}
+
+	@keyframes cdNumStamp {
+		0%   { transform: translateY(-22%) scaleY(1.18); opacity: 0; }
+		16%  { transform: translateY(2%) scaleY(0.88); opacity: 1; }
+		26%  { transform: translateY(0) scale(1); opacity: 1; }
+		80%  { transform: translateY(0) scale(1); opacity: 1; }
+		100% { transform: translateY(6%) scaleY(0.94); opacity: 0; }
+	}
+
+	@keyframes cdGoBlast {
+		0%   { transform: scale(0.25); opacity: 0; letter-spacing: -0.12em; }
+		38%  { transform: scale(1.06); opacity: 1; letter-spacing: 0.04em; }
+		62%  { transform: scale(1); opacity: 1; }
+		100% { transform: scale(1.18); opacity: 0; }
+	}
+
+	/* BOTTOM — the word */
+	.cd-bot {
+		background: var(--c-ink);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-5);
+		padding: 0 var(--space-6);
+		animation: cdBotIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s both;
+	}
+
+	@keyframes cdBotIn {
+		from { transform: translateY(24px); opacity: 0; }
+		to   { transform: none; opacity: 1; }
+	}
+
+	.cd-draw-tag {
+		font-family: var(--font-mono);
+		font-size: var(--fs-sm);
+		font-weight: var(--fw-bold);
+		letter-spacing: 0.28em;
+		text-transform: uppercase;
+		color: rgba(255, 255, 255, 0.4);
+	}
+
+	.cd-draw-word {
+		font-family: var(--font-display);
+		font-weight: var(--fw-display);
+		font-size: clamp(2rem, 5vw, 4rem);
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		color: var(--c-accent);
+	}
+
+	@media (max-width: 640px) {
+		.cd-page {
+			grid-template-rows: 32vh 1fr 16vh;
+		}
+
+		.cd-half {
+			padding: var(--space-4);
+		}
+
+		.cd-pname {
+			font-size: clamp(1.1rem, 5.5vw, 2rem);
+		}
+
+		.cd-num {
+			font-size: min(42vh, 54vw);
+		}
+
+		.cd-num.cd-go {
+			font-size: min(20vh, 30vw);
+		}
+
+		.cd-draw-word {
+			font-size: clamp(1.4rem, 7vw, 2.2rem);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cd-half,
+		.cd-bot,
+		.cd-num {
+			animation: none;
 		}
 	}
 </style>
