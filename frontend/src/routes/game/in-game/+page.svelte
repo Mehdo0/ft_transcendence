@@ -72,9 +72,6 @@
 		const savedStack = sessionStorage.getItem('draw_stack');
 		if (savedStack) stack = JSON.parse(savedStack);
 
-		const savedMyScore = sessionStorage.getItem('draw_my_score');
-		if (savedMyScore) game.my_score = parseFloat(savedMyScore);
-
 		const savedOppScore = sessionStorage.getItem('draw_opp_score');
 		if (savedOppScore) game.opponent_score = parseFloat(savedOppScore);
 
