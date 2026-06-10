@@ -41,28 +41,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Are they already in an active game? (Send them the state so their UI updates)
     if user.username in player_games:
-        game_id = player_games[user.username]
-        if game_id in games:
-            current_game = games[game_id]
-            opponent = get_opponent(user, game_id)
-            loop = asyncio.get_running_loop()
-            time_left = (
-                max(0, round(current_game.ends_at - loop.time()))
-                if current_game.ends_at
-                else None
-            )
-            await websocket.send_json(
-                {
-                    "type": "reconnect_game",
-                    "game_id": current_game.id,
-                    "opponent": opponent.username,
-                    "word": current_game.word,
-                    "time_left": time_left,
-                }
-            )
-        else:
-            print("player is in player_games but game does not exist")
-            assert False
+        await reconnect_user(user, websocket)
     try:
         while True:
             payload = await websocket.receive_json()
@@ -72,75 +51,131 @@ async def websocket_endpoint(websocket: WebSocket):
                     await create_lobby(user, websocket)
                 case "join_lobby":
                     code = payload.get("code", "").upper().strip()
-                    if len(code) != 6 or not code.isalnum():
-                        await websocket.send_json(
-                            {"type": "error", "message": "invalid code"}
-                        )
-                        break
+                    if not await validate_code(code, websocket):
+                        continue
                     await join_lobby(user, code, websocket)
                 case "get_lobby":
-                    code = payload.get("code")
-                    if code in lobbies:
-                        lobby = lobbies[code]
-                        await websocket.send_json(
-                            {
-                                "type": "lobby_info",
-                                "players": lobby["players"],
-                                "host": lobby["host"],
-                                "me": user.username,
-                            }
-                        )
+                    await get_lobby_info(payload, websocket, user)
                 case "start_game":
-                    code = payload.get("code")
-                    if code in lobbies:
-                        lobby = lobbies[code]
-                        if (
-                            lobby["host"] == user.username
-                            and len(lobby["players"]) == 2
-                        ):
-                            player1 = get_user(lobby["players"][0])
-                            player2 = get_user(lobby["players"][1])
-                            if player1 is None or player2 is None:
-                                print("lobby player not found")
-                                assert False
-                            await create_game(player1, player2)
-                            del lobbies[code]
+                    await start_game(payload, user)
                 case "find_player":
                     await find_player(user)
-                case "image":
-                    game_id = player_games.get(user.username)
-                    if game_id is None or game_id not in games:
+                case "guess":
+                    if not await ai_guess(user, payload, websocket):
                         continue
-                    image_payload = ImagePayload(base64_string=payload.get("image"))
-                    guess = await make_ai_guess(image_payload, games[game_id].word)
-                    await websocket.send_json({"type": "ai_guess", "guess": guess})
-                    opponent = get_opponent(user, game_id)
-                    await connections[opponent.username].send_json(
-                        {"type": "opponent_guess", "guess": guess}
-                    )
-                    score = guess.get(games[game_id].word) or 0
-                    games[game_id].scores[user.username] = score
-                    if score >= 50:  # percent to change when AI will be fixed
-                        await end_game(websocket, user, opponent)
                 case "surrender":
-                    game_id = player_games.get(user.username)
-                    if game_id is None or game_id not in games:
+                    if not await surrender_game(user):
                         continue
-                    opponent = get_opponent(user, game_id)
-                    await finish_game_by_forfeit(
-                        game_id, opponent, user, "opponent_surrendered"
-                    )
 
     except WebSocketDisconnect:
         # Remove their active socket
-        connections.pop(user.username, None)
-        if user.username in player_games:
-            game_id = player_games[user.username]
-            # Start the 5-second countdown timer
-            asyncio.create_task(handle_disconnect_grace_period(user, game_id))
-        else:
-            # If they were just in the lobby or queue, delete them instantly
-            disconnect(user)
+        disconnect_user(user)
+
+
+async def ai_guess(user, payload, websocket) -> bool:
+    game_id = player_games.get(user.username)
+    if game_id is None or game_id not in games:
+        return False
+    strokes = payload.get("strokes", [])
+    guess = await make_ai_guess(strokes, games[game_id].word)
+    await websocket.send_json({"type": "ai_guess", "guess": guess})
+    opponent = get_opponent(user, game_id)
+    opp_ws = connections.get(opponent.username)
+    if opp_ws:
+        await opp_ws.send_json({"type": "opponent_guess", "guess": guess})
+    score = guess.get(games[game_id].word) or 0
+    games[game_id].scores[user.username] = score
+    if score >= 99:  # percent to change when AI will be fixed
+        await end_game(websocket, user, opponent)
+    return True
+
+
+def disconnect_user(user):
+    # Remove their active socket
+    connections.pop(user.username, None)
+    if user.username in player_games:
+        game_id = player_games[user.username]
+        # Start the 5-second countdown timer
+        asyncio.create_task(handle_disconnect_grace_period(user, game_id))
+    else:
+        # If they were just in the lobby or queue, delete them instantly
+        disconnect(user)
+
+
+async def surrender_game(user) -> bool:
+    game_id = player_games.get(user.username)
+    if game_id is None or game_id not in games:
+        return False
+    opponent = get_opponent(user, game_id)
+    await finish_game_by_forfeit(game_id, opponent, user, "opponent_surrendered")
+    return True
+
+
+async def start_game(payload, user):
+    code = payload.get("code")
+    if code in lobbies:
+        lobby = lobbies[code]
+        if lobby["host"] == user.username and len(lobby["players"]) == 2:
+            player1 = get_user(lobby["players"][0])
+            player2 = get_user(lobby["players"][1])
+            if player1 is None or player2 is None:
+                print("lobby player not found")
+                assert False
+            await create_game(player1, player2)
+            del lobbies[code]
+
+
+async def get_lobby_info(payload, websocket, user):
+    code = payload.get("code")
+    if code in lobbies:
+        lobby = lobbies[code]
+        await websocket.send_json(
+            {
+                "type": "lobby_info",
+                "players": lobby["players"],
+                "host": lobby["host"],
+                "me": user.username,
+            }
+        )
+    else:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "lobby doesn't exist",
+            }
+        )
+
+
+async def validate_code(code, websocket) -> bool:
+    if len(code) != 6 or not code.isalnum():
+        await websocket.send_json({"type": "error", "message": "invalid code"})
+        return False
+    return True
+
+
+async def reconnect_user(user, websocket):
+    game_id = player_games[user.username]
+    if game_id in games:
+        current_game = games[game_id]
+        opponent = get_opponent(user, game_id)
+        loop = asyncio.get_running_loop()
+        time_left = (
+            max(0, round(current_game.ends_at - loop.time()))
+            if current_game.ends_at
+            else None
+        )
+        await websocket.send_json(
+            {
+                "type": "reconnect_game",
+                "game_id": current_game.id,
+                "opponent": opponent.username,
+                "word": current_game.word,
+                "time_left": time_left,
+            }
+        )
+    else:
+        print("player is in player_games but game does not exist")
+        assert False
 
 
 async def create_lobby(
@@ -284,7 +319,7 @@ async def end_game_by_timeout(game_id: str):
 
 
 async def calculate_new_elo(player1: User, player2: User, result: int):
-    moyenne = (player1.elo + player1.elo) / 2
+    moyenne = (player1.elo + player2.elo) / 2
     K = 40 - round(moyenne / 50)
     E = 1 / (1 + 10 ** ((player2.elo - player1.elo) / 400))
     new_elo = round(player1.elo + (K * (result - E)))
@@ -314,10 +349,9 @@ async def finish_game_by_forfeit(game_id: str, winner: User, loser: User, reason
         return  # already finished / cleaned up
     cancel_timer(game_id)
     diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
-    _, new_elo_l = await calculate_new_elo(loser, winner, 0)
+    diff_l, new_elo_l = await calculate_new_elo(loser, winner, 0)
     update_user_elo(winner, new_elo_w)
     update_user_elo(loser, new_elo_l)
-    # Notify the winner if they are still connected
     if winner.username in connections:
         await connections[winner.username].send_json(
             {
@@ -325,6 +359,16 @@ async def finish_game_by_forfeit(game_id: str, winner: User, loser: User, reason
                 "status": "winner",
                 "elo_diff": diff_w,
                 "new_elo": new_elo_w,
+                "reason": reason,
+            }
+        )
+    if loser.username in connections:
+        await connections[loser.username].send_json(
+            {
+                "type": "end_game",
+                "status": "looser",
+                "elo_diff": diff_l,
+                "new_elo": new_elo_l,
                 "reason": reason,
             }
         )
@@ -341,11 +385,16 @@ def cleanup_game(game_id: str, *users: User):
 async def find_player(user: User):
     queue = matchmaking_queue["TWO_PLAYER_AI"]
 
-    if (len(queue)) >= 1:
-        opponent = get_user(queue.pop(0))
+    if user.username in player_games or user.username in queue:
+        return
+
+    if len(queue) >= 1:
+        opponent_name = queue.pop(0)
+        opponent = get_user(opponent_name)
         if opponent is None:
-            print("opponent not found")
-            assert False
+            await connections[user.username].send_json({"type": "waiting"})
+            queue.append(user.username)
+            return
         await create_game(opponent, user)
     else:
         queue.append(user.username)

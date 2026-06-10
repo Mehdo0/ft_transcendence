@@ -1,55 +1,38 @@
 import numpy as np
-import torch
+
+from config import DRAWING_CONFIG
 
 
-INPUT_SIZE = 4
-MAX_POINTS = 128
-CANVAS_SIZE = 256.0
-SIMPLIFY_EPSILON = 2.0
-MIN_POINT_DISTANCE = 1.0
-
-
-def strokes_to_tensor(strokes: list):
-    movements = strokes_to_movements(strokes)
-
-    if len(movements) == 0:
-        src = torch.zeros((1, 1, INPUT_SIZE), dtype=torch.float32)
-        mask = torch.zeros((1, 1), dtype=torch.bool)
-        return src, mask, False
-
-    movements = movements[:MAX_POINTS]
-    src = torch.from_numpy(movements).unsqueeze(0)
-    mask = torch.zeros((1, len(movements)), dtype=torch.bool)
-
-    return src, mask, True
-
-
-def strokes_to_movements(strokes: list) -> np.ndarray:
-    parsed_strokes = parse_frontend_strokes(strokes)
-    normalized_strokes = normalize_strokes(parsed_strokes, CANVAS_SIZE)
-    cleaned_strokes = clean_strokes(normalized_strokes, SIMPLIFY_EPSILON, MIN_POINT_DISTANCE)
+def process_drawing(
+    raw_drawing: list,
+    canvas_size: float = DRAWING_CONFIG.canvas_size,
+    simplify_epsilon: float = DRAWING_CONFIG.simplify_epsilon,
+    min_point_distance: float = DRAWING_CONFIG.min_point_distance,
+) -> np.ndarray:
+    strokes = parse_strokes(raw_drawing)
+    normalized_strokes = normalize_strokes(strokes, canvas_size)
+    cleaned_strokes = clean_strokes(normalized_strokes, simplify_epsilon, min_point_distance)
     return encode_strokes(cleaned_strokes)
 
 
-def parse_frontend_strokes(strokes: list) -> list[np.ndarray]:
-    parsed_strokes = []
+def parse_strokes(raw_drawing: list) -> list[np.ndarray]:
+    strokes = []
 
-    for stroke in strokes:
-        points = []
+    for raw_stroke in raw_drawing:
+        if len(raw_stroke) < 2:
+            continue
 
-        for point in stroke.get("points", []):
-            x = point.get("x")
-            y = point.get("y")
+        x_coords = raw_stroke[0]
+        y_coords = raw_stroke[1]
+        point_count = min(len(x_coords), len(y_coords))
 
-            if x is None or y is None:
-                continue
+        if point_count == 0:
+            continue
 
-            points.append((float(x), float(y)))
+        points = np.column_stack((x_coords[:point_count], y_coords[:point_count])).astype(np.float32)
+        strokes.append(points)
 
-        if points:
-            parsed_strokes.append(np.array(points, dtype=np.float32))
-
-    return parsed_strokes
+    return strokes
 
 
 def normalize_strokes(strokes: list[np.ndarray], canvas_size: float) -> list[np.ndarray]:
@@ -163,4 +146,4 @@ def encode_strokes(strokes: list[np.ndarray]) -> np.ndarray:
             encoded_points.append([dx, dy, float(is_end), float(is_start)])
             previous_point = point
 
-    return np.array(encoded_points, dtype=np.float32).reshape(-1, INPUT_SIZE)
+    return np.array(encoded_points, dtype=np.float32).reshape(-1, DRAWING_CONFIG.input_size)
