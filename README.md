@@ -3,7 +3,7 @@
 ## Stack
 
 - Docker: two containers (nginx reverse proxy, backend)
-- Reverse proxy: nginx (HTTPS termination, serves built frontend, proxies `/api/`)
+- reverse proxy: nginx (HTTPS termination, serves built frontend, proxies `/api/`)
 - Frontend: SvelteKit (TypeScript, built statically via `adapter-static`)
 - Backend: FastAPI
 - DB: SQLite
