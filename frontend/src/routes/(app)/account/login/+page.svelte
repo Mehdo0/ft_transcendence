@@ -1,21 +1,17 @@
 <script lang="ts">
 	import { login } from '$lib/api';
 
-	// Using Svelte 5 reactivity
 	let username = $state('');
 	let password = $state('');
 	let errorMessage = $state('');
 	let isLoading = $state(false);
 
 	async function hashPassword(password: string) {
-		// 1. Convert the string password into a byte array
 		const encoder = new TextEncoder();
 		const data = encoder.encode(password);
 
-		// 2. Ask the browser's built-in Crypto API to hash the bytes using SHA-256
 		const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
 
-		// 3. Convert the resulting ArrayBuffer back into a readable Hexadecimal string
 		const hashArray = Array.from(new Uint8Array(hashBuffer));
 		const hashHex = hashArray.map((byte) => byte.toString(16).padStart(2, '0')).join('');
 
@@ -23,7 +19,6 @@
 	}
 
 	async function handleLogin(event: Event) {
-		// Prevent the default HTML form submission from refreshing the page
 		event.preventDefault();
 
 		errorMessage = '';
@@ -48,145 +43,131 @@
 	}
 </script>
 
-<main class="login-container">
-	<div class="login-card">
-		<h2>Welcome Back</h2>
-		<p>Log in to play</p>
+<svelte:head>
+	<title>Log In — Draw Meter</title>
+</svelte:head>
+
+<div class="auth-container">
+	<main class="nb-card auth-card">
+		<h1 class="title">Welcome Back</h1>
+		<p class="subtitle">Log in to play</p>
 
 		{#if errorMessage}
-			<div class="error-box">
+			<div class="error-box" role="alert">
 				{errorMessage}
 			</div>
 		{/if}
 
-		<!-- Using the native form onsubmit handles "Enter" key presses automatically -->
+
 		<form onsubmit={handleLogin}>
-			<div class="input-group">
+			<div class="field">
 				<label for="username">Username</label>
-				<!-- bind:value connects the input box directly to our Svelte variable -->
-				<input type="text" id="username" bind:value={username} required disabled={isLoading} />
+				<input
+					class="nb-input"
+					type="text"
+					id="username"
+					autocomplete="username"
+					bind:value={username}
+					required
+					disabled={isLoading}
+				/>
 			</div>
 
-			<div class="input-group">
+			<div class="field">
 				<label for="password">Password</label>
-				<input type="password" id="password" bind:value={password} required disabled={isLoading} />
+				<input
+					class="nb-input"
+					type="password"
+					id="password"
+					autocomplete="current-password"
+					bind:value={password}
+					required
+					disabled={isLoading}
+				/>
 			</div>
 
-			<button type="submit" disabled={isLoading}>
+			<button type="submit" class="nb-btn nb-btn--primary submit-btn" disabled={isLoading}>
 				{isLoading ? 'Logging in...' : 'Log In'}
 			</button>
 		</form>
 
-		<div class="register-link">
+		<p class="alt">
 			Don't have an account? <a href="/account/register">Register here</a>
-		</div>
-	</div>
-</main>
+		</p>
+	</main>
+</div>
 
 <style>
-	/* Centers the card on the screen */
-	.login-container {
+	.auth-container {
+		flex: 1;
 		display: flex;
 		justify-content: center;
 		align-items: center;
-		min-height: 100vh;
-		background-color: lightblue;
-		font-family: Verdana, Geneva, Tahoma, sans-serif;
+		padding: var(--space-6) 0;
 	}
 
-	.login-card {
-		background-color: white;
-		padding: 2rem;
-		border-radius: 12px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	.auth-card {
 		width: 100%;
-		max-width: 400px;
-		text-align: center;
+		max-width: 420px;
+		box-shadow: var(--shadow-lg);
 	}
 
-	h2 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-		color: #333;
+	.title {
+		margin: 0 0 var(--space-1);
+		font-size: var(--fs-2xl);
+		text-transform: uppercase;
 	}
 
-	p {
-		color: #666;
-		margin-bottom: 1.5rem;
+	.subtitle {
+		margin: 0 0 var(--space-6);
+		color: var(--c-muted);
 	}
 
 	.error-box {
-		background-color: #fee;
-		color: red;
-		padding: 0.75rem;
-		border-radius: 6px;
-		margin-bottom: 1.5rem;
-		font-size: 0.9rem;
+		background: var(--c-danger);
+		color: var(--c-on-danger);
+		font-weight: var(--fw-bold);
+		font-size: var(--fs-sm);
+		padding: var(--space-3) var(--space-4);
+		border: var(--border);
+		box-shadow: var(--shadow-sm);
+		margin-bottom: var(--space-5);
 	}
 
-	.input-group {
+	form {
 		display: flex;
 		flex-direction: column;
+		gap: var(--space-5);
+	}
+
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
 		text-align: left;
-		margin-bottom: 1.2rem;
 	}
 
 	label {
-		margin-bottom: 0.5rem;
-		font-weight: bold;
-		color: #444;
-		font-size: 0.9rem;
+		font-family: var(--font-display);
+		font-weight: var(--fw-bold);
+		font-size: var(--fs-sm);
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
 	}
 
-	input {
-		padding: 0.75rem;
-		border: 1px solid #ccc;
-		border-radius: 6px;
-		font-size: 1rem;
-	}
-
-	input:focus {
-		outline: none;
-		border-color: blueviolet;
-		box-shadow: 0 0 0 2px rgba(138, 43, 226, 0.2);
-	}
-
-	button {
+	.submit-btn {
 		width: 100%;
-		padding: 0.75rem;
-		background-color: blueviolet;
-		color: white;
-		border: none;
-		border-radius: 6px;
-		font-size: 1.1rem;
-		font-weight: bold;
-		cursor: pointer;
-		margin-top: 1rem;
-		transition: background-color 0.2s;
+		margin-top: var(--space-2);
 	}
 
-	button:hover {
-		background-color: #7a1cd1;
+	.alt {
+		margin: var(--space-6) 0 0;
+		font-size: var(--fs-sm);
+		color: var(--c-muted);
+		text-align: center;
 	}
 
-	button:disabled {
-		background-color: #a87bd4;
-		cursor: not-allowed;
-	}
-
-	.register-link {
-		margin-top: 1.5rem;
-		font-size: 0.9rem;
-		color: #666;
-	}
-
-	.register-link a {
-		color: blueviolet;
-		text-decoration: none;
-		font-weight: bold;
-	}
-
-	.register-link a:hover {
-		text-decoration: underline;
+	.alt a {
+		font-weight: var(--fw-bold);
 	}
 </style>
