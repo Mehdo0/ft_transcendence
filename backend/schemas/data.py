@@ -55,13 +55,10 @@ class Game(BaseModel):
     game_state: GameState = GameState.CONNECTING
     game_type: GameType
     players: list[str] = Field(default_factory=list)
+    players_strokes: dict[str, list]  # username -> strokes (list[] unknown)
     word: str
     scores: dict[str, float] = Field(default_factory=dict)
     ends_at: float | None = None
-
-
-class ImagePayload(BaseModel):
-    base64_string: str
 
 
 class UserRegister(BaseModel):

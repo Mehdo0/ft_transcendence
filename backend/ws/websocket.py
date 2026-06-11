@@ -5,7 +5,7 @@ import string
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from schemas.data import Game, GameState, GameType, ImagePayload, User
+from schemas.data import Game, GameState, GameType, User
 from services.ai_service import load_word_list
 from services.services import get_user_from_ws_token, make_ai_guess
 from core.database import update_user_elo, get_user
@@ -61,7 +61,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 case "find_player":
                     await find_player(user)
                 case "guess":
-                    if not await ai_guess(user, payload, websocket):
+                    if not await make_guess(user, payload, websocket):
                         continue
                 case "surrender":
                     if not await surrender_game(user):
@@ -72,12 +72,16 @@ async def websocket_endpoint(websocket: WebSocket):
         disconnect_user(user)
 
 
-async def ai_guess(user, payload, websocket) -> bool:
+async def make_guess(user, payload, websocket) -> bool:
     game_id = player_games.get(user.username)
     if game_id is None or game_id not in games:
         return False
-    strokes = payload.get("strokes", [])
-    guess = await make_ai_guess(strokes, games[game_id].word)
+    game = games.get(game_id)
+    assert game is not None
+    game.players_strokes[user.username] = payload.get("strokes", [])
+    guess = await make_ai_guess(
+        game.players_strokes[user.username], games[game_id].word
+    )
     await websocket.send_json({"type": "ai_guess", "guess": guess})
     opponent = get_opponent(user, game_id)
     opp_ws = connections.get(opponent.username)
@@ -407,6 +411,7 @@ async def create_game(player1: User, player2: User):
         game_type=GameType.TWO_PLAYER_AI,
         game_state=GameState.STARTED,
         players=[player1.username, player2.username],
+        players_strokes={},
         word=get_random_word(),
     )
 

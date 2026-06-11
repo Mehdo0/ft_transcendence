@@ -8,7 +8,7 @@ from core.exceptions import UserAlreadyExistsError
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
-from schemas.data import ImagePayload, Token, User, UserRegister
+from schemas.data import Token, User, UserRegister
 from services.ai_service import internal_make_ai_guess, load_word_list
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
