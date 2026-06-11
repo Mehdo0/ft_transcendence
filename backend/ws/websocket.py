@@ -5,7 +5,7 @@ import string
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from schemas.data import Game, GameState, GameType, ImagePayload, User
+from schemas.data import Game, GameState, ImagePayload, User
 from services.ai_service import load_word_list
 from services.services import get_user_from_ws_token, make_ai_guess
 from core.database import update_user_elo, get_user
@@ -79,14 +79,17 @@ async def ai_guess(user, payload, websocket) -> bool:
     strokes = payload.get("strokes", [])
     guess = await make_ai_guess(strokes, games[game_id].word)
     await websocket.send_json({"type": "ai_guess", "guess": guess})
+    
     opponent = get_opponent(user, game_id)
     opp_ws = connections.get(opponent.username)
     if opp_ws:
         await opp_ws.send_json({"type": "opponent_guess", "guess": guess})
+        
     score = guess.get(games[game_id].word) or 0
     games[game_id].scores[user.username] = score
-    if score >= 99:  # percent to change when AI will be fixed
-        await end_game(websocket, user, opponent)
+    
+    if score >= 99:  
+        await handle_round_end(game_id, user, opponent)
     return True
 
 
@@ -171,6 +174,7 @@ async def reconnect_user(user, websocket):
                 "opponent": opponent.username,
                 "word": current_game.word,
                 "time_left": time_left,
+                "round_wins": current_game.round_wins
             }
         )
     else:
@@ -189,6 +193,38 @@ async def create_lobby(
         await websocket.send_json({"type": "lobby_created", "code": code})
         break
 
+async def handle_round_end(game_id: str, winner: User, loser: User):
+    game = games[game_id]
+    game.round_wins[winner.username] += 1
+
+    if game.round_wins[winner.username] == 2:
+        # Match is officially over (BO3 won)
+        await end_game(winner, loser)
+    else:
+        # Start the next round
+        await start_next_round(game_id)
+
+async def start_next_round(game_id: str):
+    game = games[game_id]
+    game.scores = {p: 0 for p in game.players}  # Reset canvas scores
+    game.word = get_random_word()               # New word
+
+    loop = asyncio.get_running_loop()
+    game.ends_at = loop.time() + 60
+
+    cancel_timer(game_id)
+    game_timers[game_id] = asyncio.create_task(game_timer(game_id))
+
+    # Broadcast the next round to both players
+    for username in game.players:
+        if username in connections:
+            await connections[username].send_json({
+                "type": "next_round",
+                "word": game.word,
+                "duration": 60,
+                "round_wins": game.round_wins
+            })
+    
 
 async def join_lobby(user: User, code: str, websocket: WebSocket):
     if code not in lobbies:
@@ -271,51 +307,18 @@ async def end_game_by_timeout(game_id: str):
 
     user1, user2 = get_user(name1), get_user(name2)
     if user1 is None or user2 is None:
-        assert False  # both players should exist
+        assert False  
 
     if score1 == score2:
-        # Draw: no Elo change
+        # Draw: Nobody gets a point, just start next round
         for name in (name1, name2):
             if name in connections:
-                await connections[name].send_json(
-                    {
-                        "type": "end_game",
-                        "status": "draw",
-                        "elo_diff": 0,
-                        "reason": "timeout",
-                    }
-                )
-        cancel_timer(game_id)
-        cleanup_game(game_id, user1, user2)
+                await connections[name].send_json({"type": "round_tie"})
+        await start_next_round(game_id)
         return
 
     winner, loser = (user1, user2) if score1 > score2 else (user2, user1)
-    diff_w, new_elo_w = await calculate_new_elo(winner, loser, 1)
-    diff_l, new_elo_l = await calculate_new_elo(loser, winner, 0)
-    update_user_elo(winner, new_elo_w)
-    update_user_elo(loser, new_elo_l)
-    if winner.username in connections:
-        await connections[winner.username].send_json(
-            {
-                "type": "end_game",
-                "status": "winner",
-                "elo_diff": diff_w,
-                "new_elo": new_elo_w,
-                "reason": "timeout",
-            }
-        )
-    if loser.username in connections:
-        await connections[loser.username].send_json(
-            {
-                "type": "end_game",
-                "status": "looser",
-                "elo_diff": diff_l,
-                "new_elo": new_elo_l,
-                "reason": "timeout",
-            }
-        )
-    cancel_timer(game_id)
-    cleanup_game(game_id, winner, loser)
+    await handle_round_end(game_id, winner, loser) 
 
 
 async def calculate_new_elo(player1: User, player2: User, result: int):
@@ -404,11 +407,11 @@ async def find_player(user: User):
 async def create_game(player1: User, player2: User):
     game = Game(
         id=str(uuid.uuid4()),
-        game_type=GameType.TWO_PLAYER_AI,
         game_state=GameState.STARTED,
         players=[player1.username, player2.username],
         word=get_random_word(),
     )
+    game.round_wins = {player1.username: 0, player2.username: 0} 
 
     loop = asyncio.get_running_loop()
     game.ends_at = loop.time() + 60
@@ -419,25 +422,15 @@ async def create_game(player1: User, player2: User):
 
     game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
-    await connections[player1.username].send_json(
-        {
+    for username, opponent_name in [(player1.username, player2.username), (player2.username, player1.username)]:
+        await connections[username].send_json({
             "type": "match_found",
             "game_id": game.id,
-            "opponent": player2.username,
+            "opponent": opponent_name,
             "word": game.word,
             "duration": 60,
-        }
-    )
-
-    await connections[player2.username].send_json(
-        {
-            "type": "match_found",
-            "game_id": game.id,
-            "opponent": player1.username,
-            "word": game.word,
-            "duration": 60,
-        }
-    )
+            "round_wins": game.round_wins 
+        })
 
 
 def disconnect(user: User):
