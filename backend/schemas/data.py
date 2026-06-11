@@ -10,12 +10,6 @@ class GameState(str, Enum):
     FINISHED = "finished"
 
 
-class GameType(str, Enum):
-    SOLO_AI = "solo_ai"
-    TWO_PLAYER_AI = "two_player_ai"
-    FOUR_PLAYER = "four_player"
-
-
 class PlayerState(str, Enum):
     IDLE = "idle"
     PLAYING = "playing"
@@ -53,11 +47,11 @@ class User(BaseModel):
 class Game(BaseModel):
     id: str
     game_state: GameState = GameState.CONNECTING
-    game_type: GameType
     players: list[str] = Field(default_factory=list)
     word: str
     scores: dict[str, float] = Field(default_factory=dict)
     ends_at: float | None = None
+    round_wins: dict[str, int] = Field(default_factory=dict)
 
 
 class ImagePayload(BaseModel):
