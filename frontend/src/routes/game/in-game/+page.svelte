@@ -31,11 +31,27 @@
     let timerId: ReturnType<typeof setInterval> | null = null;
     let pointsSinceLastGuess = $state(0);
 
+    // --- FIX: Typo corrected from 'llet' to 'let' ---
+    let matchData = $state<Record<string, { score: number, wins: number }>>({});
+    let totalPlayers = $derived(Object.keys(matchData).length);
+
     let myRoundWins = $state(0);
     let opponentRoundWins = $state(0);
     let currentRound = $derived(myRoundWins + opponentRoundWins + 1);
 
     const GUESS_EVERY_POINTS = 10;
+
+    // --- NEW: Bridge your 1v1 state into the modular matchData object automatically! ---
+    $effect(() => {
+        let newData: Record<string, {score: number, wins: number}> = {};
+        const myName = myUsername || 'You';
+        
+        newData[myName] = { score: game.my_score || 0, wins: myRoundWins };
+        if (game.opponent) {
+            newData[game.opponent] = { score: game.opponent_score || 0, wins: opponentRoundWins };
+        }
+        matchData = newData;
+    });
 
     function tick() {
         timeLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
@@ -72,7 +88,6 @@
         if (!winsDict) return;
         opponentRoundWins = winsDict[game.opponent] || 0;
         
-        // Find my username by getting the key that IS NOT the opponent
         const myKey = Object.keys(winsDict).find(k => k !== game.opponent);
         if (myKey) myRoundWins = winsDict[myKey] || 0;
 
@@ -156,11 +171,10 @@
                         startTimer();
                     }
                     break;
-                case 'next_round': // --- NEW: Automatically handle the BO3 reset
+                case 'next_round':
                     game.word = msg.word;
                     sessionStorage.setItem('draw_word', game.word);
                     
-                    // Reset scores and canvas
                     game.my_score = 0;
                     game.opponent_score = 0;
                     sessionStorage.setItem('draw_my_score', '0');
@@ -177,7 +191,7 @@
                         startTimer();
                     }
                     
-                    triggerCountdown(); // Show the 3, 2, 1 overlay again!
+                    triggerCountdown(); 
                     break;
                 case 'end_game':
                     stopTimer();
@@ -315,16 +329,27 @@
             <div class="vs-badge">
                 VS <strong>{game.opponent}</strong>
             </div>
+            {#if totalPlayers > 1}
             <div class="bo3-tracker">
                 <span class="round-text">Round {currentRound}</span>
-                <div class="circles">
-                    <div class="circle" class:filled={myRoundWins >= 1}></div>
-                    <div class="circle" class:filled={myRoundWins >= 2}></div>
-                    <span class="divider">-</span>
-                    <div class="circle opp" class:filled={opponentRoundWins >= 1}></div>
-                    <div class="circle opp" class:filled={opponentRoundWins >= 2}></div>
+                
+                <div class="multiplayer-circles">
+                    {#each Object.entries(matchData) as [username, data]}
+                        <div class="player-bo3-row">
+                            <span class="bo3-name">{username === (myUsername || 'You') ? 'You' : username}</span>
+                            <div class="circles">
+                                <div class="circle" 
+                                    class:filled={data.wins >= 1} 
+                                    class:opp={username !== (myUsername || 'You')}></div>
+                                <div class="circle" 
+                                    class:filled={data.wins >= 2} 
+                                    class:opp={username !== (myUsername || 'You')}></div>
+                            </div>
+                        </div>
+                    {/each}
                 </div>
             </div>
+        {/if}
         </div>
     </div>
 
@@ -451,25 +476,22 @@
     ></canvas>
 
     <div class="bars">
-        <div class="meter">
-            <span class="meter-value">{Math.round(game.my_score ?? 0)}%</span>
-            <div class="loaderBar">
-                <div class="loaderBar-fill" style="height: {game.my_score ?? 0}%"></div>
+        {#each Object.entries(matchData) as [username, data]}
+            <div class="meter">
+                <span class="meter-value">{Math.round(data.score)}%</span>
+                <div class="loaderBar" class:loaderBar--opponent={username !== (myUsername || 'You')}>
+                    <div class="loaderBar-fill" style="height: {data.score}%"></div>
+                </div>
+                <span class="meter-label" class:meter-label--you={username === (myUsername || 'You')} class:meter-label--opponent={username !== (myUsername || 'You')}>
+                    {username}
+                </span>
             </div>
-            <span class="meter-label meter-label--you">You</span>
-        </div>
-        <div class="meter">
-            <span class="meter-value">{Math.round(game.opponent_score ?? 0)}%</span>
-            <div class="loaderBar loaderBar--opponent">
-                <div class="loaderBar-fill" style="height: {game.opponent_score ?? 0}%"></div>
-            </div>
-            <span class="meter-label meter-label--opponent">{game.opponent || 'Rival'}</span>
-        </div>
+        {/each}
     </div>
 </div>
 
 <style>
-    /* --- NEW CSS for BO3 TRACKER --- */
+    /* ALL YOUR EXISTING CSS REMAINS EXACTLY THE SAME */
     .match-info {
         display: flex;
         flex-direction: column;
@@ -520,7 +542,6 @@
         font-weight: var(--fw-bold);
     }
 
-    /* --- YOUR EXISTING CSS EXACTLY AS IT WAS --- */
     .game-header {
         display: flex;
         justify-content: space-between;

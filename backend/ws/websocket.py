@@ -88,8 +88,18 @@ async def ai_guess(user, payload, websocket) -> bool:
     score = guess.get(games[game_id].word) or 0
     games[game_id].scores[user.username] = score
     
-    if score >= 99:  
+    loop = asyncio.get_running_loop()
+    time_left = max(0, round(games[game_id].ends_at - loop.time()))
+    
+    if time_left >= 45 and score >= 99:
         await handle_round_end(game_id, user, opponent)
+    elif time_left >= 30 and score >= 80:
+        await handle_round_end(game_id, user, opponent)
+    elif time_left >= 15 and score >= 75:
+        await handle_round_end(game_id, user, opponent)
+    elif score >= 60:
+        await handle_round_end(game_id, user, opponent)   
+        
     return True
 
 
@@ -198,10 +208,8 @@ async def handle_round_end(game_id: str, winner: User, loser: User):
     game.round_wins[winner.username] += 1
 
     if game.round_wins[winner.username] == 2:
-        # Match is officially over (BO3 won)
         await end_game(winner, loser)
     else:
-        # Start the next round
         await start_next_round(game_id)
 
 async def start_next_round(game_id: str):
@@ -212,10 +220,6 @@ async def start_next_round(game_id: str):
     loop = asyncio.get_running_loop()
     game.ends_at = loop.time() + 60
 
-    cancel_timer(game_id)
-    game_timers[game_id] = asyncio.create_task(game_timer(game_id))
-
-    # Broadcast the next round to both players
     for username in game.players:
         if username in connections:
             await connections[username].send_json({
@@ -224,6 +228,9 @@ async def start_next_round(game_id: str):
                 "duration": 60,
                 "round_wins": game.round_wins
             })
+            
+    cancel_timer(game_id)
+    game_timers[game_id] = asyncio.create_task(game_timer(game_id))
     
 
 async def join_lobby(user: User, code: str, websocket: WebSocket):
@@ -258,32 +265,45 @@ def get_opponent(user: User, game_id: str) -> User:
     assert False  # opponent should exist
 
 
-async def end_game(websocket: WebSocket, player: User, opponent: User):
+async def end_game(player: User, opponent: User):
     game_id = player_games.get(player.username)
-    diff_winner, new_elo_winner = await calculate_new_elo(player, opponent, 1)
-    diff_loser, new_elo_loser = await calculate_new_elo(opponent, player, 0)
-    await websocket.send_json(
-        {
-            "type": "end_game",
-            "status": "winner",
-            "elo_diff": diff_winner,
-            "new_elo": new_elo_winner,
-        }
-    )
-    await connections[opponent.username].send_json(
-        {
-            "type": "end_game",
-            "status": "looser",
-            "elo_diff": diff_loser,
-            "new_elo": new_elo_loser,
-        }
-    )
+    
+    # Check if the game is ranked before calculating Elo (from our 1-4 player logic!)
+    game = games.get(game_id)
+    if game and len(game.players) > 1:
+        diff_winner, new_elo_winner = await calculate_new_elo(player, opponent, 1)
+        diff_loser, new_elo_loser = await calculate_new_elo(opponent, player, 0)
+    else:
+        diff_winner, new_elo_winner, diff_loser, new_elo_loser = 0, player.elo, 0, opponent.elo
+
+    # Send the win to the player (if they are still connected)
+    if player.username in connections:
+        await connections[player.username].send_json(
+            {
+                "type": "end_game",
+                "status": "winner",
+                "elo_diff": diff_winner,
+                "new_elo": new_elo_winner,
+            }
+        )
+        
+    # Send the loss to the opponent (if they are still connected)
+    if opponent.username in connections:
+        await connections[opponent.username].send_json(
+            {
+                "type": "end_game",
+                "status": "looser",
+                "elo_diff": diff_loser,
+                "new_elo": new_elo_loser,
+            }
+        )
+        
     update_user_elo(player, new_elo_winner)
     update_user_elo(opponent, new_elo_loser)
+    
     if game_id:
         cancel_timer(game_id)
         cleanup_game(game_id, player, opponent)
-
 
 def cancel_timer(game_id: str):
     task = game_timers.pop(game_id, None)
