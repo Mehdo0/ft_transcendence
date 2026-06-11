@@ -4,9 +4,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { game } from '$lib/stores/game.svelte';
-	import { get } from 'svelte/store';
 
-	const code = page.params.code;
+	const code = page.params.code ?? '';
 	let players = $state<string[]>([]);
 	let me = $state('');
 	let isHost = $state(false);
@@ -26,10 +25,11 @@
 
 		let ws = getWs();
 		if (!ws || ws.readyState !== WebSocket.OPEN) {
-			ws = new WebSocket('/ws/');
-			setWs(ws);
-			ws.onopen = () => {
-				ws.send(JSON.stringify({ type: 'get_lobby', code }));
+			const newWs = new WebSocket('/ws/');
+			setWs(newWs);
+			ws = newWs;
+			newWs.onopen = () => {
+				newWs.send(JSON.stringify({ type: 'get_lobby', code }));
 			};
 		} else {
 			ws.send(JSON.stringify({ type: 'get_lobby', code }));
@@ -48,14 +48,28 @@
 			sessionStorage.setItem('players', JSON.stringify(players));
 		}
 		if (msg.type === 'player_joined') {
-			players = [...players, msg.username];
+			if (!players.includes(msg.username)) players = [...players, msg.username];
 			sessionStorage.setItem('players', JSON.stringify(players));
+		}
+		if (msg.type === 'player_left') {
+			players = players.filter((player) => player !== msg.username);
+			sessionStorage.setItem('players', JSON.stringify(players));
+		}
+		if (msg.type === 'lobby_closed') {
+			clearSessionData();
+			goto('/lobby');
 		}
 		if (msg.type === 'match_found') {
 			game.id = msg.game_id;
 			game.opponent = msg.opponent;
+			game.players = msg.players ?? [];
+			game.me = msg.me ?? '';
 			game.word = msg.word;
+			game.scores = {};
+			game.is_ranked = msg.is_ranked ?? false;
 			clearSessionData();
+			sessionStorage.setItem('private_lobby_code', code);
+			sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
 			goto('/game/in-game');
 		}
 	}
@@ -95,34 +109,16 @@
 		</header>
 
 		<div class="players-arena">
-			<div class="player-slot">
-				{#if players[0]}
-					<div class="avatar" title={players[0]}>{shortName(players[0])}</div>
-				{:else if isHost}
-					<div class="avatar" title={me}>{shortName(me)}</div>
-				{:else}
-					<div class="avatar empty">?</div>
-					<div class="name waiting">Waiting for host…</div>
-				{/if}
-			</div>
-
-			<div class="vs-badge">VS</div>
-
-			<div class="player-slot">
-				{#if players[1]}
-					<div class="avatar" title={players[1]}>{shortName(players[1])}</div>
-				{:else}
-					<div class="avatar empty">?</div>
-					<div class="name waiting">Waiting for opponent…</div>
-				{/if}
-			</div>
+			{#each players as player (player)}
+				<div class="player-slot">
+					<div class="avatar" title={player}>{shortName(player)}</div>
+				</div>
+			{/each}
 		</div>
 
 		<div class="action-footer">
-			{#if isHost && players.length === 2}
+			{#if isHost}
 				<button class="nb-btn nb-btn--primary start-btn" onclick={startGame}>Start game</button>
-			{:else if isHost}
-				<p class="hint">Waiting for an opponent to join…</p>
 			{:else}
 				<p class="hint">Waiting for the host to start…</p>
 			{/if}
@@ -213,14 +209,16 @@
 	.players-arena {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: var(--space-4);
 		background: var(--c-bg-alt);
 		border: var(--border);
 		padding: var(--space-6) var(--space-5);
 	}
 
 	.player-slot {
-		flex: 1;
+		flex: 0 0 96px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -244,37 +242,6 @@
 		font-weight: var(--fw-display);
 		text-align: center;
 		overflow: hidden;
-	}
-
-	.avatar.empty {
-		background: var(--c-bg);
-		color: var(--c-muted);
-		box-shadow: none;
-	}
-
-	.name {
-		font-family: var(--font-display);
-		font-size: var(--fs-lg);
-		font-weight: var(--fw-bold);
-	}
-
-	.name.waiting {
-		color: var(--c-muted);
-		font-family: var(--font-body);
-		font-weight: var(--fw-regular);
-		font-size: var(--fs-sm);
-	}
-
-	.vs-badge {
-		font-family: var(--font-display);
-		font-size: var(--fs-2xl);
-		font-weight: var(--fw-display);
-		color: var(--c-ink);
-		background: var(--c-accent);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		padding: var(--space-1) var(--space-2);
-		margin: 0 var(--space-3);
 	}
 
 	.action-footer {

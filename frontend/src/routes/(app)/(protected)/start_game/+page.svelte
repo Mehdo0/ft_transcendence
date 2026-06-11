@@ -24,7 +24,12 @@
 				console.log('Game found');
 				game.id = msg.game_id;
 				game.opponent = msg.opponent;
+				game.players = msg.players ?? [];
+				game.me = msg.me ?? '';
 				game.word = msg.word;
+				game.scores = {};
+				game.is_ranked = msg.is_ranked ?? true;
+				sessionStorage.removeItem('private_lobby_code');
 				sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
 				goto('/game/in-game');
 			}

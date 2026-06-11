@@ -9,6 +9,10 @@
 		sessionStorage.removeItem('draw_opp_score');
 		sessionStorage.removeItem('draw_word');
 		sessionStorage.removeItem('draw_opponent');
+		sessionStorage.removeItem('draw_players');
+		sessionStorage.removeItem('draw_me');
+		sessionStorage.removeItem('draw_scores');
+		sessionStorage.removeItem('draw_is_ranked');
 		sessionStorage.removeItem('isHost');
 		sessionStorage.removeItem('players');
 	}

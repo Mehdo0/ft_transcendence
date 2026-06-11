@@ -32,3 +32,4 @@ Thumbs.db
 # IDE
 .vscode/
 secrets/
+build_ai/data_clean/
