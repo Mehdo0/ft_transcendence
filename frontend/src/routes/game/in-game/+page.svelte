@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { getWs, setWs } from '$lib/stores/ws';
 	import { game } from '$lib/stores/game.svelte';
-	import favicon from '$lib/draw_meter_logo.svg';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	type Point = { x: number; y: number };
+	type Point = { x: number; y: number; timestamp: number };
 	type Trait = { color: string; width: number; points: Point[] };
 
 	let canvas: HTMLCanvasElement = $state()!;
@@ -91,16 +90,31 @@
 			showCountdown = true;
 			fetch('/api/users/me/', { credentials: 'same-origin' })
 				.then((r) => (r.ok ? r.json() : null))
-				.then((d) => { if (d) { myUsername = d.username; myElo = d.elo; } })
+				.then((d) => {
+					if (d) {
+						myUsername = d.username;
+						myElo = d.elo;
+					}
+				})
 				.catch(() => {});
 			fetch(`/api/users/${game.opponent}/stats`, { credentials: 'same-origin' })
 				.then((r) => (r.ok ? r.json() : null))
-				.then((d) => { if (d) opponentElo = d.Elo; })
+				.then((d) => {
+					if (d) opponentElo = d.Elo;
+				})
 				.catch(() => {});
-			setTimeout(() => { countdownNum = 2; }, 1000);
-			setTimeout(() => { countdownNum = 1; }, 2000);
-			setTimeout(() => { countdownNum = 0; }, 3000);
-			setTimeout(() => { showCountdown = false; }, 3600);
+			setTimeout(() => {
+				countdownNum = 2;
+			}, 1000);
+			setTimeout(() => {
+				countdownNum = 1;
+			}, 2000);
+			setTimeout(() => {
+				countdownNum = 0;
+			}, 3000);
+			setTimeout(() => {
+				showCountdown = false;
+			}, 3600);
 		}
 
 		let ws = getWs();
@@ -360,11 +374,21 @@
 			stack.push({
 				color: selectedColor,
 				width: lineWidth / 100,
-				points: [{ x: e.offsetX / ratio, y: e.offsetY / ratio }]
+				points: [
+					{
+						x: e.offsetX / ratio,
+						y: e.offsetY / ratio,
+						timestamp: performance.now()
+					}
+				]
 			});
 
 			redoStack = [];
-			last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+			last = {
+				x: e.offsetX / ratio,
+				y: e.offsetY / ratio,
+				timestamp: performance.now()
+			};
 		}}
 		onpointerup={finishStroke}
 		onpointerleave={finishStroke}
@@ -380,8 +404,16 @@
 			context.lineTo(e.offsetX * ratio, e.offsetY * ratio);
 			context.stroke();
 
-			stack[stack.length - 1].points.push({ x: e.offsetX / ratio, y: e.offsetY / ratio });
-			last = { x: e.offsetX / ratio, y: e.offsetY / ratio };
+			stack[stack.length - 1].points.push({
+				x: e.offsetX / ratio,
+				y: e.offsetY / ratio,
+				timestamp: performance.now()
+			});
+			last = {
+				x: e.offsetX / ratio,
+				y: e.offsetY / ratio,
+				timestamp: performance.now()
+			};
 			pointsSinceLastGuess += 1;
 
 			if (pointsSinceLastGuess >= GUESS_EVERY_POINTS) {
@@ -564,8 +596,6 @@
 		font-weight: var(--fw-bold);
 		margin: var(--space-3) 0 var(--space-6);
 	}
-
-
 
 	.game {
 		--canvas-side: 50vmin;
@@ -810,7 +840,9 @@
 		animation: cdHalfIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
 	}
 
-	.cd-you { animation-delay: 0s; }
+	.cd-you {
+		animation-delay: 0s;
+	}
 
 	.cd-opp {
 		align-items: flex-end;
@@ -819,8 +851,14 @@
 	}
 
 	@keyframes cdHalfIn {
-		from { transform: translateY(-24px); opacity: 0; }
-		to   { transform: none; opacity: 1; }
+		from {
+			transform: translateY(-24px);
+			opacity: 0;
+		}
+		to {
+			transform: none;
+			opacity: 1;
+		}
 	}
 
 	.cd-separator {
@@ -850,8 +888,12 @@
 		max-width: 42vw;
 	}
 
-	.cd-you .cd-pname { color: var(--c-primary); }
-	.cd-opp .cd-pname { color: var(--c-danger); }
+	.cd-you .cd-pname {
+		color: var(--c-primary);
+	}
+	.cd-opp .cd-pname {
+		color: var(--c-danger);
+	}
 
 	.cd-pelo {
 		font-family: var(--font-mono);
@@ -877,10 +919,18 @@
 		border-bottom: var(--border-lg);
 	}
 
-	.cd-page[data-count="3"] .cd-mid { background: var(--c-accent); }
-	.cd-page[data-count="2"] .cd-mid { background: var(--c-bg-alt); }
-	.cd-page[data-count="1"] .cd-mid { background: var(--c-danger); }
-	.cd-page[data-count="0"] .cd-mid { background: var(--c-success); }
+	.cd-page[data-count='3'] .cd-mid {
+		background: var(--c-accent);
+	}
+	.cd-page[data-count='2'] .cd-mid {
+		background: var(--c-bg-alt);
+	}
+	.cd-page[data-count='1'] .cd-mid {
+		background: var(--c-danger);
+	}
+	.cd-page[data-count='0'] .cd-mid {
+		background: var(--c-success);
+	}
 
 	.cd-num {
 		font-family: var(--font-display);
@@ -893,7 +943,9 @@
 		animation: cdNumStamp 1s cubic-bezier(0.4, 0, 0.2, 1) both;
 	}
 
-	.cd-page[data-count="1"] .cd-num { color: #ffffff; }
+	.cd-page[data-count='1'] .cd-num {
+		color: #ffffff;
+	}
 
 	.cd-num.cd-go {
 		font-size: min(22vh, 18vw);
@@ -901,18 +953,47 @@
 	}
 
 	@keyframes cdNumStamp {
-		0%   { transform: translateY(-22%) scaleY(1.18); opacity: 0; }
-		16%  { transform: translateY(2%) scaleY(0.88); opacity: 1; }
-		26%  { transform: translateY(0) scale(1); opacity: 1; }
-		80%  { transform: translateY(0) scale(1); opacity: 1; }
-		100% { transform: translateY(6%) scaleY(0.94); opacity: 0; }
+		0% {
+			transform: translateY(-22%) scaleY(1.18);
+			opacity: 0;
+		}
+		16% {
+			transform: translateY(2%) scaleY(0.88);
+			opacity: 1;
+		}
+		26% {
+			transform: translateY(0) scale(1);
+			opacity: 1;
+		}
+		80% {
+			transform: translateY(0) scale(1);
+			opacity: 1;
+		}
+		100% {
+			transform: translateY(6%) scaleY(0.94);
+			opacity: 0;
+		}
 	}
 
 	@keyframes cdGoBlast {
-		0%   { transform: scale(0.25); opacity: 0; letter-spacing: -0.12em; }
-		38%  { transform: scale(1.06); opacity: 1; letter-spacing: 0.04em; }
-		62%  { transform: scale(1); opacity: 1; }
-		100% { transform: scale(1.18); opacity: 0; }
+		0% {
+			transform: scale(0.25);
+			opacity: 0;
+			letter-spacing: -0.12em;
+		}
+		38% {
+			transform: scale(1.06);
+			opacity: 1;
+			letter-spacing: 0.04em;
+		}
+		62% {
+			transform: scale(1);
+			opacity: 1;
+		}
+		100% {
+			transform: scale(1.18);
+			opacity: 0;
+		}
 	}
 
 	/* BOTTOM — the word */
@@ -927,8 +1008,14 @@
 	}
 
 	@keyframes cdBotIn {
-		from { transform: translateY(24px); opacity: 0; }
-		to   { transform: none; opacity: 1; }
+		from {
+			transform: translateY(24px);
+			opacity: 0;
+		}
+		to {
+			transform: none;
+			opacity: 1;
+		}
 	}
 
 	.cd-draw-tag {
