@@ -79,7 +79,8 @@ async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> bool:
     game = games[game_id]
     strokes = payload.get("strokes", [])
     guess = await make_ai_guess(strokes, game.word)
-    score = max(game.scores.get(user.username, 0), guess.get(game.word) or 0)
+    game.ai_scores[user.username] = guess.get(game.word) or 0
+    score = get_total_score(game, user.username)
     game.scores[user.username] = score
 
     await websocket.send_json(
@@ -99,11 +100,15 @@ async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> bool:
 
 
 async def broadcast_player_score(
-    game: Game, username: str, score: float, guess: dict | None = None
+    game: Game,
+    username: str,
+    score: float,
+    guess: dict | None = None,
+    include_self: bool = False,
 ):
     for player in game.players:
         player_ws = connections.get(player)
-        if player == username or player_ws is None:
+        if player_ws is None or (player == username and not include_self):
             continue
         payload = {
             "type": "player_guess",
@@ -116,19 +121,14 @@ async def broadcast_player_score(
 
 
 def should_finish_round(game: Game, score: float) -> bool:
-    if game.ends_at is None:
-        return score >= 99
+    return score >= 100
 
-    loop = asyncio.get_running_loop()
-    time_left = max(0, round(game.ends_at - loop.time()))
 
-    if time_left >= 45:
-        return score >= 99
-    if time_left >= 30:
-        return score >= 80
-    if time_left >= 15:
-        return score >= 75
-    return score >= 60
+def get_total_score(game: Game, username: str) -> float:
+    return min(
+        100,
+        game.score_bonuses.get(username, 0) + game.ai_scores.get(username, 0),
+    )
 
 
 async def disconnect_user(user: User):
@@ -232,8 +232,6 @@ async def create_lobby(user: User, websocket: WebSocket):
     while True:
         characters = string.ascii_uppercase + string.digits
         code = "".join(random.choices(characters, k=6))
-        if code in lobbies:
-            continue
         lobbies[code] = {"host": user.username, "players": [user.username]}
         await websocket.send_json({"type": "lobby_created", "code": code})
         return
@@ -359,6 +357,8 @@ async def start_next_round(game_id: str):
 
     game = games[game_id]
     game.scores = {player: 0 for player in game.players}
+    game.ai_scores = {player: 0 for player in game.players}
+    game.score_bonuses = {player: 0 for player in game.players}
     game.word = get_random_word()
     loop = asyncio.get_running_loop()
     game.ends_at = loop.time() + ROUND_DURATION
@@ -425,9 +425,18 @@ async def game_timer(game_id: str):
 async def increase_scores(game_id: str):
     game = games[game_id]
     for username in game.players:
-        score = min(100, game.scores.get(username, 0) + SCORE_INCREMENT_PER_SECOND)
+        game.score_bonuses[username] = (
+            game.score_bonuses.get(username, 0) + SCORE_INCREMENT_PER_SECOND
+        )
+        score = get_total_score(game, username)
         game.scores[username] = score
-        await broadcast_player_score(game, username, score)
+        await broadcast_player_score(game, username, score, include_self=True)
+        if should_finish_round(game, score):
+            winner = get_user(username)
+            if winner is None:
+                raise ValueError("winner does not exist")
+            await handle_round_end(game_id, winner)
+            return
 
 
 async def end_game_by_timeout(game_id: str):
@@ -546,6 +555,8 @@ async def create_game(players: list[User], is_ranked: bool):
         is_ranked=is_ranked,
     )
     game.scores = {player.username: 0 for player in players}
+    game.ai_scores = {player.username: 0 for player in players}
+    game.score_bonuses = {player.username: 0 for player in players}
     game.round_wins = {player.username: 0 for player in players}
 
     loop = asyncio.get_running_loop()

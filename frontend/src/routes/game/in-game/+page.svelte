@@ -10,11 +10,8 @@
 	let canvas: HTMLCanvasElement = $state()!;
 	let context: CanvasRenderingContext2D = $state()!;
 	let last = $state<Point | null>(null);
-	let selectedColor = $state('#000000');
-	let lastSelectedColor = $state('#000000');
 	let stack = $state<Trait[]>([]);
 	let redoStack = $state<Trait[]>([]);
-	let lineWidth = $state(1);
 	let result = $state<'winner' | 'looser' | 'draw' | null>(null);
 	let elo_diff = $state(0);
 	let timeLeft = $state(60);
@@ -29,17 +26,8 @@
 	let roundWins = $state<Record<string, number>>({});
 
 	const GUESS_EVERY_POINTS = 10;
-	const COLORS = [
-		'#000000',
-		'#808080',
-		'#ff0000',
-		'#ff8000',
-		'#ffff00',
-		'#00ff00',
-		'#00ffff',
-		'#0000ff',
-		'#ff00ff'
-	];
+	const DRAW_COLOR = '#000000';
+	const DRAW_WIDTH = 0.01;
 
 	let currentRound = $derived(Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1);
 
@@ -391,14 +379,6 @@
 		makeAiGuess();
 	}
 
-	function eraser() {
-		selectedColor = '#ffffff';
-	}
-
-	function pencil() {
-		selectedColor = lastSelectedColor;
-	}
-
 	function clearDrawing() {
 		stack = [];
 		redoStack = [];
@@ -538,43 +518,8 @@
 
 <div class="game">
 	<div class="tools">
-		{#each COLORS as color (color)}
-			<button
-				class="swatch"
-				style="background:{color}"
-				title={color}
-				aria-label={color}
-				onclick={() => {
-					selectedColor = color;
-					lastSelectedColor = color;
-				}}
-			></button>
-		{/each}
-		<button class:active={selectedColor !== '#ffffff'} onclick={pencil} aria-label="Pencil" title="Pencil">
-			P
-		</button>
-		<input
-			type="color"
-			bind:value={selectedColor}
-			oninput={() => (lastSelectedColor = selectedColor)}
-			aria-label="Pick a color"
-			title="Pick a color"
-		/>
-		<button class:active={selectedColor === '#ffffff'} onclick={eraser} aria-label="Eraser" title="Eraser">
-			E
-		</button>
-		<input
-			class="width"
-			type="range"
-			min="1"
-			max="20"
-			step="0.5"
-			bind:value={lineWidth}
-			aria-label="Brush size"
-			title="Brush size"
-		/>
-		<button onclick={undo} disabled={stack.length === 0} aria-label="Undo" title="Undo">Undo</button>
-		<button onclick={redo} disabled={redoStack.length === 0} aria-label="Redo" title="Redo">Redo</button>
+		<button onclick={undo} disabled={stack.length === 0} aria-label="Undo" title="Undo">↶</button>
+		<button onclick={redo} disabled={redoStack.length === 0} aria-label="Redo" title="Redo">↷</button>
 		<button
 			class="clear-btn"
 			onclick={clearDrawing}
@@ -591,8 +536,8 @@
 		onpointerdown={(event) => {
 			const point = canvasPoint(event);
 			stack.push({
-				color: selectedColor,
-				width: lineWidth / 100,
+				color: DRAW_COLOR,
+				width: DRAW_WIDTH,
 				points: [point]
 			});
 			redoStack = [];
@@ -917,38 +862,10 @@
 		box-shadow: none;
 	}
 
-	.tools > .active {
-		background: var(--c-accent);
-		box-shadow: none;
-		transform: translate(var(--press), var(--press));
-	}
-
 	.tools > *:disabled {
 		opacity: 0.35;
 		box-shadow: none;
 		cursor: not-allowed;
-	}
-
-	.tools > .swatch {
-		font-size: 0;
-	}
-
-	.tools > input[type='color'] {
-		padding: 2px;
-	}
-
-	.tools > .width {
-		grid-column: 1 / -1;
-		width: 100%;
-		height: auto;
-		box-shadow: none;
-		background: transparent;
-		border: none;
-		accent-color: var(--c-primary);
-	}
-
-	.tools > .width:hover:not(:disabled) {
-		transform: none;
 	}
 
 	.tools > .clear-btn {

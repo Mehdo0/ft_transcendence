@@ -33,3 +33,6 @@ Thumbs.db
 .vscode/
 secrets/
 build_ai/data_clean/
+
+# Docker
+docker/wheels/*.whl

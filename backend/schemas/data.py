@@ -58,6 +58,8 @@ class Game(BaseModel):
     players: list[str] = Field(default_factory=list)
     word: str
     scores: dict[str, float] = Field(default_factory=dict)
+    ai_scores: dict[str, float] = Field(default_factory=dict)
+    score_bonuses: dict[str, float] = Field(default_factory=dict)
     round_wins: dict[str, int] = Field(default_factory=dict)
     ends_at: float | None = None
     is_ranked: bool = False
