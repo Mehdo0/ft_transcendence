@@ -106,17 +106,6 @@
 		font-size: var(--fs-lg);
 	}
 
-	.error-banner {
-		background: var(--c-danger);
-		color: var(--c-on-danger);
-		padding: var(--space-3) var(--space-4);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		margin-top: var(--space-4);
-		font-weight: var(--fw-bold);
-		display: inline-block;
-	}
-
 	.menu-card {
 		width: 100%;
 		max-width: 440px;

@@ -39,11 +39,9 @@
 		loading = true;
 		try {
 			const hashed_password = await hashPassword(password);
-			console.log(hashed_password);
 			const reg = await registerUser(username.trim(), email.trim(), hashed_password);
 			if (!reg.ok) {
-				if (reg.status === 406) serverError = 'This username is already taken.';
-				else serverError = 'Registration failed, please try again.';
+				serverError = reg.detail;
 				return;
 			}
 

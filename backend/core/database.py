@@ -4,6 +4,8 @@ from models.models import Base, UserModel
 from schemas.data import User, UserRegister
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.exc import IntegrityError
+from core.exceptions import UserAlreadyExistsError
 
 DB_NAME = "data/game_data.db"
 DATABASE_URL = f"sqlite+pysqlite:///{DB_NAME}"
@@ -46,16 +48,22 @@ def add_user(user: UserRegister) -> User:
             email=user.email,
             elo=500,
         )
+        try :
+            session.add(user)
+            session.commit()
 
-        session.add(user)
-        session.commit()
-
-        return User(
-            username=user.username,
-            email=user.email,
-            hashed_password=user.password,
-            elo=user.elo,
-        )
+            return User(
+                username=user.username,
+                email=user.email,
+                hashed_password=user.password,
+                elo=user.elo,
+            )
+        except IntegrityError:
+            # CRITICAL: Always rollback the session if a commit fails!
+            session.rollback() 
+            
+            # Raise the custom error that our API router is waiting for
+            raise UserAlreadyExistsError("This email or username is already taken.")
 
 
 def get_ranking():

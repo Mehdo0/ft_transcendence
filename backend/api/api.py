@@ -85,7 +85,16 @@ async def API_register(payload: UserRegister, response: Response):
     try:
         result = await register_user(payload)
     except UserAlreadyExistsError as e:
-        raise HTTPException(406, str(e))
+        error_msg = str(e).lower()
+        
+        if "email" in error_msg:
+            detail_msg = "This email address is already registered."
+        elif "username" in error_msg:
+            detail_msg = "This username is already taken. Please choose another."
+        else:
+            detail_msg = "An account with these credentials already exists."
+            
+        raise HTTPException(status_code=409, detail=detail_msg)
     except Exception as e:
         raise HTTPException(500, str(e))
     access_token = create_access_token(
