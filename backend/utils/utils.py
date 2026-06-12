@@ -8,9 +8,6 @@ from state.state import (
     player_games,
 )
 
-def should_finish_round(game: Game, score: float) -> bool:
-    return score >= 100
-
 def cancel_timer(game_id: str):
     task = game_timers.pop(game_id, None)
     if task is not None:

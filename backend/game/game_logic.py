@@ -14,7 +14,7 @@ from state.state import (
     player_games,
 )
 from utils.getters import get_users
-from utils.utils import cancel_timer, calculate_new_elo, cleanup_game, ensure_round_wins, should_finish_round
+from utils.utils import cancel_timer, calculate_new_elo, cleanup_game, ensure_round_wins
 
 async def create_game(players: list[User], is_ranked: bool):
     game = Game(
@@ -58,33 +58,7 @@ async def create_game(players: list[User], is_ranked: bool):
                 }
             )
 
-
-async def finish_game_by_forfeit(game_id: str, loser: User, reason: str):
-    if game_id not in games:
-        return
-
-    game = games[game_id]
-    users = get_users(game.players)
-    winners = [user for user in users if user.username != loser.username]
-    cancel_timer(game_id)
-
-    if game.is_ranked and len(winners) == 1:
-        winner = winners[0]
-        diff_winner, new_elo_winner = await calculate_new_elo(winner, loser, 1)
-        diff_loser, new_elo_loser = await calculate_new_elo(loser, winner, 0)
-        update_user_elo(winner, new_elo_winner)
-        update_user_elo(loser, new_elo_loser)
-        await send_end_game(winner.username, "winner", diff_winner, new_elo_winner, reason)
-        await send_end_game(loser.username, "looser", diff_loser, new_elo_loser, reason)
-    else:
-        for user in users:
-            status = "looser" if user.username == loser.username else "winner"
-            await send_end_game(user.username, status, 0, user.elo, reason)
-
-    cleanup_game(game_id, *users)
-
-
-async def end_game(game_id: str, winner: User):
+async def end_game(game_id: str, winner: User, reason: str | None = None):
     if game_id not in games:
         return
 
@@ -103,7 +77,7 @@ async def end_game(game_id: str, winner: User):
     else:
         for user in users:
             status = "winner" if user.username == winner.username else "looser"
-            await send_end_game(user.username, status, 0, user.elo)
+            await send_end_game(user.username, status, 0, user.elo, reason)
 
     cancel_timer(game_id)
     cleanup_game(game_id, *users)
@@ -222,7 +196,7 @@ async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> bool:
     )
     await broadcast_player_score(game, user.username, score, guess)
 
-    if should_finish_round(game, score):
+    if score >= 100:
         await handle_round_end(game_id, user)
 
     return True
@@ -231,7 +205,7 @@ async def surrender_game(user: User) -> bool:
     game_id = player_games.get(user.username)
     if game_id is None or game_id not in games:
         return False
-    await finish_game_by_forfeit(game_id, user, "opponent_surrendered")
+    await end_game(game_id, user, "opponent_surrendered")
     return True
 
 async def increase_scores(game_id: str): #TODO: use the user object instead of the username
@@ -243,7 +217,7 @@ async def increase_scores(game_id: str): #TODO: use the user object instead of t
         score = get_total_score(game, username)
         game.scores[username] = score
         await broadcast_player_score(game, username, score, include_self=True)
-        if should_finish_round(game, score):
+        if score >= 100:
             winner = get_user(username)
             if winner is None:
                 raise ValueError("winner does not exist")

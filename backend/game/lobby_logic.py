@@ -26,21 +26,16 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
         }
     )
 
-async def validate_code(code: str, websocket: WebSocket) -> bool:
-    if len(code) != 6 or not code.isalnum():
-        await websocket.send_json({"type": "error", "message": "invalid code"})
-        return False
-    return True
-
 async def create_lobby(user: User, websocket: WebSocket):
     remove_from_matchmaking(user.username)
+    characters = string.ascii_uppercase + string.digits
 
     while True:
-        characters = string.ascii_uppercase + string.digits
         code = "".join(random.choices(characters, k=6))
-        lobbies[code] = {"host": user.username, "players": [user.username]}
-        await websocket.send_json({"type": "lobby_created", "code": code})
-        return
+        if code not in lobbies: 
+            lobbies[code] = {"host": user.username, "players": [user.username]}
+            await websocket.send_json({"type": "lobby_created", "code": code})
+            return
     
 async def join_lobby(user: User, code: str, websocket: WebSocket):
     remove_from_matchmaking(user.username)
