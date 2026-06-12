@@ -73,21 +73,3 @@ class UserRegister(BaseModel):
     username: str
     password: str
     email: str
-
-
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: dict[str, WebSocket] = {}
-
-    async def connect(self, websocket: WebSocket, username: str):
-        await websocket.accept()
-        self.active_connections[username] = websocket
-
-    def disconnect(self, username: str):
-        if username in self.active_connections:
-            del self.active_connections[username]
-
-    async def send_personal_message(self, message: dict, username: str):
-        if username in self.active_connections:
-            websocket = self.active_connections[username]
-            await websocket.send_json(message)
