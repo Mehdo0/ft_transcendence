@@ -27,11 +27,7 @@
 		try {
 			const result = await login(username, await hashPassword(password));
 			if (!result.ok) {
-				if (result.status === 401) {
-					errorMessage = 'Incorrect username or password.';
-				} else {
-					errorMessage = 'An error occurred. Please try again later.';
-				}
+				errorMessage = result.detail;
 				return;
 			}
 			location.assign('/');

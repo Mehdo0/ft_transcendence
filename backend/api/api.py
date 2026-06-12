@@ -39,13 +39,14 @@ async def API_get_ranking():
 
 
 @router.post("/api/token")
-async def API_get_access_token(
+async def API_login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     response: Response,
 ):
     try:
         token = await get_access_token(form_data)
     except ValueError as e:
+        print(str(e))
         raise HTTPException(401, str(e))
     response.set_cookie(
         key="access_token",
