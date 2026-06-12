@@ -39,10 +39,6 @@ class Token(BaseModel):
     token_type: str
 
 
-class TokenData(BaseModel):
-    username: str | None = None
-
-
 class User(BaseModel):
     username: str
     email: str
@@ -53,14 +49,13 @@ class User(BaseModel):
 class Game(BaseModel):
     id: str
     game_state: GameState = GameState.CONNECTING
-    game_type: GameType = GameType.TWO_PLAYER_AI
     players: list[str] = Field(default_factory=list)
     word: str
     scores: dict[str, float] = Field(default_factory=dict)
     ai_scores: dict[str, float] = Field(default_factory=dict)
     score_bonuses: dict[str, float] = Field(default_factory=dict)
     round_wins: dict[str, int] = Field(default_factory=dict)
-    ends_at: float | None = None
+    ends_at: float
     is_ranked: bool = False
 
 
