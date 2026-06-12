@@ -11,8 +11,8 @@ from state.state import (
     player_games,
 )
 from core.setup import router
-from game.lobby_logic import create_lobby, join_lobby, get_lobby_info, validate_code, cleanup_lobby_on_disconnect
-from game.game_logic import start_game, surrender_game, ai_guess, finish_game_by_forfeit, create_game
+from game.lobby_logic import create_lobby, join_lobby, get_lobby_info, cleanup_lobby_on_disconnect
+from game.game_logic import start_game, surrender_game, ai_guess, create_game, end_game
 from utils.getters import get_opponents
 from utils.utils import disconnect
 
@@ -45,7 +45,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await create_lobby(user, websocket)
                 case "join_lobby":
                     code = payload.get("code", "").upper().strip()
-                    if await validate_code(code, websocket):
+                    if len(code) == 6 or code.isalnum():
                         await join_lobby(user, code, websocket)
                 case "get_lobby":
                     await get_lobby_info(payload, websocket, user)
@@ -118,7 +118,7 @@ async def handle_disconnect_grace_period(user: User, game_id: str):
     connections.pop(user.username, None)
 
     if game_id in games:
-        await finish_game_by_forfeit(game_id, user, "opponent_left")
+        await end_game(game_id, user, "opponent_left")
         return
 
     disconnect(user)
