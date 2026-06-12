@@ -13,26 +13,11 @@ from services.services import (
     create_access_token,
     get_access_token,
     get_current_active_user,
-    get_random_word,
     register_user,
 )
 from state.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE
 
 router = APIRouter()
-
-
-@router.get("/api/")
-async def API_root():
-    return {"message": "Hello World"}
-
-
-@router.get("/api/word_list/get_word/")
-async def API_get_word():
-    try:
-        word = await get_random_word()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=e)
-    return {"word": word}
 
 
 # get user stats
@@ -84,17 +69,9 @@ async def API_get_users_me(
 async def API_register(payload: UserRegister, response: Response):
     try:
         result = await register_user(payload)
-    except UserAlreadyExistsError as e:
+    except Exception as e:
         error_msg = str(e).lower()
-        
-        if "email" in error_msg:
-            detail_msg = "This email address is already registered."
-        elif "username" in error_msg:
-            detail_msg = "This username is already taken. Please choose another."
-        else:
-            detail_msg = "An account with these credentials already exists."
-            
-        raise HTTPException(status_code=409, detail=detail_msg)
+        raise HTTPException(status_code=409, detail=error_msg)
     except Exception as e:
         raise HTTPException(500, str(e))
     access_token = create_access_token(

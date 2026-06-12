@@ -47,7 +47,6 @@ class User(BaseModel):
     username: str
     email: str
     state: PlayerState | None = None
-    hashed_password: str
     elo: int
 
 

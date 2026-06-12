@@ -3,8 +3,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
-from core.database import get_user, add_user
-from core.exceptions import UserAlreadyExistsError
+from core.database import get_user, get_user_password, add_user
+from core.exceptions import (
+    UserAlreadyExistsError,
+    EmailAlreadyTakenError,
+    UsernameAlreadyTakenError,
+)
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
@@ -25,8 +29,7 @@ async def get_random_word() -> str:
 
 
 async def make_ai_guess(strokes: list, target_word: str):
-    if not isinstance(strokes, list):
-        raise ValueError("wrong payload")
+    assert isinstance(strokes, list)
     results = internal_make_ai_guess(strokes, target_word)
     if not results:
         raise ValueError("Bad AI output")
@@ -36,10 +39,10 @@ async def make_ai_guess(strokes: list, target_word: str):
 async def get_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    try:
-        user = authenticate_user(form_data.username, form_data.password)
-    except Exception:
-        raise ValueError("could not authenticate")
+    user = get_authenticated_user(
+        form_data.username,
+        form_data.password,
+    )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
@@ -48,9 +51,13 @@ async def get_access_token(
 
 
 async def register_user(user_register: UserRegister):
-    username_test = get_user(user_register.username)
-    if username_test:
-        raise UserAlreadyExistsError
+    user_exists = get_user(user_register.username)
+    if user_exists:
+        if user_exists.username == user_register.username:
+            if user_exists.email == user_register.email:
+                raise UserAlreadyExistsError("This user already exists")
+            else:
+                raise UsernameAlreadyTakenError("This username is already taken")
     user = add_user(user_register)
     return {"user_created": user.username}
 
@@ -58,12 +65,12 @@ async def register_user(user_register: UserRegister):
 ### auth
 
 
-def authenticate_user(username: str, hashed_password: str):
+def get_authenticated_user(username: str, hashed_password: str) -> User:
     user = get_user(username)
     if not user:
-        hashed_password != DUMMY_HASH  # preventing timing attack
         raise ValueError("User doesnt exist")
-    if hashed_password != user.hashed_password:
+    password = get_user_password(user)
+    if hashed_password != password:
         raise ValueError("Passwords dont match")
     return user
 
@@ -73,7 +80,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=9999999999)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=9999999999
+        )  # TODO change to reasonable expiry + add refresh token
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

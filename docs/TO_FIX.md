@@ -6,6 +6,9 @@ Si on quitte la page on est pas retiré de la game / lobby
 
 retour en arrière peut rejoindre une game qui n'existe pas
 
+Add refresh token
+
+enlever les asserts (juste avant push)
 
 
 

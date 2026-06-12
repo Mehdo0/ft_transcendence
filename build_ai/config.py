@@ -39,7 +39,9 @@ class PreprocessConfig:
     train_split: float = 0.8
     download_timeout: int = 60
     categories_url: str = "https://raw.githubusercontent.com/googlecreativelab/quickdraw-dataset/master/categories.txt"
-    raw_data_url_template: str = "https://storage.googleapis.com/quickdraw_dataset/full/raw/{}.ndjson"
+    raw_data_url_template: str = (
+        "https://storage.googleapis.com/quickdraw_dataset/full/raw/{}.ndjson"
+    )
 
 
 DRAWING_CONFIG = DrawingConfig()
