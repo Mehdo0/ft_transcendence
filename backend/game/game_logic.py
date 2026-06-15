@@ -3,7 +3,7 @@ import uuid
 from utils.getters import get_random_word, get_total_score, get_opponents
 import asyncio
 from core.setup import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketException
 from core.database import get_user, update_user_elo
 from schemas.data import Game, GameState, User
 from services.services import make_ai_guess

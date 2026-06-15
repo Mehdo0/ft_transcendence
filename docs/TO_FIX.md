@@ -1,9 +1,13 @@
+---
+lang: FR
+---
+
 # FIXED
-✅ Surrender: le joueur qui abandonne gagnait la partie → maintenant l'adversaire gagne (game_logic.py)
-✅ Disconnect: crash quand get_opponents retournait list[str] au lieu de User → fixé (websocket.py)
-✅ beforeNavigate: fermeture propre du WebSocket quand on quitte le lobby
-✅ onbeforeunload: envoie un surrender au backend quand on ferme l'onglet en pleine game
-✅ UI: barres de score grisées + label "(Offline)" quand l'adversaire se déconnecte
+- [X] `Surrender` : le joueur qui abandonne gagnait la partie → maintenant l'adversaire gagne (game_logic.py)
+- [X] `Disconnect` : crash quand get_opponents retournait list[str] au lieu de User → fixé (websocket.py)
+- [X] `beforeNavigate` : fermeture propre du WebSocket quand on quitte le lobby
+- [X] `onbeforeunload` : envoie un surrender au backend quand on ferme l'onglet en pleine game
+- [X] `UI` : barres de score grisées + label "(Offline)" quand l'adversaire se déconnecte
 
 # RESTE À FAIRE
 
@@ -13,7 +17,12 @@ Si on quitte la page on est pas retiré de la game / lobby
   -> on peut lancer un quickmatch en revenant sur home alors qu'on fait toujours partie d'un lobby privé techniquement (partiellement fixé par onbeforeunload)
 
 retour en arrière peut rejoindre une game qui n'existe pas (partiellement fixé par beforeNavigate)
+commencer un lobby privé, faire un game -> qqun rejoins apres pour faire une deuxième -> dessin du premier dessin reload dans le canva
+
+si on retourne au lobby et on lance le jeu avant le retour de tous les joueurs ça casse tout. host ne peu plus lancer le jeu.
 
 Add refresh token
 
 enlever les asserts (juste avant push)
+
+ajouter check pour mdp solide (frontend)
