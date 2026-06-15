@@ -21,6 +21,8 @@ commencer un lobby privé, faire un game -> qqun rejoins apres pour faire une de
 
 si on retourne au lobby et on lance le jeu avant le retour de tous les joueurs ça casse tout. host ne peu plus lancer le jeu.
 
+surrender doesnt do anything when solo game
+
 Add refresh token
 
 enlever les asserts (juste avant push)

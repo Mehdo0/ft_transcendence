@@ -312,6 +312,8 @@
 					}, 3000);
 					clearSessionData();
 					break;
+				default:
+					console.log(msg);
 			}
 		};
 

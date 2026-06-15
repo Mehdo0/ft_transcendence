@@ -88,6 +88,17 @@ def get_user(username: str) -> User | None:
         )
 
 
+def get_user_unsafe(username: str) -> User:
+    with SessionLocal() as session:
+        user = session.get(UserModel, username)
+        assert user is not None
+        return User(
+            username=user.username,
+            email=user.email,
+            elo=user.elo,
+        )
+
+
 def get_user_password(user: User) -> str:
     with SessionLocal() as session:
         user = session.get(UserModel, user.username)
