@@ -30,10 +30,12 @@
 	const DRAW_COLOR = '#000000';
 	const DRAW_WIDTH = 0.01;
 
-	let currentRound = $derived(Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1);
+	let currentRound = $derived(
+		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
+	);
 
 	function handleHardExit() {
-		if (!result) { 
+		if (!result) {
 			const ws = getWs();
 			if (ws && ws.readyState === WebSocket.OPEN) {
 				ws.send(JSON.stringify({ type: 'surrender' }));
@@ -252,7 +254,10 @@
 			const msg = JSON.parse(event.data);
 			switch (msg.type) {
 				case 'ai_guess':
-					setPlayerScore(game.me || myUsername || msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
+					setPlayerScore(
+						game.me || myUsername || msg.username,
+						msg.score ?? msg.guess?.[game.word] ?? 0
+					);
 					break;
 				case 'player_guess':
 					setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
@@ -302,6 +307,9 @@
 					stopTimer();
 					elo_diff = msg.elo_diff;
 					result = msg.status;
+					setTimeout(() => {
+						backAfterGame();
+					}, 3000);
 					clearSessionData();
 					break;
 			}
@@ -366,7 +374,10 @@
 			context.lineCap = 'round';
 			context.lineJoin = 'round';
 			context.beginPath();
-			context.moveTo(trait.points[0].x * canvas.clientWidth, trait.points[0].y * canvas.clientHeight);
+			context.moveTo(
+				trait.points[0].x * canvas.clientWidth,
+				trait.points[0].y * canvas.clientHeight
+			);
 			for (let index = 1; index < trait.points.length; index += 1) {
 				context.lineTo(
 					trait.points[index].x * canvas.clientWidth,
@@ -425,7 +436,7 @@
 	}
 </script>
 
-<svelte:window onresize={resize} onbeforeunload={handleHardExit}/>
+<svelte:window onresize={resize} onbeforeunload={handleHardExit} />
 
 {#if showCountdown}
 	<div class="cd-page" data-count={countdownNum} aria-live="assertive" aria-atomic="true">
@@ -473,8 +484,16 @@
 							<div class="player-bo3-row">
 								<span class="bo3-name">{playerLabel(player)}</span>
 								<div class="circles">
-									<div class="circle" class:filled={roundWinFor(player) >= 1} class:opp={!isMe(player)}></div>
-									<div class="circle" class:filled={roundWinFor(player) >= 2} class:opp={!isMe(player)}></div>
+									<div
+										class="circle"
+										class:filled={roundWinFor(player) >= 1}
+										class:opp={!isMe(player)}
+									></div>
+									<div
+										class="circle"
+										class:filled={roundWinFor(player) >= 2}
+										class:opp={!isMe(player)}
+									></div>
 								</div>
 							</div>
 						{/each}
@@ -533,7 +552,9 @@
 <div class="game">
 	<div class="tools">
 		<button onclick={undo} disabled={stack.length === 0} aria-label="Undo" title="Undo">↶</button>
-		<button onclick={redo} disabled={redoStack.length === 0} aria-label="Redo" title="Redo">↷</button>
+		<button onclick={redo} disabled={redoStack.length === 0} aria-label="Redo" title="Redo"
+			>↷</button
+		>
 		<button
 			class="clear-btn"
 			onclick={clearDrawing}
@@ -588,9 +609,9 @@
 					class:meter-label--you={isMe(player)}
 					class:meter-label--opponent={!isMe(player)}
 				>
-                {#if disconnectedPlayers[player]}
-                    <span style="font-size: 0.7em; opacity: 0.8;">(Offline)</span>
-                {/if}
+					{#if disconnectedPlayers[player]}
+						<span style="font-size: 0.7em; opacity: 0.8;">(Offline)</span>
+					{/if}
 					{playerLabel(player)}
 				</span>
 			</div>
