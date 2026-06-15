@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { game } from '$lib/stores/game.svelte';
 	import { getWs, setWs } from '$lib/stores/ws';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
@@ -24,12 +24,22 @@
 	let timerId: ReturnType<typeof setInterval> | null = null;
 	let pointsSinceLastGuess = $state(0);
 	let roundWins = $state<Record<string, number>>({});
+	let disconnectedPlayers = $state<Record<string, boolean>>({});
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
 	const DRAW_WIDTH = 0.01;
 
 	let currentRound = $derived(Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1);
+
+	function handleHardExit() {
+		if (!result) { 
+			const ws = getWs();
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				ws.send(JSON.stringify({ type: 'surrender' }));
+			}
+		}
+	}
 
 	function readJson<T>(key: string, fallback: T) {
 		const value = sessionStorage.getItem(key);
@@ -250,12 +260,16 @@
 				case 'opponent_guess':
 					setPlayerScore(game.opponent, msg.score ?? msg.guess?.[game.word] ?? 0);
 					break;
+				case 'opponent_disconnected':
+					disconnectedPlayers[msg.username] = true;
+					break;
 				case 'reconnect_game':
 					game.id = msg.game_id;
 					game.opponent = msg.opponent;
 					game.me = msg.me ?? game.me;
 					game.word = msg.word;
 					game.is_ranked = msg.is_ranked ?? game.is_ranked;
+					disconnectedPlayers = {};
 					applyPlayers(msg.players ?? []);
 					updateScores(msg.scores ?? {});
 					updateRoundWins(msg.round_wins ?? {});
@@ -411,7 +425,7 @@
 	}
 </script>
 
-<svelte:window onresize={resize} />
+<svelte:window onresize={resize} onbeforeunload={handleHardExit}/>
 
 {#if showCountdown}
 	<div class="cd-page" data-count={countdownNum} aria-live="assertive" aria-atomic="true">
@@ -564,7 +578,7 @@
 
 	<div class="bars">
 		{#each scorePlayers() as player (player)}
-			<div class="meter">
+			<div class="meter" class:offline={disconnectedPlayers[player]}>
 				<span class="meter-value">{Math.round(scoreFor(player) ?? 0)}%</span>
 				<div class="loaderBar" class:loaderBar--opponent={!isMe(player)}>
 					<div class="loaderBar-fill" style="height: {scoreFor(player) ?? 0}%"></div>
@@ -574,6 +588,9 @@
 					class:meter-label--you={isMe(player)}
 					class:meter-label--opponent={!isMe(player)}
 				>
+                {#if disconnectedPlayers[player]}
+                    <span style="font-size: 0.7em; opacity: 0.8;">(Offline)</span>
+                {/if}
 					{playerLabel(player)}
 				</span>
 			</div>
@@ -948,6 +965,16 @@
 			var(--c-danger) 0 14px,
 			var(--c-danger-dark) 14px 28px
 		);
+	}
+
+	.meter.offline {
+		opacity: 0.4;
+		filter: grayscale(100%);
+		transition: all 0.3s ease;
+	}
+
+	.meter.offline .loaderBar-fill {
+		transition: none;
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -68,6 +68,14 @@ async def disconnect_user(user: User):
     connections.pop(user.username, None)
     if user.username in player_games:
         game_id = player_games[user.username]
+        game = games.get(game_id)
+        if game:
+            for p in game.players:
+                if p != user.username and p in connections:
+                    await connections[p].send_json({
+                        "type": "opponent_disconnected", 
+                        "username": user.username
+                    })
         asyncio.create_task(handle_disconnect_grace_period(user, game_id))
         return
     await cleanup_lobby_on_disconnect(user)
@@ -118,7 +126,10 @@ async def handle_disconnect_grace_period(user: User, game_id: str):
     connections.pop(user.username, None)
 
     if game_id in games:
-        await end_game(game_id, user, "opponent_left")
+        opponents = get_opponents(user, game_id)
+        winner = get_user(opponents[0]) if opponents else None
+        if winner:
+            await end_game(game_id, winner, "opponent_left")
         return
 
     disconnect(user)

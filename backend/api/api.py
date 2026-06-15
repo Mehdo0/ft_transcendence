@@ -51,6 +51,7 @@ async def API_login(
     response.set_cookie(
         key="access_token",
         value=token.access_token,
+        path="/",
         httponly=True,
         samesite="strict",
         secure=COOKIE_SECURE,
@@ -82,6 +83,7 @@ async def API_register(payload: UserRegister, response: Response):
     response.set_cookie(
         key="access_token",
         value=access_token,
+        path="/",
         httponly=True,
         samesite="strict",
         secure=COOKIE_SECURE,

@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { getWs, setWs } from '$lib/stores/ws';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { game } from '$lib/stores/game.svelte';
+	import { beforeNavigate, goto } from '$app/navigation';
+
 
 	const code = page.params.code ?? '';
 	let players = $state<string[]>([]);
@@ -15,6 +16,16 @@
 		sessionStorage.removeItem('players');
 		sessionStorage.removeItem('isHost');
 	}
+
+	beforeNavigate(({ to }) => {
+		if (to?.route.id !== '/game/in-game') {
+			const ws = getWs();
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				ws.close();
+				setWs(null);
+			}
+		}
+	});
 
 	onMount(() => {
 		const savedPlayers = sessionStorage.getItem('players');
@@ -39,7 +50,6 @@
 
 	function handleMessage(event: MessageEvent<any>) {
 		const msg = JSON.parse(event.data);
-		console.log(msg);
 		if (msg.type === 'lobby_info') {
 			players = msg.players;
 			me = msg.me;

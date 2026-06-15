@@ -208,7 +208,11 @@ async def surrender_game(user: User) -> bool:
     game_id = player_games.get(user.username)
     if game_id is None or game_id not in games:
         return False
-    await end_game(game_id, user, "opponent_surrendered")
+    opponents = get_opponents(user, game_id)
+    winner = get_user(opponents[0]) if opponents else None
+    if winner is None:
+        return False
+    await end_game(game_id, winner, "opponent_surrendered")
     return True
 
 
