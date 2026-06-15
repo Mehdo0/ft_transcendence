@@ -29,24 +29,25 @@ async def websocket_endpoint(websocket: WebSocket):
         if token is None:
             raise ValueError("no token found")
         user = get_user_from_ws_token(token)
-    except Exception:
+    except Exception as e:
         await websocket.accept()
         await websocket.send_json({"type": "error", "message": "authentication failed"})
-        await websocket.close()
-        return
+        raise e
 
     if user.username in connections:
         await websocket.accept()
         try:
-            await websocket.send_json({
-                "type": "error",
-                "message": "already connected — close your other tab first"
-            })
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "already connected — close your other tab first",
+                }
+            )
         except Exception:
             pass
-        await websocket.close()
-        return
-
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Only one connection allowed"
+        )
     await websocket.accept()
     connections[user.username] = websocket
 
