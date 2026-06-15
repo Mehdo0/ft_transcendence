@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
 from core.database import get_user
 from schemas.data import User
 from services.services import get_user_from_ws_token
@@ -11,10 +11,16 @@ from state.state import (
     player_games,
 )
 from core.setup import router
-from game.lobby_logic import create_lobby, join_lobby, get_lobby_info, cleanup_lobby_on_disconnect
+from game.lobby_logic import (
+    create_lobby,
+    join_lobby,
+    get_lobby_info,
+    cleanup_lobby_on_disconnect,
+)
 from game.game_logic import start_game, surrender_game, ai_guess, create_game, end_game
 from utils.getters import get_opponents
 from utils.utils import disconnect
+
 
 @router.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
@@ -61,9 +67,6 @@ async def websocket_endpoint(websocket: WebSocket):
         await disconnect_user(user)
 
 
-
-
-
 async def disconnect_user(user: User):
     connections.pop(user.username, None)
     if user.username in player_games:
@@ -72,14 +75,14 @@ async def disconnect_user(user: User):
         if game:
             for p in game.players:
                 if p != user.username and p in connections:
-                    await connections[p].send_json({
-                        "type": "opponent_disconnected", 
-                        "username": user.username
-                    })
+                    await connections[p].send_json(
+                        {"type": "opponent_disconnected", "username": user.username}
+                    )
         asyncio.create_task(handle_disconnect_grace_period(user, game_id))
         return
     await cleanup_lobby_on_disconnect(user)
     disconnect(user)
+
 
 async def reconnect_user(user: User, websocket: WebSocket):
     game_id = player_games[user.username]
@@ -109,8 +112,6 @@ async def reconnect_user(user: User, websocket: WebSocket):
             "time_left": time_left,
         }
     )
-
-
 
 
 async def handle_disconnect_grace_period(user: User, game_id: str):
@@ -151,3 +152,6 @@ async def find_player(user: User):
 
     matchmaking_queue.append(user.username)
     await connections[user.username].send_json({"type": "waiting"})
+
+
+# async def send_error_raise()
