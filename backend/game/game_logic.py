@@ -3,8 +3,8 @@ import uuid
 from utils.getters import get_random_word, get_total_score, get_opponents
 import asyncio
 from core.setup import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
-from fastapi import WebSocket, WebSocketException
-from core.database import get_user, update_user_elo
+from fastapi import WebSocket, WebSocketException, status
+from core.database import get_user, get_user_unsafe, update_user_elo
 from schemas.data import Game, GameState, User
 from services.services import make_ai_guess
 from state.state import (
@@ -158,20 +158,37 @@ async def end_game_by_timeout(game_id: str):
 
 async def start_game(payload: dict, user: User):
     code = payload.get("code")
-    if code not in lobbies:
-        return
+    if not code or code not in lobbies:
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Must provide lobby code"
+        )
 
-    lobby = lobbies[code]
-    if lobby["host"] != user.username or len(lobby["players"]) < 1:
-        return
-    if any(player in player_games for player in lobby["players"]):
-        return
+    lobby: dict[str, str] = lobbies[code]
+    if lobby["host"] != user.username:
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Only host can start game"
+        )
+    if len(lobby["players"]) < 2:
+        raise WebSocketException(
+            code=status.WS_1008_POLICY_VIOLATION, reason="Cannot start game alone"
+        )
 
-    players = get_users(
-        [player for player in lobby["players"] if player in connections]
-    )
-    if not players:
-        return
+    for player in lobby["players"]:
+        if player in player_games:
+            raise WebSocketException(
+                code=status.WS_1008_POLICY_VIOLATION,
+                reason="Some Players are already in other games",
+            )
+
+    # players = get_users(
+    #     [player for player in lobby["players"] if player in connections]
+    # ) remove TODO
+
+    players: list[User] = []
+    assert lobby["players"]
+    for player in lobby["players"]:
+        assert player in connections
+        players.append(get_user_unsafe(player))
 
     await create_game(players, False)
 
