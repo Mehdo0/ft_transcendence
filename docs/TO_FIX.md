@@ -17,3 +17,39 @@ retour en arrière peut rejoindre une game qui n'existe pas (partiellement fixé
 Add refresh token
 
 enlever les asserts (juste avant push)
+
+## 🔴 CRITIQUE — (trouvés par test suite 15 juin)
+
+### Double connexion WebSocket écrase la première (websocket.py:30)
+`connections[user.username] = websocket` écrase sans fermer l'ancienne.
+→ Si un joueur ouvre 2 onglets, la 2ème WS écrase la 1ère.
+→ Quand la 2ème se ferme, `disconnect_user` retire le joueur du lobby/game en cours.
+→ En cascade : player_left → lobby fermé si host → game à 1 joueur.
+
+**Fix :** fermer l'ancienne connexion avant d'écraser (send_json + close) ou refuser la 2ème.
+
+## 🟡 MEDIUM — (trouvés par test suite 15 juin)
+
+### start_game sans code → return silencieux (game_logic.py:159-162)
+Si le client envoie `{"type":"start_game"}` sans `code`, ou code invalide → aucun message d'erreur. Le client attend indéfiniment.
+
+### start_game exclut les joueurs déconnectés sans prévenir (game_logic.py:170-172)
+`[player for player in lobby["players"] if player in connections]` — si un joueur est déco, il est exclu silencieusement, la game peut démarrer à 1 joueur.
+
+### Échec auth WS ferme sans message (websocket.py:26-27)
+`except Exception: return` → le client reçoit une HTTP 500 générique, zéro explication.
+**Fix :** accepter, envoyer `{"type":"error","message":"auth failed"}`, puis fermer.
+
+## 🟢 LOW — (trouvés par test suite 15 juin)
+
+### Mots de passe en clair dans la DB (database.py, services.py:70-72)
+Aucun hachage (bcrypt/argon2). Les passwords sont stockés et comparés en clair.
+
+### assert en prod (database.py:94, services.py:30)
+`assert user is not None` / `assert isinstance(strokes, list)` → ignorés avec `python -O`.
+
+### Code mort : double except Exception (api.py:74-78)
+Le 2ème `except Exception` n'est jamais atteint.
+
+### Pas de rate limiting sur /api/token et /api/register/
+Vulnérable au brute force.
