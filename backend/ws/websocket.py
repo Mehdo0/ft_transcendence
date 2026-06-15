@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect, WebSocketException
 from core.database import get_user
 from schemas.data import User
 from services.services import get_user_from_ws_token
@@ -24,6 +24,21 @@ async def websocket_endpoint(websocket: WebSocket):
             raise ValueError("no token found")
         user = get_user_from_ws_token(token)
     except Exception:
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "message": "authentication failed"})
+        await websocket.close()
+        return
+
+    if user.username in connections:
+        await websocket.accept()
+        try:
+            await websocket.send_json({
+                "type": "error",
+                "message": "already connected — close your other tab first"
+            })
+        except Exception:
+            pass
+        await websocket.close()
         return
 
     await websocket.accept()
@@ -59,9 +74,6 @@ async def websocket_endpoint(websocket: WebSocket):
                     await surrender_game(user)
     except WebSocketDisconnect:
         await disconnect_user(user)
-
-
-
 
 
 async def disconnect_user(user: User):
@@ -109,8 +121,6 @@ async def reconnect_user(user: User, websocket: WebSocket):
             "time_left": time_left,
         }
     )
-
-
 
 
 async def handle_disconnect_grace_period(user: User, game_id: str):

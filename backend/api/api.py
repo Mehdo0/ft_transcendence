@@ -5,8 +5,12 @@ from core.database import (
     get_ranking,
     get_user,
 )
-from core.exceptions import UserAlreadyExistsError
-from fastapi import APIRouter, Depends, HTTPException, Response
+from core.exceptions import (
+    EmailAlreadyTakenError,
+    UserAlreadyExistsError,
+    UsernameAlreadyTakenError,
+)
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from schemas.data import User, UserRegister
 from services.services import (
@@ -15,7 +19,7 @@ from services.services import (
     get_current_active_user,
     register_user,
 )
-from state.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE
+from state.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE, limiter
 
 router = APIRouter()
 
@@ -39,7 +43,9 @@ async def API_get_ranking():
 
 
 @router.post("/api/token")
+@limiter.limit("10/minute")
 async def API_login(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     response: Response,
 ):
@@ -61,21 +67,24 @@ async def API_login(
 
 
 @router.get("/api/users/me/")
+@limiter.limit("30/minute")
 async def API_get_users_me(
+    request: Request,
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> User:
     return current_user
 
 
 @router.post("/api/register/")
-async def API_register(payload: UserRegister, response: Response):
+@limiter.limit("5/minute")
+async def API_register(request: Request, payload: UserRegister, response: Response):
     try:
         result = await register_user(payload)
+    except (UserAlreadyExistsError, UsernameAlreadyTakenError, EmailAlreadyTakenError) as e:
+        raise HTTPException(status_code=409, detail=str(e).lower())
     except Exception as e:
-        error_msg = str(e).lower()
-        raise HTTPException(status_code=409, detail=error_msg)
-    except Exception as e:
-        raise HTTPException(500, str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
     access_token = create_access_token(
         data={"sub": payload.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
@@ -94,6 +103,5 @@ async def API_register(payload: UserRegister, response: Response):
 
 @router.post("/api/logout")
 async def logout(response: Response):
-    # unprotected -> cookie expiry
     response.delete_cookie("access_token")
     return {"ok": True}
