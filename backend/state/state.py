@@ -2,7 +2,7 @@ from fastapi import WebSocket
 
 from schemas.data import Game
 
-matchmaking_queue = []
+matchmaking_queue: list[str] = []
 
 disconnected_players = {}  # list of the disconnected player to reconnect them gracely ;)
 

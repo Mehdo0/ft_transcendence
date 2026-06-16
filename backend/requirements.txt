@@ -6,5 +6,6 @@ slowapi
 torch
 torchvision
 pyjwt
+shortuuid
 pwdlib[argon2]
 sqlalchemy>=2.0.50

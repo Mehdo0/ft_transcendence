@@ -1,9 +1,11 @@
 import random
 import string
-from fastapi import  WebSocket 
+import shortuuid
+from fastapi import WebSocket
 from schemas.data import User
 from state.state import connections, lobbies
 from utils.utils import remove_from_matchmaking
+
 
 async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
     code = payload.get("code")
@@ -26,17 +28,18 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
         }
     )
 
+
 async def create_lobby(user: User, websocket: WebSocket):
     remove_from_matchmaking(user.username)
-    characters = string.ascii_uppercase + string.digits
 
     while True:
-        code = "".join(random.choices(characters, k=6))
-        if code not in lobbies: 
+        code = shortuuid.ShortUUID().random(length=6).upper()
+        if code not in lobbies:
             lobbies[code] = {"host": user.username, "players": [user.username]}
             await websocket.send_json({"type": "lobby_created", "code": code})
             return
-    
+
+
 async def join_lobby(user: User, code: str, websocket: WebSocket):
     remove_from_matchmaking(user.username)
 
@@ -64,6 +67,7 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
             await player_ws.send_json(
                 {"type": "player_joined", "username": user.username}
             )
+
 
 async def cleanup_lobby_on_disconnect(user: User):
     for code, lobby in list(lobbies.items()):

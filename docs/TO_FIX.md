@@ -17,7 +17,8 @@ Si on quitte la page on est pas retiré de la game / lobby
   -> on peut lancer un quickmatch en revenant sur home alors qu'on fait toujours partie d'un lobby privé techniquement (partiellement fixé par onbeforeunload)
 
 retour en arrière peut rejoindre une game qui n'existe pas (partiellement fixé par beforeNavigate)
-commencer un lobby privé, faire un game -> qqun rejoins apres pour faire une deuxième -> dessin du premier dessin reload dans le canva
+
+les dessin restent parfois dans le front quand on relance un lobby
 
 si on retourne au lobby et on lance le jeu avant le retour de tous les joueurs ça casse tout. host ne peu plus lancer le jeu.
 
