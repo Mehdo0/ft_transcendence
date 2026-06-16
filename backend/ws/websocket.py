@@ -36,17 +36,15 @@ async def websocket_endpoint(websocket: WebSocket):
 
     if user.username in connections:
         await websocket.accept()
-        try:
-            await websocket.send_json(
-                {
-                    "type": "error",
-                    "message": "already connected — close your other tab first",
-                }
-            )
-        except Exception:
-            pass
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "already connected — close your other tab first",
+            }
+        )
         raise WebSocketException(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Only one connection allowed"
+            code=status.WS_1008_POLICY_VIOLATION,
+            reason="Only one connection allowed",
         )
     await websocket.accept()
     connections[user.username] = websocket

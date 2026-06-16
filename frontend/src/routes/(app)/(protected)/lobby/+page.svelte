@@ -24,6 +24,7 @@
 		ws.onmessage = (event) => {
 			console.log('server says:', event.data);
 			const msg = JSON.parse(event.data);
+			console.log(msg)
 			if (msg.type === 'lobby_created') {
 				goto('/lobby/' + msg.code);
 			}
