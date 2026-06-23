@@ -11,6 +11,13 @@ lang: FR
 
 # RESTE À FAIRE
 
+Lobby cassé retour au lobby -> guest ne voit pas les participants
+-> host ne peut pas lancer la game
+
+Quand websocket est fermé sur page lobby -> erreur + renvoye sur page home/login OU reconnection du websocket
+
+websocket ne s'ouvre pas pour aucune raison
+
 Si on clique pas `return to lobby` ⇾ on est pas ajouté a la game d'après -> retour automatique au lobby
 
 Si on quitte la page on est pas retiré de la game / lobby
