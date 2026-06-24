@@ -24,6 +24,42 @@ from utils.utils import disconnect
 
 @router.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
+    user = await authenticate_user_trough_ws(websocket)
+    connections[user.username] = websocket
+
+    if user.username in disconnected_players:
+        disconnected_players[user.username]["reconnected"] = True
+        del disconnected_players[user.username]
+
+    if user.username in player_games:
+        await reconnect_user(user, websocket)
+
+    try:
+        while True:
+            payload = await websocket.receive_json()
+            message_type = payload.get("type")
+            match message_type:
+                case "create_lobby":
+                    await create_lobby(user, websocket)
+                case "join_lobby":
+                    code = payload.get("code", "").upper().strip()
+                    if len(code) == 6 or code.isalnum():
+                        await join_lobby(user, code, websocket)
+                case "get_lobby":
+                    await get_lobby_info(payload, websocket, user)
+                case "start_game":
+                    await start_game(payload, user)
+                case "find_player":
+                    await find_player(user)
+                case "guess":
+                    await ai_guess(user, payload, websocket)
+                case "surrender":
+                    await surrender_game(user)
+    except WebSocketDisconnect:
+        await disconnect_user(user)
+
+
+async def authenticate_user_trough_ws(websocket):
     try:
         token = websocket.cookies.get("access_token")
         if token is None:
@@ -65,38 +101,7 @@ async def websocket_endpoint(websocket: WebSocket):
             reason="Only one connection allowed",
         )
     await websocket.accept()
-    connections[user.username] = websocket
-
-    if user.username in disconnected_players:
-        disconnected_players[user.username]["reconnected"] = True
-        del disconnected_players[user.username]
-
-    if user.username in player_games:
-        await reconnect_user(user, websocket)
-
-    try:
-        while True:
-            payload = await websocket.receive_json()
-            message_type = payload.get("type")
-            match message_type:
-                case "create_lobby":
-                    await create_lobby(user, websocket)
-                case "join_lobby":
-                    code = payload.get("code", "").upper().strip()
-                    if len(code) == 6 or code.isalnum():
-                        await join_lobby(user, code, websocket)
-                case "get_lobby":
-                    await get_lobby_info(payload, websocket, user)
-                case "start_game":
-                    await start_game(payload, user)
-                case "find_player":
-                    await find_player(user)
-                case "guess":
-                    await ai_guess(user, payload, websocket)
-                case "surrender":
-                    await surrender_game(user)
-    except WebSocketDisconnect:
-        await disconnect_user(user)
+    return user
 
 
 async def disconnect_user(user: User):
