@@ -28,14 +28,29 @@ async def websocket_endpoint(websocket: WebSocket):
         token = websocket.cookies.get("access_token")
         if token is None:
             raise ValueError("no token found")
+        print("connecting user with token: " + token)
         user = get_user_from_ws_token(token)
     except ValueError as e:
         await websocket.accept()
-        await websocket.send_json({"type": "error", "message": "authentication failed"})
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "authentication failed",
+            }
+        )
+        print("token not found when connecting websocket")
         raise e
     except Exception as e:
         await websocket.accept()
-        await websocket.send_json({"type": "error", "message": "connection failed"})
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "connection failed",
+            }
+        )
+        assert token is not None
+        print("error while fetching user from token: " + token)
+        raise e
 
     if user.username in connections:
         await websocket.accept()

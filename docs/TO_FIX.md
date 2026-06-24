@@ -16,7 +16,8 @@ Lobby cassé retour au lobby -> guest ne voit pas les participants
 
 Quand websocket est fermé sur page lobby -> erreur + renvoye sur page home/login OU reconnection du websocket
 
-websocket ne s'ouvre pas pour aucune raison
+websocket ne s'ouvre pas car le serveur pense qu'on est deja connecté sur une autre page ce qui n'est pas le cas
+
 
 Si on clique pas `return to lobby` ⇾ on est pas ajouté a la game d'après -> retour automatique au lobby
 
