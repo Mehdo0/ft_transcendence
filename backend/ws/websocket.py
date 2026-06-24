@@ -29,10 +29,13 @@ async def websocket_endpoint(websocket: WebSocket):
         if token is None:
             raise ValueError("no token found")
         user = get_user_from_ws_token(token)
-    except Exception as e:
+    except ValueError as e:
         await websocket.accept()
         await websocket.send_json({"type": "error", "message": "authentication failed"})
         raise e
+    except Exception as e:
+        await websocket.accept()
+        await websocket.send_json({"type": "error", "message": "connection failed"})
 
     if user.username in connections:
         await websocket.accept()
