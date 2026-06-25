@@ -1,9 +1,9 @@
-<script lang="ts">
-	import { getWs, setWs } from '$lib/stores/ws';
-	import { onMount } from 'svelte';
-	import { page } from '$app/state';
-	import { game } from '$lib/stores/game.svelte';
-	import { beforeNavigate, goto } from '$app/navigation';
+	<script lang="ts">
+		import { wsManager } from '$lib/stores/ws';
+		import { onMount } from 'svelte';
+		import { page } from '$app/state';
+		import { game } from '$lib/stores/game.svelte';
+		import { goto } from '$app/navigation';
 
 
 	const code = page.params.code ?? '';
@@ -17,39 +17,31 @@
 		sessionStorage.removeItem('isHost');
 	}
 
-	beforeNavigate(({ to }) => {
-		if (to?.route.id !== '/game/in-game') {
-			const ws = getWs();
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				ws.close();
-				setWs(null);
-			}
-		}
-	});
-
-	onMount(() => {
-		const savedPlayers = sessionStorage.getItem('players');
-		if (savedPlayers) players = JSON.parse(savedPlayers);
+		onMount(() => {
+			const savedPlayers = sessionStorage.getItem('players');
+			if (savedPlayers) players = JSON.parse(savedPlayers);
 
 		const savedHost = sessionStorage.getItem('isHost');
 		if (savedHost) isHost = savedHost === 'true';
 
-		let ws = getWs();
-		if (!ws || ws.readyState !== WebSocket.OPEN) {
-			const newWs = new WebSocket('/ws/');
-			setWs(newWs);
-			ws = newWs;
-			newWs.onopen = () => {
-				newWs.send(JSON.stringify({ type: 'get_lobby', code }));
-			};
-		} else {
-			ws.send(JSON.stringify({ type: 'get_lobby', code }));
-		}
-		ws.addEventListener('message', handleMessage);
-	});
+			const offLobbyInfo = wsManager.on('lobby_info', handleMessage);
+			const offPlayerJoined = wsManager.on('player_joined', handleMessage);
+			const offPlayerLeft = wsManager.on('player_left', handleMessage);
+			const offLobbyClosed = wsManager.on('lobby_closed', handleMessage);
+			const offMatchFound = wsManager.on('match_found', handleMessage);
 
-	function handleMessage(event: MessageEvent<any>) {
-		const msg = JSON.parse(event.data);
+			wsManager.send({ type: 'get_lobby', code });
+
+			return () => {
+				offLobbyInfo();
+				offPlayerJoined();
+				offPlayerLeft();
+				offLobbyClosed();
+				offMatchFound();
+			};
+		});
+
+		function handleMessage(msg: any) {
 		if (msg.type === 'lobby_info') {
 			players = msg.players;
 			me = msg.me;
@@ -80,7 +72,7 @@
 			clearSessionData();
 			sessionStorage.setItem('private_lobby_code', code);
 			sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
-			goto('/game/in-game');
+			goto('/in-game');
 		}
 	}
 
@@ -88,10 +80,9 @@
 		return name.length > max ? name.slice(0, max) + '…' : name;
 	}
 
-	function startGame() {
-		const ws = getWs();
-		ws?.send(JSON.stringify({ type: 'start_game', code }));
-	}
+		function startGame() {
+			wsManager.send({ type: 'start_game', code });
+		}
 
 	function copyCode() {
 		if (!code) return;

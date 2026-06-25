@@ -1,8 +1,8 @@
-<script lang="ts">
-	import { game } from '$lib/stores/game.svelte';
-	import { getWs, setWs } from '$lib/stores/ws';
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	<script lang="ts">
+		import { game } from '$lib/stores/game.svelte';
+		import { wsManager } from '$lib/stores/ws';
+		import { onMount } from 'svelte';
+		import { goto } from '$app/navigation';
 
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
@@ -34,14 +34,11 @@
 		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
 	);
 
-	function handleHardExit() {
-		if (!result) {
-			const ws = getWs();
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				ws.send(JSON.stringify({ type: 'surrender' }));
+		function handleHardExit() {
+			if (!result) {
+				wsManager.send({ type: 'surrender' });
 			}
 		}
-	}
 
 	function readJson<T>(key: string, fallback: T) {
 		const value = sessionStorage.getItem(key);
@@ -234,92 +231,85 @@
 			.catch(() => {});
 	}
 
-	onMount(() => {
-		const isReconnect = !!sessionStorage.getItem('draw_word');
-		loadSessionData();
-		startTimer();
+		onMount(() => {
+			const isReconnect = !!sessionStorage.getItem('draw_word');
+			loadSessionData();
+			startTimer();
 
-		if (!isReconnect) {
-			triggerCountdown();
-			loadUserData();
-		}
-
-		let ws = getWs();
-		if (!ws || ws.readyState !== WebSocket.OPEN) {
-			ws = new WebSocket('/ws/');
-			setWs(ws);
-		}
-
-		ws.onmessage = (event) => {
-			const msg = JSON.parse(event.data);
-			console.log(msg)
-			switch (msg.type) {
-				case 'ai_guess':
-					setPlayerScore(
-						game.me || myUsername || msg.username,
-						msg.score ?? msg.guess?.[game.word] ?? 0
-					);
-					break;
-				case 'player_guess':
-					setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
-					break;
-				case 'opponent_guess':
-					setPlayerScore(game.opponent, msg.score ?? msg.guess?.[game.word] ?? 0);
-					break;
-				case 'opponent_disconnected':
-					disconnectedPlayers[msg.username] = true;
-					break;
-				case 'reconnect_game':
-					game.id = msg.game_id;
-					game.opponent = msg.opponent;
-					game.me = msg.me ?? game.me;
-					game.word = msg.word;
-					game.is_ranked = msg.is_ranked ?? game.is_ranked;
-					disconnectedPlayers = {};
-					applyPlayers(msg.players ?? []);
-					updateScores(msg.scores ?? {});
-					updateRoundWins(msg.round_wins ?? {});
-					saveGameData();
-					if (msg.time_left != null) {
-						endsAt = Date.now() + msg.time_left * 1000;
-						sessionStorage.setItem('draw_ends_at', String(endsAt));
-						startTimer();
-					}
-					break;
-				case 'next_round':
-					game.word = msg.word;
-					if (msg.scores) updateScores(msg.scores);
-					else resetScores();
-					updateRoundWins(msg.round_wins ?? roundWins);
-					sessionStorage.setItem('draw_word', game.word);
-					stack = [];
-					redoStack = [];
-					last = null;
-					pointsSinceLastGuess = 0;
-					if (context) redraw();
-					if (msg.duration != null) {
-						endsAt = Date.now() + msg.duration * 1000;
-						sessionStorage.setItem('draw_ends_at', String(endsAt));
-						startTimer();
-					}
-					triggerCountdown();
-					break;
-				case 'end_game':
-					stopTimer();
-					elo_diff = msg.elo_diff;
-					result = msg.status;
-					setTimeout(() => {
-						backAfterGame();
-					}, 3000);
-					clearSessionData();
-					break;
-				default:
-					console.log(msg);
+			if (!isReconnect) {
+				triggerCountdown();
+				loadUserData();
 			}
-		};
 
-		return () => stopTimer();
-	});
+			const offMessage = wsManager.on('*', (msg: any) => {
+				switch (msg.type) {
+					case 'ai_guess':
+						setPlayerScore(
+							game.me || myUsername || msg.username,
+							msg.score ?? msg.guess?.[game.word] ?? 0
+						);
+						break;
+					case 'player_guess':
+						setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
+						break;
+					case 'opponent_guess':
+						setPlayerScore(game.opponent, msg.score ?? msg.guess?.[game.word] ?? 0);
+						break;
+					case 'opponent_disconnected':
+						disconnectedPlayers[msg.username] = true;
+						break;
+					case 'reconnect_game':
+						game.id = msg.game_id;
+						game.opponent = msg.opponent;
+						game.me = msg.me ?? game.me;
+						game.word = msg.word;
+						game.is_ranked = msg.is_ranked ?? game.is_ranked;
+						disconnectedPlayers = {};
+						applyPlayers(msg.players ?? []);
+						updateScores(msg.scores ?? {});
+						updateRoundWins(msg.round_wins ?? {});
+						saveGameData();
+						if (msg.time_left != null) {
+							endsAt = Date.now() + msg.time_left * 1000;
+							sessionStorage.setItem('draw_ends_at', String(endsAt));
+							startTimer();
+						}
+						break;
+					case 'next_round':
+						game.word = msg.word;
+						if (msg.scores) updateScores(msg.scores);
+						else resetScores();
+						updateRoundWins(msg.round_wins ?? roundWins);
+						sessionStorage.setItem('draw_word', game.word);
+						stack = [];
+						redoStack = [];
+						last = null;
+						pointsSinceLastGuess = 0;
+						if (context) redraw();
+						if (msg.duration != null) {
+							endsAt = Date.now() + msg.duration * 1000;
+							sessionStorage.setItem('draw_ends_at', String(endsAt));
+							startTimer();
+						}
+						triggerCountdown();
+						break;
+					case 'end_game':
+						stopTimer();
+						elo_diff = msg.elo_diff;
+						result = msg.status;
+						setTimeout(() => {
+							backAfterGame();
+						}, 3000);
+						clearSessionData();
+						break;
+				}
+			});
+
+			return () => {
+				offMessage();
+				stopTimer();
+			};
+		});
 
 	$effect(() => {
 		sessionStorage.setItem('draw_stack', JSON.stringify(stack));
@@ -332,12 +322,11 @@
 		}
 	});
 
-	function surrender() {
-		if (confirm('Are you sure you want to forfeit the match?')) {
-			const ws = getWs();
-			ws?.send(JSON.stringify({ type: 'surrender' }));
+		function surrender() {
+			if (confirm('Are you sure you want to forfeit the match?')) {
+				wsManager.send({ type: 'surrender' });
+			}
 		}
-	}
 
 	function resize() {
 		if (!canvas || !context) return;
@@ -416,10 +405,9 @@
 		makeAiGuess();
 	}
 
-	function makeAiGuess() {
-		const ws = getWs();
-		ws?.send(JSON.stringify({ type: 'guess', strokes: stack }));
-	}
+		function makeAiGuess() {
+			wsManager.send({ type: 'guess', strokes: stack });
+		}
 
 	function finishStroke() {
 		if (!last) return;

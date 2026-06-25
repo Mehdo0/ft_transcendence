@@ -1,44 +1,27 @@
-<script lang="ts">
-	import { goto } from '$app/navigation';
-	import { getWs, setWs } from '$lib/stores/ws';
-	import { onMount } from 'svelte';
+	<script lang="ts">
+		import { goto } from '$app/navigation';
+		import { wsManager } from '$lib/stores/ws';
+		import { onMount } from 'svelte';
 
 	let lobbyCode = $state('');
 
-	function send(msg: object) {
-		const ws = getWs();
-		if (!ws) return;
-		if (ws.readyState === WebSocket.OPEN) {
-			ws.send(JSON.stringify(msg));
-		} else if (ws.readyState === WebSocket.CONNECTING) {
-			ws.addEventListener('open', () => ws.send(JSON.stringify(msg)), { once: true });
+		function send(msg: object) {
+			wsManager.send(msg);
 		}
-	}
 
-	onMount(() => {
-		let ws = getWs();
-		if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-			ws = new WebSocket('/ws/');
-			setWs(ws);
-		}
-		ws.onmessage = (event) => {
-			console.log('server says:', event.data);
-			const msg = JSON.parse(event.data);
-			console.log(msg)
-			if (msg.type === 'lobby_created') {
+		onMount(() => {
+			const offLobbyCreated = wsManager.on('lobby_created', (msg) => {
 				goto('/lobby/' + msg.code);
-			}
-			if (msg.type === 'lobby_joined') {
+			});
+			const offLobbyJoined = wsManager.on('lobby_joined', (msg) => {
 				goto('/lobby/' + msg.code);
-			}
-		};
-		ws.onclose = () => {
-			console.log('WebSocket closed');
-		};
-		ws.onerror = (event) => {
-			console.log('WebSocket error:', event);
-		};
-	});
+			});
+
+			return () => {
+				offLobbyCreated();
+				offLobbyJoined();
+			};
+		});
 
 	function createLobby() {
 		send({ type: 'create_lobby' });
