@@ -34,12 +34,6 @@
 		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
 	);
 
-		function handleHardExit() {
-			if (!result) {
-				send({ type: 'surrender' });
-			}
-		}
-
 	function readJson<T>(key: string, fallback: T) {
 		const value = sessionStorage.getItem(key);
 		if (!value) return fallback;
@@ -427,7 +421,7 @@
 	}
 </script>
 
-<svelte:window onresize={resize} onbeforeunload={handleHardExit} />
+<svelte:window onresize={resize} />
 
 {#if showCountdown}
 	<div class="cd-page" data-count={countdownNum} aria-live="assertive" aria-atomic="true">
