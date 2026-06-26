@@ -115,10 +115,9 @@ async def disconnect_user(user: User):
                     await connections[p].send_json(
                         {"type": "opponent_disconnected", "username": user.username}
                     )
-        asyncio.create_task(handle_disconnect_grace_period(user, game_id))
-        return
-    await cleanup_lobby_on_disconnect(user)
-    disconnect(user)
+    asyncio.create_task(
+        handle_disconnect_grace_period(user, player_games.get(user.username))
+    )
 
 
 async def reconnect_user(user: User, websocket: WebSocket):
@@ -151,7 +150,7 @@ async def reconnect_user(user: User, websocket: WebSocket):
     )
 
 
-async def handle_disconnect_grace_period(user: User, game_id: str):
+async def handle_disconnect_grace_period(user: User, game_id: str | None):
     disconnected_players[user.username] = {"reconnected": False}
     await asyncio.sleep(10)
 
@@ -170,6 +169,7 @@ async def handle_disconnect_grace_period(user: User, game_id: str):
             await end_game(game_id, winner, "opponent_left")
         return
 
+    await cleanup_lobby_on_disconnect(user)
     disconnect(user)
 
 
