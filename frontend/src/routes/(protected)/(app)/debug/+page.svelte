@@ -1,6 +1,6 @@
 	<script lang="ts">
 		import { onMount } from 'svelte';
-		import { wsManager } from '$lib/stores/ws';
+		import { send, subscribe } from '$lib/stores/wsManager';
 
 		let data = $state(null);
 		let messages: string[] = $state([]);
@@ -15,20 +15,16 @@
 	}
 
 		function sendMessage() {
-			wsManager.send({ type: 'debug', message: 'hello from browser at ' + new Date().toISOString() });
+			send({ type: 'debug', message: 'hello from browser at ' + new Date().toISOString() });
 		}
 		onMount(() => {
 			load_data();
-			const offMessage = wsManager.on('*', (message) => {
+			const unsubscribe = subscribe((message) => {
 				messages = [...messages, `server: ${JSON.stringify(message)}`];
-			});
-			const offStatus = wsManager.onStatus((status) => {
-				messages = [...messages, status];
 			});
 
 			return () => {
-				offMessage();
-				offStatus();
+				unsubscribe();
 			};
 		});
 	</script>

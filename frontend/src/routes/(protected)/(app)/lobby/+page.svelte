@@ -1,25 +1,19 @@
 	<script lang="ts">
 		import { goto } from '$app/navigation';
-		import { wsManager } from '$lib/stores/ws';
+		import { send, subscribe } from '$lib/stores/wsManager';
 		import { onMount } from 'svelte';
 
-	let lobbyCode = $state('');
-
-		function send(msg: object) {
-			wsManager.send(msg);
-		}
+		let lobbyCode = $state('');
 
 		onMount(() => {
-			const offLobbyCreated = wsManager.on('lobby_created', (msg) => {
-				goto('/lobby/' + msg.code);
-			});
-			const offLobbyJoined = wsManager.on('lobby_joined', (msg) => {
-				goto('/lobby/' + msg.code);
+			const unsubscribe = subscribe((message) => {
+				if (message.type === 'lobby_created' || message.type === 'lobby_joined') {
+					goto('/lobby/' + message.code);
+				}
 			});
 
 			return () => {
-				offLobbyCreated();
-				offLobbyJoined();
+				unsubscribe();
 			};
 		});
 

@@ -1,6 +1,6 @@
 	<script lang="ts">
 		import { game } from '$lib/stores/game.svelte';
-		import { wsManager } from '$lib/stores/ws';
+		import { send, subscribe } from '$lib/stores/wsManager';
 		import { onMount } from 'svelte';
 		import { goto } from '$app/navigation';
 
@@ -36,7 +36,7 @@
 
 		function handleHardExit() {
 			if (!result) {
-				wsManager.send({ type: 'surrender' });
+				send({ type: 'surrender' });
 			}
 		}
 
@@ -241,7 +241,7 @@
 				loadUserData();
 			}
 
-			const offMessage = wsManager.on('*', (msg: any) => {
+			const unsubscribe = subscribe((msg: any) => {
 				switch (msg.type) {
 					case 'ai_guess':
 						setPlayerScore(
@@ -306,7 +306,7 @@
 			});
 
 			return () => {
-				offMessage();
+				unsubscribe();
 				stopTimer();
 			};
 		});
@@ -324,7 +324,7 @@
 
 		function surrender() {
 			if (confirm('Are you sure you want to forfeit the match?')) {
-				wsManager.send({ type: 'surrender' });
+				send({ type: 'surrender' });
 			}
 		}
 
@@ -406,7 +406,7 @@
 	}
 
 		function makeAiGuess() {
-			wsManager.send({ type: 'guess', strokes: stack });
+			send({ type: 'guess', strokes: stack });
 		}
 
 	function finishStroke() {

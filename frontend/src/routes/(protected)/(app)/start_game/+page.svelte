@@ -1,7 +1,7 @@
 	<script lang="ts">
 		import { onMount } from 'svelte';
 		import { goto } from '$app/navigation';
-		import { wsManager } from '$lib/stores/ws';
+		import { isOpen, send, subscribe } from '$lib/stores/wsManager';
 		import { game } from '$lib/stores/game.svelte';
 
 	let isConnected = $state(false);
@@ -24,25 +24,20 @@
 		}
 
 		async function findGame() {
-			await wsManager.send({ type: 'find_player' });
+			send({ type: 'find_player' });
 			isSearching = true;
 			statusMessage = 'Searching...';
 		}
 		onMount(() => {
-			isConnected = wsManager.isOpen();
-			statusMessage = isConnected ? 'Connected' : 'Disconnected';
+			isConnected = true;
+			statusMessage = isOpen() ? 'Connected' : 'Connecting';
 
-			const offMatchFound = wsManager.on('match_found', handleMatchFound);
-			const offStatus = wsManager.onStatus((status) => {
-				isConnected = status === 'open';
-				if (status === 'open') statusMessage = 'Connected';
-				if (status === 'closed') statusMessage = 'Disconnected';
-				if (status === 'error') statusMessage = 'Error';
+			const unsubscribe = subscribe((message) => {
+				if (message.type === 'match_found') handleMatchFound(message);
 			});
 
 			return () => {
-				offMatchFound();
-				offStatus();
+				unsubscribe();
 			};
 		});
 	</script>

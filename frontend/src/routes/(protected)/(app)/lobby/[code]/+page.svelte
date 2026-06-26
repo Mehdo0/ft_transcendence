@@ -1,9 +1,9 @@
-	<script lang="ts">
-		import { wsManager } from '$lib/stores/ws';
-		import { onMount } from 'svelte';
-		import { page } from '$app/state';
-		import { game } from '$lib/stores/game.svelte';
-		import { goto } from '$app/navigation';
+<script lang="ts">
+	import { send, subscribe } from '$lib/stores/wsManager';
+	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { game } from '$lib/stores/game.svelte';
+	import { goto } from '$app/navigation';
 
 
 	const code = page.params.code ?? '';
@@ -24,20 +24,12 @@
 		const savedHost = sessionStorage.getItem('isHost');
 		if (savedHost) isHost = savedHost === 'true';
 
-			const offLobbyInfo = wsManager.on('lobby_info', handleMessage);
-			const offPlayerJoined = wsManager.on('player_joined', handleMessage);
-			const offPlayerLeft = wsManager.on('player_left', handleMessage);
-			const offLobbyClosed = wsManager.on('lobby_closed', handleMessage);
-			const offMatchFound = wsManager.on('match_found', handleMessage);
+			const unsubscribe = subscribe(handleMessage);
 
-			wsManager.send({ type: 'get_lobby', code });
+			send({ type: 'get_lobby', code });
 
 			return () => {
-				offLobbyInfo();
-				offPlayerJoined();
-				offPlayerLeft();
-				offLobbyClosed();
-				offMatchFound();
+				unsubscribe();
 			};
 		});
 
@@ -80,9 +72,9 @@
 		return name.length > max ? name.slice(0, max) + '…' : name;
 	}
 
-		function startGame() {
-			wsManager.send({ type: 'start_game', code });
-		}
+			function startGame() {
+				send({ type: 'start_game', code });
+			}
 
 	function copyCode() {
 		if (!code) return;
