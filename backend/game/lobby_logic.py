@@ -30,18 +30,23 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
 
 
 async def create_lobby(user: User, websocket: WebSocket):
+    print("GAME: creating lobby, host " + user.username)
     remove_from_matchmaking(user.username)
 
     while True:
         code = shortuuid.ShortUUID().random(length=6).upper()
-        if code not in lobbies:
-            lobbies[code] = {"host": user.username, "players": [user.username]}
-            await websocket.send_json({"type": "lobby_created", "code": code})
-            return
+        while code in lobbies:  # ensure no duplicate lobbies
+            code = shortuuid.ShortUUID().random(length=6).upper()
+        lobbies[code] = {"host": user.username, "players": [user.username]}
+        await websocket.send_json({"type": "lobby_created", "code": code})
+        return
 
 
 async def join_lobby(user: User, code: str, websocket: WebSocket):
     remove_from_matchmaking(user.username)
+    if len(code) != 6 or not code.isalnum():
+        await websocket.send_json({"type": "error", "message": "wrong code"})
+        return
 
     if code not in lobbies:
         await websocket.send_json({"type": "error", "message": "lobby not found"})
@@ -69,7 +74,7 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
             )
 
 
-async def cleanup_lobby_on_disconnect(user: User):
+async def cleanup_lobby_on_disconnect(user: User):  # audit TODO
     for code, lobby in list(lobbies.items()):
         if user.username not in lobby["players"]:
             continue

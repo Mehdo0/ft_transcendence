@@ -1,5 +1,5 @@
 import random
-from core.database import get_user
+from core.database import get_user_unsafe
 from schemas.data import Game, User
 from services.ai_service import load_word_list
 from state.state import games
@@ -10,16 +10,20 @@ def get_random_word():
     return random.choice(data)
 
 
-def get_opponents(user: User, game_id: str) -> list[str]:
-    return [player for player in games[game_id].players if player != user.username]
+def get_opponents(user: User, game: Game) -> list[str]:
+    print("getting opponents for game id: ", game.id, " and user ", user.username)
+    print("players: ", games[game.id].players)
+    opponents = games[game.id].players.copy()
+    opponents.remove(user.username)  # keep all but queried user
+    print("opponents: ", games[game.id].players)
+    return opponents
 
 
-def get_users(usernames: list[str]) -> list[User]:
+def get_users_unsafe(usernames: list[str]) -> list[User]:
     users = []
+    assert len(usernames) >= 1
     for username in usernames:
-        user = get_user(username)
-        if user is None:
-            raise ValueError("lobby player not found")
+        user = get_user_unsafe(username)  # users should all exist
         users.append(user)
     return users
 

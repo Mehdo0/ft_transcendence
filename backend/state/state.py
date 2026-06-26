@@ -4,7 +4,8 @@ from schemas.data import Game
 
 matchmaking_queue: list[str] = []
 
-disconnected_players = {}  # list of the disconnected player to reconnect them gracely ;)
+# list of the disconnected player to reconnect them gracefully
+disconnected_players: list[str] = []
 
 connections: dict[str, WebSocket] = {}  # username of the player  and his websocket id
 games: dict[str, Game] = {}  # list of games with their players usernames
