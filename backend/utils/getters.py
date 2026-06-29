@@ -1,5 +1,5 @@
 import random
-from core.database import get_user_unsafe
+from core.database import get_user
 from schemas.data import Game, User
 from services.ai_service import load_word_list
 from state.state import games
@@ -23,7 +23,8 @@ def get_users_unsafe(usernames: list[str]) -> list[User]:
     users = []
     assert len(usernames) >= 1
     for username in usernames:
-        user = get_user_unsafe(username)  # users should all exist
+        assert get_user(username) is not None
+        user = get_user(username)
         users.append(user)
     return users
 

@@ -58,10 +58,8 @@ def add_user(user: UserRegister) -> User:
                 elo=user.elo,
             )
         except IntegrityError:
-            # CRITICAL: Always rollback the session if a commit fails!
             session.rollback()
 
-            # Raise the custom error that our API router is waiting for
             raise EmailAlreadyTakenError("This email is already taken.")
 
 
@@ -81,17 +79,6 @@ def get_user(username: str) -> User | None:
         user = session.get(UserModel, username)
         if user is None:
             return None
-        return User(
-            username=user.username,
-            email=user.email,
-            elo=user.elo,
-        )
-
-
-def get_user_unsafe(username: str) -> User:
-    with SessionLocal() as session:
-        user = session.get(UserModel, username)
-        assert user is not None
         return User(
             username=user.username,
             email=user.email,

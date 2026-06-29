@@ -1,7 +1,7 @@
 <script lang="ts">
-	import '@fontsource-variable/unbounded/index.css';
-	import '@fontsource-variable/hanken-grotesk/index.css';
-	import '@fontsource-variable/jetbrains-mono/index.css';
+	import '@fontsource-variable/unbounded';
+	import '@fontsource-variable/hanken-grotesk';
+	import '@fontsource-variable/jetbrains-mono';
 	import '../app.css';
 
 	let { children } = $props();

@@ -5,7 +5,7 @@ from utils.utils import send_msg_to_opponents
 import asyncio
 from core.setup import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
 from fastapi import WebSocket, WebSocketException, status
-from core.database import get_user, get_user_unsafe, update_user_elo
+from core.database import get_user, update_user_elo
 from schemas.data import Game, GameState, User
 from services.services import make_ai_guess
 from state.state import (
@@ -187,9 +187,10 @@ async def start_game(payload: dict, user: User):
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION, reason="Only host can start game"
         )
+    assert lobby["players"]
     if len(lobby["players"]) < 2:
         raise WebSocketException(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Cannot start game alone"
+            code=status.WS_1008_POLICY_VIOLATION, reason="Cannot start game alone" #bah si non ? 
         )
 
     for player in lobby["players"]:
@@ -200,10 +201,11 @@ async def start_game(payload: dict, user: User):
             )
 
     players: list[User] = []
-    assert lobby["players"]
+    
     for player in lobby["players"]:
         assert player in connections
-        players.append(get_user_unsafe(player))
+        assert get_user(player) is not None
+        players.append(get_user(player))
 
     await create_game(players, False)
 
