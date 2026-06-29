@@ -83,7 +83,7 @@
 					aria-invalid={!!errors.username}
 					aria-describedby={errors.username ? 'username-err' : undefined}
 					disabled={loading}
-					placeholder="e.g., picasso42"
+					placeholder="e.g., Vincent du Bocal"
 				/>
 				{#if errors.username}
 					<span class="field-error" id="username-err" aria-live="polite">{errors.username}</span>

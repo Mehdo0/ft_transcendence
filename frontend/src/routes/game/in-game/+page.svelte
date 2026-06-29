@@ -25,15 +25,18 @@
 	let pointsSinceLastGuess = $state(0);
 	let roundWins = $state<Record<string, number>>({});
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
+	let currentRound = $derived(
+		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
+	);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
 	const DRAW_WIDTH = 0.01;
 
-	let currentRound = $derived(
-		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
-	);
+	
 
+	
+	// utilities functions --------------------------------------------------------
 	function handleHardExit() {
 		if (!result) {
 			const ws = getWs();
@@ -42,7 +45,6 @@
 			}
 		}
 	}
-
 	function readJson<T>(key: string, fallback: T) {
 		const value = sessionStorage.getItem(key);
 		if (!value) return fallback;
@@ -53,21 +55,55 @@
 		}
 	}
 
+	function backAfterGame() {
+		if (game.is_ranked) {
+			goto('/');
+			return;
+		}
+		const code = sessionStorage.getItem('private_lobby_code');
+		goto(code ? `/lobby/${code}` : '/lobby');
+	}
+
+	function surrender() {
+		if (confirm('Are you sure you want to forfeit the match?')) {
+			const ws = getWs();
+			ws?.send(JSON.stringify({ type: 'surrender' }));
+		}
+	}
+
+
+	// timer related function ----------------------------------------------------
 	function tick() {
 		timeLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
 	}
-
 	function startTimer() {
 		if (timerId) clearInterval(timerId);
 		tick();
 		timerId = setInterval(tick, 250);
 	}
-
 	function stopTimer() {
 		if (timerId) clearInterval(timerId);
 		timerId = null;
 	}
+	function triggerCountdown() {
+		showCountdown = true;
+		countdownNum = 3;
+		setTimeout(() => {
+			countdownNum = 2;
+		}, 1000);
+		setTimeout(() => {
+			countdownNum = 1;
+		}, 2000);
+		setTimeout(() => {
+			countdownNum = 0;
+		}, 3000);
+		setTimeout(() => {
+			showCountdown = false;
+		}, 3600);
+	}
 
+
+	// users related functions --------------------------------------------------
 	function applyPlayers(players: string[]) {
 		game.players = players;
 		const scores = { ...game.scores };
@@ -80,14 +116,6 @@
 		roundWins = wins;
 	}
 
-	function scorePlayers() {
-		if (game.players.length > 0) return game.players;
-		const players: string[] = [];
-		if (game.me || myUsername) players.push(game.me || myUsername);
-		if (game.opponent) players.push(game.opponent);
-		return players;
-	}
-
 	function isMe(player: string) {
 		return player === game.me || player === myUsername;
 	}
@@ -96,9 +124,26 @@
 		return isMe(player) ? 'You' : player;
 	}
 
+	function opponentLabel() {
+		const others = scorePlayers().filter((player) => !isMe(player));
+		if (others.length === 0) return 'Solo';
+		if (others.length === 1) return others[0];
+		return `${scorePlayers().length} Players`;
+	}
+
+
+	// Score related function ---------------------------------------------------------------
 	function scoreFor(player: string) {
 		if (isMe(player)) return game.scores[player] ?? game.my_score ?? 0;
 		return game.scores[player] ?? (player === game.opponent ? game.opponent_score : 0);
+	}
+
+	function scorePlayers() {
+		if (game.players.length > 0) return game.players;
+		const players: string[] = [];
+		if (game.me || myUsername) players.push(game.me || myUsername);
+		if (game.opponent) players.push(game.opponent);
+		return players;
 	}
 
 	function setPlayerScore(username: string, score: number) {
@@ -126,13 +171,8 @@
 		updateScores(scores);
 	}
 
-	function opponentLabel() {
-		const others = scorePlayers().filter((player) => !isMe(player));
-		if (others.length === 0) return 'Solo';
-		if (others.length === 1) return others[0];
-		return `${scorePlayers().length} Players`;
-	}
 
+	// Round related function ------------------------------------------------------------
 	function updateRoundWins(wins: Record<string, number>) {
 		const nextWins = { ...wins };
 		if (game.players.length === 0 && Object.keys(nextWins).length > 0) {
@@ -147,6 +187,8 @@
 		return roundWins[player] ?? 0;
 	}
 
+
+	// Saved data function ------------------------------------------------------------------
 	function saveGameData() {
 		sessionStorage.setItem('draw_word', game.word);
 		sessionStorage.setItem('draw_opponent', game.opponent);
@@ -171,23 +213,9 @@
 		sessionStorage.removeItem('draw_ends_at');
 	}
 
-	function triggerCountdown() {
-		showCountdown = true;
-		countdownNum = 3;
-		setTimeout(() => {
-			countdownNum = 2;
-		}, 1000);
-		setTimeout(() => {
-			countdownNum = 1;
-		}, 2000);
-		setTimeout(() => {
-			countdownNum = 0;
-		}, 3000);
-		setTimeout(() => {
-			showCountdown = false;
-		}, 3600);
-	}
 
+
+	// loading things functions -----------------------------------------------------------
 	function loadSessionData() {
 		stack = readJson<Trait[]>('draw_stack', []);
 		game.scores = readJson<Record<string, number>>('draw_scores', {});
@@ -332,13 +360,8 @@
 		}
 	});
 
-	function surrender() {
-		if (confirm('Are you sure you want to forfeit the match?')) {
-			const ws = getWs();
-			ws?.send(JSON.stringify({ type: 'surrender' }));
-		}
-	}
 
+	// Game related functions ---------------------------------------------------------------
 	function resize() {
 		if (!canvas || !context) return;
 		const dpr = window.devicePixelRatio || 1;
@@ -429,14 +452,6 @@
 		makeAiGuess();
 	}
 
-	function backAfterGame() {
-		if (game.is_ranked) {
-			goto('/');
-			return;
-		}
-		const code = sessionStorage.getItem('private_lobby_code');
-		goto(code ? `/lobby/${code}` : '/lobby');
-	}
 </script>
 
 <svelte:window onresize={resize} onbeforeunload={handleHardExit} />

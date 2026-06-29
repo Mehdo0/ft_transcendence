@@ -5,9 +5,15 @@
 	import { getWs, setWs } from '$lib/stores/ws';
 
 	let { children } = $props();
-
 	let login = $state(false);
 	let menuOpen = $state(false);
+
+	const navLinks = [
+		{ href: '/', label: 'Dashboard' },
+		{ href: '/start_game', label: 'Play Now!' },
+		{ href: '/lobby', label: 'Private Game' },
+		{ href: '/ranking', label: 'Leaderboard' }
+	];
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -31,12 +37,7 @@
 		location.assign('/');
 	}
 
-	const navLinks = [
-		{ href: '/', label: 'Dashboard' },
-		{ href: '/start_game', label: 'Play Now!' },
-		{ href: '/lobby', label: 'Private Game' },
-		{ href: '/ranking', label: 'Leaderboard' }
-	];
+	
 
 	onMount(async () => {
 		const response = await fetch('/api/users/me/', {
