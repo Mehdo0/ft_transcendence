@@ -27,17 +27,7 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
 
     with SessionLocal() as session:
-        existing_user = session.get(UserModel, "modo")
-        if existing_user is None:
-            modo = UserModel(
-                username="modo",
-                password="",
-                elo=9999,
-                email="modo@example.com",
-            )
-
-            session.add(modo)
-            session.commit()
+        session.commit()
 
 
 def add_user(user: UserRegister) -> User:
