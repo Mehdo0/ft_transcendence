@@ -9,10 +9,10 @@ from state.state import (
 )
 
 
-def cancel_timer(game_id: str):
+def cancel_timer(game_id: str) -> None:
     task = game_timers.pop(game_id, None)
-    if task is not None:
-        task.cancel()
+    # assert task is not None  # this is the only place where we cancel the task
+    task.cancel()
 
 
 async def calculate_new_elo(player1: User, player2: User, result: int):
@@ -24,16 +24,11 @@ async def calculate_new_elo(player1: User, player2: User, result: int):
     return diff, new_elo
 
 
-def cleanup_game(game_id: str, *users: User):
-    games.pop(game_id, None)
-    for user in users:
-        player_games.pop(user.username, None)
-        disconnected_players.pop(user.username, None)
-
-
-def ensure_round_wins(game: Game):
-    for player in game.players:
-        game.round_wins[player] = game.round_wins.get(player, 0)
+def cleanup_game(game: Game) -> None:
+    for user in game.players:
+        player_games.pop(user, None)
+        disconnected_players.remove(user)
+    games.pop(game.id)
 
 
 def disconnect(user: User):
@@ -45,3 +40,23 @@ def disconnect(user: User):
 def remove_from_matchmaking(username: str):
     if username in matchmaking_queue:
         matchmaking_queue.remove(username)
+
+
+async def send_msg_to_opponents(
+    game: Game,
+    user: User,
+    msg: dict[str, str],
+):
+    for p in game.players:
+        if p != user.username:  # message all opponents
+            assert p in connections  # opponent should be connected
+            await connections[p].send_json(msg)
+
+
+async def send_msg_to_players(
+    game: Game,
+    msg: dict[str, str],
+):
+    for p in game.players:
+        assert p in connections  # opponent should be connected
+        await connections[p].send_json(msg)

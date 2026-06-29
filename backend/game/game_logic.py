@@ -1,10 +1,11 @@
-from typing import Coroutine
+import torchvision.ops.poolers
 import uuid
 from utils.getters import get_random_word, get_total_score, get_opponents
+from utils.utils import send_msg_to_opponents
 import asyncio
 from core.setup import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
 from fastapi import WebSocket, WebSocketException, status
-from core.database import get_user, get_user_unsafe, update_user_elo
+from core.database import get_user, update_user_elo
 from schemas.data import Game, GameState, User
 from services.services import make_ai_guess
 from state.state import (
@@ -14,21 +15,34 @@ from state.state import (
     lobbies,
     player_games,
 )
-from utils.getters import get_users
-from utils.utils import cancel_timer, calculate_new_elo, cleanup_game, ensure_round_wins
+from utils.getters import get_users_unsafe
+from utils.utils import cancel_timer, calculate_new_elo, cleanup_game
 
 
 async def create_game(players: list[User], is_ranked: bool):
+    player_usernames = [player.username for player in players]
+    print("GAME: creating game with players: ", player_usernames)
     loop = asyncio.get_running_loop()
     game = Game(
         id=str(uuid.uuid4()),
         game_state=GameState.STARTED,
-        players=[player.username for player in players],
+        players=player_usernames,
         word=get_random_word(),
         is_ranked=is_ranked,
         ends_at=loop.time() + ROUND_DURATION,
     )
+    print(
+        "game id: ",
+        game.id,
+        ", word: ",
+        game.word,
+        ", ranked: ",
+        game.is_ranked,
+        ", ends_at: ",
+        game.ends_at,
+    )
     games[game.id] = game
+    print("creating task for game id ", game.id, "...")
     game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
     for player in players:
@@ -37,14 +51,15 @@ async def create_game(players: list[User], is_ranked: bool):
         game.score_bonuses[player.username] = 0
         game.round_wins[player.username] = 0
         player_games[player.username] = game.id
-        opponents = get_opponents(player, game.id)
+        opponents = get_opponents(player, game)
+        print("opponents of player ", player.username, opponents)
         websocket = connections[player.username]
         await websocket.send_json(
             {
                 "type": "match_found",
                 "game_id": game.id,
-                "opponent": opponents[0] if opponents else "",
-                "players": game.players,
+                "opponent": opponents,
+                "players": player_usernames,
                 "me": player.username,
                 "word": game.word,
                 "duration": ROUND_DURATION,
@@ -53,15 +68,13 @@ async def create_game(players: list[User], is_ranked: bool):
                 "is_ranked": game.is_ranked,
             }
         )
+    games[game.id] = game
 
 
-async def end_game(game_id: str, winner: User, reason: str | None = None):
-    if game_id not in games:
-        return
-
-    game = games[game_id]
-    users = get_users(game.players)
-    losers = [user for user in users if user.username != winner.username]
+async def end_game(game: Game, winner: User, reason: str | None = None):
+    users = get_users_unsafe(game.players)
+    losers = users
+    losers.remove(winner)
 
     if game.is_ranked and len(losers) == 1:
         loser = losers[0]
@@ -76,34 +89,27 @@ async def end_game(game_id: str, winner: User, reason: str | None = None):
             status = "winner" if user.username == winner.username else "looser"
             await send_end_game(user.username, status, 0, user.elo, reason)
 
-    cancel_timer(game_id)
-    cleanup_game(game_id, *users)
+    cancel_timer(game.id)
+    cleanup_game(game)
 
 
-async def handle_round_end(game_id: str, winner: User):
-    if game_id not in games:
+async def handle_round_end(game: Game, winner: User):
+    assert len(game.players) > 0
+
+    if len(game.players) == 1:
+        await end_game(game, winner)
         return
 
-    game = games[game_id]
-    if len(game.players) <= 1:
-        await end_game(game_id, winner)
-        return
-
-    ensure_round_wins(game)
     game.round_wins[winner.username] += 1
 
     if game.round_wins[winner.username] >= ROUND_WIN_TARGET:
-        await end_game(game_id, winner)
+        await end_game(game, winner)
         return
+    else:
+        await start_next_round(game)
 
-    await start_next_round(game_id)
 
-
-async def start_next_round(game_id: str):
-    if game_id not in games:
-        return
-
-    game = games[game_id]
+async def start_next_round(game: Game):
     game.scores = {player: 0 for player in game.players}
     game.ai_scores = {player: 0 for player in game.players}
     game.score_bonuses = {player: 0 for player in game.players}
@@ -124,36 +130,49 @@ async def start_next_round(game_id: str):
                 }
             )
 
-    cancel_timer(game_id)
-    game_timers[game_id] = asyncio.create_task(game_timer(game_id))
+    cancel_timer(game.id)
+    game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
 
 async def end_game_by_timeout(game_id: str):
-    if game_id not in games:
-        return
+    print("ending game ", game_id, " by timeout")
+    print("asserting game exists...")
 
+    assert game_id in games
     game = games[game_id]
-    users = get_users(game.players)
-    scores = {user.username: game.scores.get(user.username, 0) for user in users}
+
+    print("fetching users...\nusers:")
+    users = get_users_unsafe(game.players)
+    for user in users:
+        print("\t", user)
+    print("fetching scores...\nscores:")
+    scores = {user.username: game.scores.get(user.username) for user in users}
+    for score in scores:
+        print("\t", score)
     max_score = max(scores.values())
     winners = [user for user in users if scores[user.username] == max_score]
+    print("winner(s): ", winners)
 
-    if len(winners) != 1:
-        if len(users) <= 1:
-            for user in users:
-                await send_end_game(user.username, "draw", 0, user.elo, "timeout")
-            cancel_timer(game_id)
-            cleanup_game(game_id, *users)
-            return
+    assert len(winners) > 0
 
-        for user in users:
-            websocket = connections.get(user.username)
-            if websocket:
-                await websocket.send_json({"type": "round_tie"})
-        await start_next_round(game_id)
+    if len(users) == 1:
+        print("solo match, user ", users[0], " has won.")
+        await send_end_game(users[0].username, "draw", 0, users[0].elo, "timeout")
+        cancel_timer(game_id)
+        cleanup_game(game)
         return
 
-    await handle_round_end(game_id, winners[0])
+    if len(winners) > 1:
+        for user in users:
+            websocket = connections.get(user.username)
+            assert websocket is not None
+            await websocket.send_json({"type": "round_tie"})
+        await start_next_round(game)
+        return
+    else:
+        # update scores and start next round
+        await handle_round_end(game, winners[0])
+        return
 
 
 async def start_game(payload: dict, user: User):
@@ -168,9 +187,10 @@ async def start_game(payload: dict, user: User):
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION, reason="Only host can start game"
         )
+    assert lobby["players"]
     if len(lobby["players"]) < 2:
         raise WebSocketException(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Cannot start game alone"
+            code=status.WS_1008_POLICY_VIOLATION, reason="Cannot start game alone" #bah si non ? 
         )
 
     for player in lobby["players"]:
@@ -180,23 +200,20 @@ async def start_game(payload: dict, user: User):
                 reason="Some Players are already in other games",
             )
 
-    # players = get_users(
-    #     [player for player in lobby["players"] if player in connections]
-    # ) remove TODO
-
     players: list[User] = []
-    assert lobby["players"]
+    
     for player in lobby["players"]:
         assert player in connections
-        players.append(get_user_unsafe(player))
+        assert get_user(player) is not None
+        players.append(get_user(player))
 
     await create_game(players, False)
 
 
-async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> bool:
+async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> None:
     game_id = player_games.get(user.username)
     if game_id is None or game_id not in games:
-        return False
+        raise ValueError("You are not part of any games")
 
     game = games[game_id]
     strokes = payload.get("strokes", [])
@@ -213,29 +230,35 @@ async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> bool:
             "score": score,
         }
     )
-    await broadcast_player_score(game, user.username, score, guess)
+    await broadcast_player_score(game, user.username, score, guess, True)
 
     if score >= 100:
-        await handle_round_end(game_id, user)
-
-    return True
+        await handle_round_end(game, user)
 
 
-async def surrender_game(user: User) -> bool:
+async def surrender_game(user: User) -> None:
     game_id = player_games.get(user.username)
     if game_id is None or game_id not in games:
-        return False
-    opponents = get_opponents(user, game_id)
-    winner = get_user(opponents[0]) if opponents else None
-    if winner is None:
-        return False
-    await end_game(game_id, winner, "opponent_surrendered")
-    return True
+        # NOT an assert since this function can be directly triggered by an user
+        raise ValueError("game doesnt exist")
+    game = games[game_id]
+    opponents = get_opponents(user, game)
+    if len(opponents) == 1:
+        winner = get_user(opponents[0]) if opponents else None
+        assert winner is not None  # if there is another opponent, it should exist
+        await end_game(game, winner, "opponent_surrendered")
+    else:
+        await send_msg_to_opponents(
+            game,
+            user,
+            {
+                "type": "opponent_disconnected",
+                "user": user.username,
+            },
+        )
 
 
-async def increase_scores(
-    game_id: str,
-):  # TODO: use the user object instead of the username
+async def increase_scores(game_id: str):
     game = games[game_id]
     for username in game.players:
         game.score_bonuses[username] = (
@@ -243,24 +266,28 @@ async def increase_scores(
         )
         score = get_total_score(game, username)
         game.scores[username] = score
-        await broadcast_player_score(game, username, score, include_self=True)
+        await broadcast_player_score(
+            game,
+            username,
+            score,
+            None,
+            include_self=True,
+        )
         if score >= 100:
             winner = get_user(username)
             if winner is None:
                 raise ValueError("winner does not exist")
-            await handle_round_end(game_id, winner)
+            await handle_round_end(game, winner)
             return
 
 
 async def game_timer(game_id: str):
     for _ in range(ROUND_DURATION):
         await asyncio.sleep(1)
-        if game_id not in games:
-            return
+        assert game_id in games  # otherwise, task should be cancelled
         await increase_scores(game_id)
 
-    if game_id in games:
-        await end_game_by_timeout(game_id)
+    await end_game_by_timeout(game_id)
 
 
 async def broadcast_player_score(
@@ -272,7 +299,8 @@ async def broadcast_player_score(
 ):
     for player in game.players:
         player_ws = connections.get(player)
-        if player_ws is None or (player == username and not include_self):
+        assert player_ws is not None
+        if player == username and not include_self:
             continue
         payload = {
             "type": "player_guess",

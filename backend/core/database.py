@@ -27,17 +27,7 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
 
     with SessionLocal() as session:
-        existing_user = session.get(UserModel, "modo")
-        if existing_user is None:
-            modo = UserModel(
-                username="modo",
-                password="",
-                elo=9999,
-                email="modo@example.com",
-            )
-
-            session.add(modo)
-            session.commit()
+        session.commit()
 
 
 def add_user(user: UserRegister) -> User:
@@ -58,10 +48,8 @@ def add_user(user: UserRegister) -> User:
                 elo=user.elo,
             )
         except IntegrityError:
-            # CRITICAL: Always rollback the session if a commit fails!
             session.rollback()
 
-            # Raise the custom error that our API router is waiting for
             raise EmailAlreadyTakenError("This email is already taken.")
 
 
@@ -81,17 +69,6 @@ def get_user(username: str) -> User | None:
         user = session.get(UserModel, username)
         if user is None:
             return None
-        return User(
-            username=user.username,
-            email=user.email,
-            elo=user.elo,
-        )
-
-
-def get_user_unsafe(username: str) -> User:
-    with SessionLocal() as session:
-        user = session.get(UserModel, username)
-        assert user is not None
         return User(
             username=user.username,
             email=user.email,

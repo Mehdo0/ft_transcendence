@@ -10,16 +10,21 @@ def get_random_word():
     return random.choice(data)
 
 
-def get_opponents(user: User, game_id: str) -> list[str]:
-    return [player for player in games[game_id].players if player != user.username]
+def get_opponents(user: User, game: Game) -> list[str]:
+    print("getting opponents for game id: ", game.id, " and user ", user.username)
+    print("players: ", games[game.id].players)
+    opponents = games[game.id].players.copy()
+    opponents.remove(user.username)  # keep all but queried user
+    print("opponents: ", games[game.id].players)
+    return opponents
 
 
-def get_users(usernames: list[str]) -> list[User]:
+def get_users_unsafe(usernames: list[str]) -> list[User]:
     users = []
+    assert len(usernames) >= 1
     for username in usernames:
+        assert get_user(username) is not None
         user = get_user(username)
-        if user is None:
-            raise ValueError("lobby player not found")
         users.append(user)
     return users
 
