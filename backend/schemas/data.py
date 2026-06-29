@@ -17,11 +17,6 @@ class GameType(str, Enum):
     FOUR_PLAYER = "four_player"
 
 
-class PlayerState(str, Enum):
-    IDLE = "idle"
-    PLAYING = "playing"
-
-
 class ClientWebsocketMessageType(str, Enum):
     DRAWING = "drawing"
     QUIT = "quit"
@@ -42,7 +37,6 @@ class Token(BaseModel):
 class User(BaseModel):
     username: str
     email: str
-    state: PlayerState | None = None
     elo: int
 
 

@@ -80,7 +80,11 @@ async def API_get_users_me(
 async def API_register(request: Request, payload: UserRegister, response: Response):
     try:
         result = await register_user(payload)
-    except (UserAlreadyExistsError, UsernameAlreadyTakenError, EmailAlreadyTakenError) as e:
+    except (
+        UserAlreadyExistsError,
+        UsernameAlreadyTakenError,
+        EmailAlreadyTakenError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e).lower())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
