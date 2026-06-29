@@ -34,6 +34,4 @@ surrender doesnt do anything when solo game
 
 Add refresh token
 
-enlever les asserts (juste avant push)
-
 ajouter check pour mdp solide (frontend)

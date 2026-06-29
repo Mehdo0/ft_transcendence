@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
+    import { connect } from '$lib/stores/wsManager';
     
     let { children } = $props();
     let checking = $state(true);
@@ -11,6 +12,8 @@
             goto('/account/login');
             return;
         }
+
+        connect();
         checking = false;
     });
 </script>
