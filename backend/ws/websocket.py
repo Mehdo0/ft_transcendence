@@ -68,8 +68,9 @@ async def authenticate_user_trough_ws(websocket) -> User:
         token = websocket.cookies.get("access_token")
         if token is None:
             raise ValueError("no token found")
-        print("connecting user with token: " + token)
+        print("connecting user through ws token")
         user = get_user_from_ws_token(token)
+        print("user ", user.username, " connected.")
     except ValueError as e:
         await websocket.accept()
         await websocket.send_json(
@@ -192,7 +193,7 @@ async def find_player(user: User):
         print("\tfound another player to match " + user.username + " against!")
         opponent_name = matchmaking_queue.pop(0)
         print("\t" + user.username + " vs " + opponent_name)
-        assert get_user(opponent_name) is not None 
+        assert get_user(opponent_name) is not None
         opponent = get_user(opponent_name)
         await create_game([opponent, user], True)
         return
