@@ -73,7 +73,7 @@ async def create_game(players: list[User], is_ranked: bool):
 
 async def end_game(game: Game, winner: User, reason: str | None = None):
     users = get_users_unsafe(game.players)
-    losers = users
+    losers = users.copy()
     losers.remove(winner)
 
     if game.is_ranked and len(losers) == 1:
