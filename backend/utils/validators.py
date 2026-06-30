@@ -1,8 +1,6 @@
 import re
 
-
-class InvalidEmailError(ValueError):
-    pass
+from core.exceptions import InvalidEmailError
 
 
 _LOCAL_PART_RE = re.compile(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$")
