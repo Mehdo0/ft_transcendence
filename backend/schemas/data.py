@@ -1,7 +1,7 @@
 from enum import Enum
 
 from fastapi import WebSocket
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class GameState(str, Enum):
@@ -61,3 +61,11 @@ class UserRegister(BaseModel):
     username: str
     password: str
     email: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_field(cls, v: str) -> str:
+        """Backend email validation — domain logic beyond the frontend regex."""
+        from utils.validators import validate_email as backend_validate
+        backend_validate(v)
+        return v

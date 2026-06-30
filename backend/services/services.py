@@ -7,6 +7,7 @@ from core.database import get_user, get_user_password, add_user
 from core.exceptions import (
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
+    InvalidEmailError,
 )
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -19,6 +20,7 @@ from state.config import (
     SECRET_KEY,
     cookie_scheme,
 )
+from utils.validators import validate_email
 
 
 async def get_random_word() -> str:
@@ -49,6 +51,10 @@ async def get_access_token(
 
 
 async def register_user(user_register: UserRegister):
+    # Backend email logic validation (defense in depth —
+    # also validated by Pydantic schema, but this catches direct calls)
+    validate_email(user_register.email)
+
     user_exists = get_user(user_register.username)
     if user_exists:
         if user_exists.username == user_register.username:
