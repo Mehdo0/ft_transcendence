@@ -51,8 +51,6 @@ async def get_access_token(
 
 
 async def register_user(user_register: UserRegister):
-    # Backend email logic validation (defense in depth —
-    # also validated by Pydantic schema, but this catches direct calls)
     validate_email(user_register.email)
 
     user_exists = get_user(user_register.username)

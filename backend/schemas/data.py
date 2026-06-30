@@ -65,7 +65,6 @@ class UserRegister(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email_field(cls, v: str) -> str:
-        """Backend email validation — domain logic beyond the frontend regex."""
-        from utils.validators import validate_email as backend_validate
-        backend_validate(v)
+        from utils.validators import validate_email
+        validate_email(v)
         return v
