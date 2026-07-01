@@ -190,7 +190,7 @@ async def find_player(user: User):
     print("GAME: player '" + user.username + "' is looking for a game...")
 
     if len(matchmaking_queue) >= 1:  # another player is already waiting
-        print("\tfound another player to match " + user.username + " against!")
+        print("\tfound another player to match ", user.username, " against!")
         opponent_name = matchmaking_queue.pop(0)
         print("\t" + user.username + " vs " + opponent_name)
         assert get_user(opponent_name) is not None
@@ -198,9 +198,10 @@ async def find_player(user: User):
         assert opponent is not None
         await create_game([opponent, user], True)
         return
-
-    matchmaking_queue.append(user.username)
-    await connections[user.username].send_json({"type": "waiting"})
+    else:
+        print("\tno player waiting, adding ", user.username, "to queue")
+        matchmaking_queue.append(user.username)
+        await connections[user.username].send_json({"type": "waiting"})
 
 
 # async def send_error_raise()

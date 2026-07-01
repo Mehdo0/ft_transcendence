@@ -27,7 +27,8 @@ async def calculate_new_elo(player1: User, player2: User, result: int):
 def cleanup_game(game: Game) -> None:
     for user in game.players:
         player_games.pop(user, None)
-        disconnected_players.remove(user)
+        if user in disconnected_players:
+            disconnected_players.remove(user)
     games.pop(game.id)
 
 

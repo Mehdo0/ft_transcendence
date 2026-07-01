@@ -91,6 +91,8 @@ def get_authenticated_user(username: str, password: str) -> User:
     if not user:
         raise ValueError("User doesnt exist")
     hashed_password = get_user_hashed_password(user)
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Password is too long (max 64 characters)")
     if not bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8")):
         raise ValueError("Passwords dont match")
     return user
