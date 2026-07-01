@@ -32,20 +32,20 @@ def setup_database():
 
 def add_user(user: UserRegister) -> User:
     with SessionLocal() as session:
-        user = UserModel(
+        user_model = UserModel(
             username=user.username,
             password=user.password,
             email=user.email,
             elo=500,
         )
         try:
-            session.add(user)
+            session.add(user_model)
             session.commit()
 
             return User(
-                username=user.username,
-                email=user.email,
-                elo=user.elo,
+                username=user_model.username,
+                email=user_model.email,
+                elo=user_model.elo,
             )
         except IntegrityError:
             session.rollback()
