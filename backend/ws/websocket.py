@@ -167,8 +167,8 @@ async def handle_disconnect_grace_period(user: User, game: Game):
     disconnect(user)
 
     if len(opponents) == 1:
-        assert get_user(opponents[0]) is not None
         winner = get_user(opponents[0])
+        assert winner is not None
         await end_game(game, winner, "opponent_left")
     await send_msg_to_opponents(
         game,
@@ -195,6 +195,7 @@ async def find_player(user: User):
         print("\t" + user.username + " vs " + opponent_name)
         assert get_user(opponent_name) is not None
         opponent = get_user(opponent_name)
+        assert opponent is not None
         await create_game([opponent, user], True)
         return
 
