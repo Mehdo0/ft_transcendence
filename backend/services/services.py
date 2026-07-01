@@ -1,12 +1,18 @@
+from PIL.ImageOps import contain
+from numpy.f2py.auxfuncs import throw_error
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+import validators
+import bcrypt
 
 import jwt
-from core.database import get_user, get_user_password, add_user
+from core.database import get_user, get_user_hashed_password, add_user
 from core.exceptions import (
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
+    WeakPassword,
+    ImpossibleEmail,
 )
 from fastapi import Depends, HTTPException, WebSocketException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -48,7 +54,24 @@ async def get_access_token(
     return Token(access_token=access_token, token_type="bearer")
 
 
+def validate_password_stength(password: str) -> None:
+    SpecialSym = ["$", "@", "#", "%"]
+    if len(password) < 8 or len(password) > 64:
+        raise WeakPassword("Password must be between 8 and 64 characters")
+    if not any(char.isdigit() for char in password):
+        raise WeakPassword("Password must contain at least one digit")
+    if not any(char.isupper() for char in password):
+        raise WeakPassword("Password should contain at least one uppercase letter")
+    if not any(char.islower() for char in password):
+        raise WeakPassword("Password should contain at least one lowercase letter")
+    if not any(char in SpecialSym for char in password):
+        raise WeakPassword("Password should have at least one of the symbols $@#%")
+
+
 async def register_user(user_register: UserRegister):
+    if not validators.email(user_register.email):
+        raise ImpossibleEmail("Email is invalid")
+    validate_password_stength(user_register.password)
     user_exists = get_user(user_register.username)
     if user_exists:
         if user_exists.username == user_register.username:
@@ -63,12 +86,12 @@ async def register_user(user_register: UserRegister):
 ### auth
 
 
-def get_authenticated_user(username: str, hashed_password: str) -> User:
+def get_authenticated_user(username: str, password: str) -> User:
     user = get_user(username)
     if not user:
         raise ValueError("User doesnt exist")
-    password = get_user_password(user)
-    if hashed_password != password:
+    hashed_password = get_user_hashed_password(user)
+    if not bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8")):
         raise ValueError("Passwords dont match")
     return user
 

@@ -9,6 +9,8 @@ from core.exceptions import (
     EmailAlreadyTakenError,
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
+    WeakPassword,
+    ImpossibleEmail,
 )
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
@@ -84,6 +86,8 @@ async def API_register(request: Request, payload: UserRegister, response: Respon
         UserAlreadyExistsError,
         UsernameAlreadyTakenError,
         EmailAlreadyTakenError,
+        WeakPassword,
+        ImpossibleEmail,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e).lower())
     except Exception as e:

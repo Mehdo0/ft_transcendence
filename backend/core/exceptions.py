@@ -11,3 +11,11 @@ class UsernameAlreadyTakenError(Exception):
 
 class EmailAlreadyTakenError(Exception):
     pass
+
+
+class WeakPassword(Exception):
+    pass
+
+
+class ImpossibleEmail(Exception):
+    pass

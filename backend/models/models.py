@@ -12,5 +12,5 @@ class UserModel(Base):
 
     username: Mapped[str] = mapped_column(String, primary_key=True)
     email: Mapped[str] = mapped_column(String, unique=True)
-    password: Mapped[str] = mapped_column(String)
+    hashed_password: Mapped[str] = mapped_column(String)
     elo: Mapped[int] = mapped_column(Integer, default=0)
