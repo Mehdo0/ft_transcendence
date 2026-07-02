@@ -10,7 +10,10 @@
 	onMount(async () => {
 		try {
 			const meRes = await fetch('/api/session/', { credentials: 'same-origin' });
-			if (meRes.ok) me = (await meRes.json()).username;
+			const session = await meRes.json();
+			if (session.authenticated && session.user) {
+				me = session.user.username;
+			}
 		} catch {
 			// not logged in — no highlighting
 		}
@@ -23,8 +26,7 @@
 			} else {
 				errorMessage = 'Failed to load leaderboard.';
 			}
-		} catch (e) {
-			console.error('Failed to load leaderboard', e);
+		} catch {
 			errorMessage = 'Could not connect to the server.';
 		}
 	});

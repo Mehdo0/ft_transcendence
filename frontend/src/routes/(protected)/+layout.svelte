@@ -6,19 +6,20 @@
     let { children } = $props();
     let checking = $state(true);
 
-    onMount(async () => {
-        const response = await fetch('/api/session/', {
+	onMount(async () => {
+		const response = await fetch('/api/session/', {
 			method: 'GET',
 			credentials: 'same-origin'
 		});
-        if (!response.ok) {
-            goto('/account/login');
-            return;
-        }
+		const session = await response.json();
 
-        connect();
-        checking = false;
-    });
+		if (!session.authenticated) {
+			goto('/account/login');
+			return;
+		}
+		connect();
+		checking = false;
+	});
 </script>
 
 {#if checking}

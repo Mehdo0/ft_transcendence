@@ -43,9 +43,11 @@
 			method: 'GET',
 			credentials: 'same-origin'
 		});
-		console.log(response);
-		if (response.ok) {
+		const session = await response.json();
+
+		if (session.authenticated) {
 			login = true;
+			return;
 		}
 	});
 </script>

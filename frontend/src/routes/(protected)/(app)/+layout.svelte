@@ -42,9 +42,11 @@
 			method: 'GET',
 			credentials: 'same-origin'
 		});
+		const session = await response.json();
 
-		if (response.ok) {
+		if (session.authenticated) {
 			login = true;
+			return;
 		}
 	});
 </script>
