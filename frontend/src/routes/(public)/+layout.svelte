@@ -39,13 +39,15 @@
 	
 
 	onMount(async () => {
-		const response = await fetch('/api/users/me/', {
+		const response = await fetch('/api/session/', {
 			method: 'GET',
 			credentials: 'same-origin'
 		});
+		const session = await response.json();
 
-		if (response.ok) {
+		if (session.authenticated) {
 			login = true;
+			return;
 		}
 	});
 </script>

@@ -204,14 +204,15 @@
 	}
 
 	function loadUserData() {
-		fetch('/api/users/me/', { credentials: 'same-origin' })
-			.then((response) => (response.ok ? response.json() : null))
-			.then((data) => {
-				if (!data) return;
-				myUsername = data.username;
-				myElo = data.elo;
-				if (!game.me) game.me = data.username;
-				if (!game.players.includes(data.username)) applyPlayers([data.username, ...game.players]);
+		fetch('/api/session/', { credentials: 'same-origin' })
+			.then((response) => response.json())
+			.then((session) => {
+				if (!session.authenticated || !session.user) return;
+				const user = session.user;
+				myUsername = user.username;
+				myElo = user.elo;
+				if (!game.me) game.me = user.username;
+				if (!game.players.includes(user.username)) applyPlayers([user.username, ...game.players]);
 			})
 			.catch(() => {});
 
