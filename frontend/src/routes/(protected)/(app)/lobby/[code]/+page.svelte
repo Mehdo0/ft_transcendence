@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { game } from '$lib/stores/game.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 
 
 	const code = page.params.code ?? '';
@@ -11,6 +11,17 @@
 	let me = $state('');
 	let isHost = $state(false);
 	let copied = $state(false);
+	let leaving = false;
+
+	beforeNavigate((nav) => {
+		if (leaving) return;
+		if (nav.willUnload) return;
+		if (confirm('Quitter le lobby ?')) {
+			send({ type: 'leave' });
+		} else {
+			nav.cancel();
+		}
+	});
 
 	function clearSessionData() {
 		sessionStorage.removeItem('players');
@@ -51,6 +62,7 @@
 		}
 		if (msg.type === 'lobby_closed') {
 			clearSessionData();
+			leaving = true;
 			goto('/lobby');
 		}
 		if (msg.type === 'match_found') {
@@ -64,6 +76,7 @@
 			clearSessionData();
 			sessionStorage.setItem('private_lobby_code', code);
 			sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
+			leaving = true;
 			goto('/in-game');
 		}
 	}

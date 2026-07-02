@@ -2,7 +2,7 @@
 		import { game } from '$lib/stores/game.svelte';
 		import { send, subscribe } from '$lib/stores/wsManager';
 		import { onMount } from 'svelte';
-		import { goto } from '$app/navigation';
+		import { goto, beforeNavigate } from '$app/navigation';
 
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
@@ -225,6 +225,16 @@
 			})
 			.catch(() => {});
 	}
+
+		beforeNavigate((nav) => {
+			if (result) return;
+			if (nav.willUnload) return;
+			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
+				send({ type: 'surrender' });
+			} else {
+				nav.cancel();
+			}
+		});
 
 		onMount(() => {
 			const isReconnect = !!sessionStorage.getItem('draw_word');

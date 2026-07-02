@@ -1,12 +1,23 @@
 	<script lang="ts">
 		import { onMount } from 'svelte';
-		import { goto } from '$app/navigation';
+		import { goto, beforeNavigate } from '$app/navigation';
 		import { isOpen, send, subscribe } from '$lib/stores/wsManager';
 		import { game } from '$lib/stores/game.svelte';
 
 	let isConnected = $state(false);
 	let isSearching = $state(false);
 	let statusMessage = $state('Disconnected');
+	let leaving = false;
+
+	beforeNavigate((nav) => {
+		if (!isSearching || leaving) return;
+		if (nav.willUnload) return;
+		if (confirm('Annuler la recherche ?')) {
+			send({ type: 'leave' });
+		} else {
+			nav.cancel();
+		}
+	});
 
 		function handleMatchFound(msg: any) {
 			isSearching = false;
@@ -20,6 +31,7 @@
 			game.is_ranked = msg.is_ranked ?? true;
 			sessionStorage.removeItem('private_lobby_code');
 			sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
+			leaving = true;
 			goto('/in-game');
 		}
 

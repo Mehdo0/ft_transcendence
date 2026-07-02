@@ -17,10 +17,16 @@ from game.lobby_logic import (
     join_lobby,
     get_lobby_info,
     handle_lobby_disconnect_grace_period,
+    cleanup_lobby_on_disconnect,
 )
 from game.game_logic import start_game, surrender_game, ai_guess, create_game, end_game
 from utils.getters import get_opponents
-from utils.utils import disconnect, send_msg_to_opponents, run_disconnect_grace_period
+from utils.utils import (
+    disconnect,
+    send_msg_to_opponents,
+    run_disconnect_grace_period,
+    remove_from_matchmaking,
+)
 
 
 @router.websocket("/ws/")
@@ -59,6 +65,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     await ai_guess(user, payload, websocket)
                 case "surrender":
                     await surrender_game(user)
+                case "leave":
+                    remove_from_matchmaking(user.username)
+                    await cleanup_lobby_on_disconnect(user)
     except WebSocketDisconnect:
         await disconnect_user(user)
 
