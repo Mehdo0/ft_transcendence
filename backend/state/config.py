@@ -2,6 +2,7 @@ from fastapi.security import APIKeyCookie
 from pathlib import Path
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from os import getenv
 
 
 def read_secret_key() -> str:

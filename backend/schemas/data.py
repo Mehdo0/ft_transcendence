@@ -62,9 +62,4 @@ class UserRegister(BaseModel):
     password: str
     email: str
 
-    @field_validator("email")
-    @classmethod
-    def validate_email_field(cls, v: str) -> str:
-        from utils.validators import validate_email
-        validate_email(v)
-        return v
+    

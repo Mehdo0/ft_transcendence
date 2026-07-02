@@ -25,8 +25,6 @@ from state.config import (
     SECRET_KEY,
     cookie_scheme,
 )
-from utils.validators import validate_email
-
 
 async def get_random_word() -> str:
     data = load_word_list()
