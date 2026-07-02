@@ -78,7 +78,7 @@ async def API_get_users_me(
 
 
 @router.post("/api/register/")
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 async def API_register(request: Request, payload: UserRegister, response: Response):
     try:
         result = await register_user(payload)

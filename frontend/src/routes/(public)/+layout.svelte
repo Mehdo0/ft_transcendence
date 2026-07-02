@@ -43,7 +43,7 @@
 			method: 'GET',
 			credentials: 'same-origin'
 		});
-
+		console.log(response);
 		if (response.ok) {
 			login = true;
 		}

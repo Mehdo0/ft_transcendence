@@ -7,8 +7,11 @@
     let checking = $state(true);
 
     onMount(async () => {
-        const res = await fetch('/api/users/me/', { credentials: 'same-origin' });
-        if (!res.ok) {
+        const response = await fetch('/api/users/me/', {
+			method: 'GET',
+			credentials: 'same-origin'
+		});
+        if (!response.ok) {
             goto('/account/login');
             return;
         }
