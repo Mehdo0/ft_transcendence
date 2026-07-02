@@ -1,13 +1,18 @@
+from PIL.ImageOps import contain
+from numpy.f2py.auxfuncs import throw_error
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+import validators
+import bcrypt
 
 import jwt
-import bcrypt
 from core.database import get_user, get_user_hashed_password, add_user
 from core.exceptions import (
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
+    WeakPassword,
+    ImpossibleEmail,
 )
 from fastapi import Depends, HTTPException, WebSocketException, status, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
@@ -20,7 +25,6 @@ from state.config import (
     SECRET_KEY,
     cookie_scheme,
 )
-from utils.validators import validate_email
 
 
 async def get_random_word() -> str:
@@ -53,22 +57,20 @@ async def get_access_token(
 def validate_password_stength(password: str) -> None:
     SpecialSym = ["$", "@", "#", "%"]
     if len(password) < 8 or len(password) > 64:
-        raise ValueError("Password must be between 8 and 64 characters")
+        raise WeakPassword("Password must be between 8 and 64 characters")
     if not any(char.isdigit() for char in password):
-        raise ValueError("Password must contain at least one digit")
+        raise WeakPassword("Password must contain at least one digit")
     if not any(char.isupper() for char in password):
-        raise ValueError("Password should contain at least one uppercase letter")
+        raise WeakPassword("Password should contain at least one uppercase letter")
     if not any(char.islower() for char in password):
-        raise ValueError("Password should contain at least one lowercase letter")
+        raise WeakPassword("Password should contain at least one lowercase letter")
     if not any(char in SpecialSym for char in password):
-        raise ValueError("Password should have at least one of the symbols $@#%")
+        raise WeakPassword("Password should have at least one of the symbols $@#%")
 
 
 async def register_user(user_register: UserRegister):
-    try:
-        validate_email(user_register.email)
-    except Exception:
-        raise ValueError("Email is invalid")
+    if not validators.email(user_register.email):
+        raise ImpossibleEmail("Email is invalid")
     validate_password_stength(user_register.password)
     user_exists = get_user(user_register.username)
     if user_exists:

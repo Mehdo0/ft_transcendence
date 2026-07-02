@@ -1,7 +1,8 @@
 from enum import Enum
-import asyncio, uuid, random
+import asyncio, uuid
 from fastapi import WebSocket
 from pydantic import BaseModel, Field
+from utils.getters import get_random_word
 
 
 class GameState(str, Enum):
@@ -56,17 +57,17 @@ class Game(BaseModel):
 class GameInstance:
     game: Game
     lock: asyncio.Lock
-    connections: dict[str, WebSocket]
 
     async def broadcast_to_game(
         self,
         payload: dict,
         exclude: str | None = None,
     ):
+        """Sends a message to everyone in a specific game."""
         for username in self.game.players:
             if username == exclude:
                 continue
-            ws = self.connections.get(username)
+            ws = ConnectionManager.get_ws(username)
             if ws:
                 await ws.send_json(payload)
 
@@ -75,17 +76,18 @@ class GameManager:
     lock: asyncio.Lock
 
     def __init__(self):
+        # 1. Active Connections
         self.connections: dict[str, WebSocket] = {}
-        self.games: dict[str, Game] = {}
+
+        # 2. Game & Lobby State
+        self.games: dict[str, GameInstance] = {}
         self.player_games: dict[str, str] = {}
         self.lobbies: dict[str, dict] = {}
+
+        # 3. Matchmaking & Disconnects
         self.matchmaking_queue: list[str] = []
         self.disconnected_players: dict[str, dict] = {}
         self.game_timers: dict[str, asyncio.Task] = {}
-
-    def _random_word(self) -> str:
-        from services.ai_service import load_word_list
-        return random.choice(load_word_list())
 
     async def connect(self, user: User, websocket: WebSocket):
         await websocket.accept()
@@ -139,7 +141,7 @@ class GameManager:
         game = Game(
             id=game_id,
             players=usernames,
-            word=self._random_word(),
+            word=get_random_word(),
             ends_at=loop.time() + 60,
             is_ranked=is_ranked,
         )

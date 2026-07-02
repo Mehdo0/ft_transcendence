@@ -201,7 +201,7 @@ async def find_player(user: User):
     else:
         print("\tno player waiting, adding ", user.username, "to queue")
         manager.matchmaking_queue.append(user.username)
-        await manager.connections[user.username].send_json({"type": "waiting"})
+        await manager.onnections[user.username].send_json({"type": "waiting"})
 
 
 # async def send_error_raise()

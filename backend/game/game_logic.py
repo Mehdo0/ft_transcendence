@@ -44,14 +44,14 @@ async def create_game(players: list[User], is_ranked: bool):
 
     print("creating task for game id ", game.id, "...")
 
-    manager.games[game.id] = game
+    manager.manager.games[game.id] = game
 
     for player in players:
         game.scores[player.username] = 0
         game.ai_scores[player.username] = 0
         game.score_bonuses[player.username] = 0
         game.round_wins[player.username] = 0
-        manager.player_games[player.username] = game.id
+        manager.player_manager.games[player.username] = game.id
         opponents = get_opponents(player, game)
         print("opponents of player ", player.username, opponents)
         websocket = manager.connections[player.username]
@@ -141,7 +141,7 @@ async def end_game_by_timeout(game_id: str):
     print("asserting game exists...")
 
     assert game_id in games
-    game = manager.games[game_id]
+    game = manager.manager.games[game_id]
 
     print("fetching users...\nusers:")
     users = get_users_unsafe(game.players)
