@@ -52,16 +52,37 @@ class Game(BaseModel):
     ends_at: float
     is_ranked: bool = False
 
-class GameManager():
+
+class GameInstance:
+    game: Game
+    lock: asyncio.Lock
+
+    async def broadcast_to_game(
+        self,
+        payload: dict,
+        exclude: str | None = None,
+    ):
+        """Sends a message to everyone in a specific game."""
+        for username in self.game.players:
+            if username == exclude:
+                continue
+            ws = ConnectionManager.get_ws(username)
+            if ws:
+                await ws.send_json(payload)
+
+
+class GameManager:
+    lock: asyncio.Lock
+
     def __init__(self):
         # 1. Active Connections
         self.connections: dict[str, WebSocket] = {}
-        
+
         # 2. Game & Lobby State
-        self.games: dict[str, Game] = {}
+        self.games: dict[str, GameInstance] = {}
         self.player_games: dict[str, str] = {}
         self.lobbies: dict[str, dict] = {}
-        
+
         # 3. Matchmaking & Disconnects
         self.matchmaking_queue: list[str] = []
         self.disconnected_players: dict[str, dict] = {}
@@ -70,7 +91,7 @@ class GameManager():
     async def connect(self, user: User, websocket: WebSocket):
         await websocket.accept()
         self.connections[user.username] = websocket
-        
+
         # Handle grace period recovery natively
         if user.username in self.disconnected_players:
             self.disconnected_players[user.username]["reconnected"] = True
@@ -81,22 +102,12 @@ class GameManager():
         self.player_games.pop(user.username, None)
         if user.username in self.matchmaking_queue:
             self.matchmaking_queue.remove(user.username)
-    
-    async def broadcast_to_game(self, game_id: str, payload: dict, exclude: str = None):
-        """Sends a message to everyone in a specific game."""
-        game = self.games.get(game_id)
-        if not game:
-            return
-            
-        for username in game.players:
-            if username == exclude:
-                continue
-            ws = self.connections.get(username)
-            if ws:
-                await ws.send_json(payload)
 
     async def find_player(self, user: User):
-        if user.username in self.player_games or user.username in self.matchmaking_queue:
+        if (
+            user.username in self.player_games
+            or user.username in self.matchmaking_queue
+        ):
             return
 
         # Defensive queue checking (Skipping ghosts!)
@@ -113,12 +124,14 @@ class GameManager():
 
     async def create_game(self, usernames: list[str], is_ranked: bool):
         game_id = str(uuid.uuid4())
-        
+
         for name in usernames:
             self.player_games[name] = game_id
-            
+
         # Broadcast match_found using the helper
-        await self.broadcast_to_game(game_id, {"type": "match_found", "game_id": game_id})
+        await self.broadcast_to_game(
+            game_id, {"type": "match_found", "game_id": game_id}
+        )
 
 
 class ImagePayload(BaseModel):
@@ -129,5 +142,3 @@ class UserRegister(BaseModel):
     username: str
     password: str
     email: str
-
-    
