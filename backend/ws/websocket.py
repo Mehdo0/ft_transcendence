@@ -54,7 +54,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 case "start_game":
                     await start_game(payload, user)
                 case "find_player":
-                    await find_player(user)
+                    await manager.find_player(user)
                 case "guess":
                     await ai_guess(user, payload, websocket)
                 case "surrender":
@@ -181,27 +181,27 @@ async def handle_disconnect_grace_period(user: User, game: Game):
     return
 
 
-async def find_player(user: User):
-    if user.username in manager.player_games:  # player should not be in active game
-        raise ValueError("player is already in a game")
-    if user.username in manager.matchmaking_queue:  # player should not be in queue
-        raise ValueError("player is already in matchmaking")
+# async def find_player(user: User):
+#     if user.username in manager.player_games:  # player should not be in active game
+#         raise ValueError("player is already in a game")
+#     if user.username in manager.matchmaking_queue:  # player should not be in queue
+#         raise ValueError("player is already in matchmaking")
 
-    print("GAME: player '" + user.username + "' is looking for a game...")
+#     print("GAME: player '" + user.username + "' is looking for a game...")
 
-    if len(manager.matchmaking_queue) >= 1:  # another player is already waiting
-        print("\tfound another player to match ", user.username, " against!")
-        opponent_name = manager.matchmaking_queue.pop(0)
-        print("\t" + user.username + " vs " + opponent_name)
-        assert get_user(opponent_name) is not None
-        opponent = get_user(opponent_name)
-        assert opponent is not None
-        await create_game([opponent, user], True)
-        return
-    else:
-        print("\tno player waiting, adding ", user.username, "to queue")
-        manager.matchmaking_queue.append(user.username)
-        await manager.onnections[user.username].send_json({"type": "waiting"})
+#     if len(manager.matchmaking_queue) >= 1:  # another player is already waiting
+#         print("\tfound another player to match ", user.username, " against!")
+#         opponent_name = manager.matchmaking_queue.pop(0)
+#         print("\t" + user.username + " vs " + opponent_name)
+#         assert get_user(opponent_name) is not None
+#         opponent = get_user(opponent_name)
+#         assert opponent is not None
+#         await create_game([opponent, user], True)
+#         return
+#     else:
+#         print("\tno player waiting, adding ", user.username, "to queue")
+#         manager.matchmaking_queue.append(user.username)
+#         await manager.onnections[user.username].send_json({"type": "waiting"})
 
 
 # async def send_error_raise()

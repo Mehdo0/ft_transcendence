@@ -3,7 +3,8 @@ import uuid
 from utils.getters import get_random_word, get_total_score, get_opponents
 from utils.utils import send_msg_to_opponents
 import asyncio
-from core.setup import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND, manager
+from game.game_manager import manager
+from core.config import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
 from fastapi import WebSocket, WebSocketException, status
 from core.database import get_user, update_user_elo
 from schemas.data import Game, GameState, User
@@ -19,58 +20,58 @@ from utils.getters import get_users_unsafe
 from utils.utils import cancel_timer, calculate_new_elo, cleanup_game
 
 
-async def create_game(players: list[User], is_ranked: bool):
-    player_usernames = [player.username for player in players]
-    print("GAME: creating game with players: ", player_usernames)
-    loop = asyncio.get_running_loop()
-    game = Game(
-        id=str(uuid.uuid4()),
-        game_state=GameState.STARTED,
-        players=player_usernames,
-        word=get_random_word(),
-        is_ranked=is_ranked,
-        ends_at=loop.time() + ROUND_DURATION,
-    )
-    print(
-        "game id: ",
-        game.id,
-        ", word: ",
-        game.word,
-        ", ranked: ",
-        game.is_ranked,
-        ", ends_at: ",
-        game.ends_at,
-    )
+# async def create_game(players: list[User], is_ranked: bool):
+#     player_usernames = [player.username for player in players]
+#     print("GAME: creating game with players: ", player_usernames)
+#     loop = asyncio.get_running_loop()
+#     game = Game(
+#         id=str(uuid.uuid4()),
+#         game_state=GameState.STARTED,
+#         players=player_usernames,
+#         word=get_random_word(),
+#         is_ranked=is_ranked,
+#         ends_at=loop.time() + ROUND_DURATION,
+#     )
+#     print(
+#         "game id: ",
+#         game.id,
+#         ", word: ",
+#         game.word,
+#         ", ranked: ",
+#         game.is_ranked,
+#         ", ends_at: ",
+#         game.ends_at,
+#     )
 
-    print("creating task for game id ", game.id, "...")
+#     print("creating task for game id ", game.id, "...")
 
-    manager.manager.games[game.id] = game
+#     manager.games[game.id] = game
 
-    for player in players:
-        game.scores[player.username] = 0
-        game.ai_scores[player.username] = 0
-        game.score_bonuses[player.username] = 0
-        game.round_wins[player.username] = 0
-        manager.player_manager.games[player.username] = game.id
-        opponents = get_opponents(player, game)
-        print("opponents of player ", player.username, opponents)
-        websocket = manager.connections[player.username]
-        await websocket.send_json(
-            {
-                "type": "match_found",
-                "game_id": game.id,
-                "opponent": opponents,
-                "players": player_usernames,
-                "me": player.username,
-                "word": game.word,
-                "duration": ROUND_DURATION,
-                "scores": game.scores,
-                "round_wins": game.round_wins,
-                "is_ranked": game.is_ranked,
-            }
-        )
+#     for player in players:
+#         game.scores[player.username] = 0
+#         game.ai_scores[player.username] = 0
+#         game.score_bonuses[player.username] = 0
+#         game.round_wins[player.username] = 0
+#         manager.player_manager.games[player.username] = game.id
+#         opponents = get_opponents(player, game)
+#         print("opponents of player ", player.username, opponents)
+#         websocket = manager.connections[player.username]
+#         await websocket.send_json(
+#             {
+#                 "type": "match_found",
+#                 "game_id": game.id,
+#                 "opponent": opponents,
+#                 "players": player_usernames,
+#                 "me": player.username,
+#                 "word": game.word,
+#                 "duration": ROUND_DURATION,
+#                 "scores": game.scores,
+#                 "round_wins": game.round_wins,
+#                 "is_ranked": game.is_ranked,
+#             }
+#         )
 
-    manager.game_timers[game.id] = asyncio.create_task(game_timer(game.id))
+#     manager.game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
 
 async def end_game(game: Game, winner: User, reason: str | None = None):
@@ -210,7 +211,7 @@ async def start_game(payload: dict, user: User):
         assert get_user(player) is not None
         players.append(get_user(player))
 
-    await create_game(players, False)
+    await manager.create_game(players, False)
 
 
 async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> None:
