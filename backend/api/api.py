@@ -19,7 +19,6 @@ from schemas.data import User, UserRegister
 from services.services import (
     create_access_token,
     get_access_token,
-    get_current_active_user,
     register_user,
 )
 from state.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE, limiter

@@ -136,10 +136,3 @@ def get_user_from_ws_token(token: str) -> User:
     except jwt.InvalidTokenError:
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
-
-async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)],
-):
-    if hasattr(current_user, "disabled") and current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
