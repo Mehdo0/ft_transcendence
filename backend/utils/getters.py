@@ -3,6 +3,7 @@ from core.database import get_user
 from schemas.data import Game, User
 from services.ai_service import load_word_list
 from state.state import games
+from core.setup import manager
 
 
 def get_random_word():
@@ -12,10 +13,10 @@ def get_random_word():
 
 def get_opponents(user: User, game: Game) -> list[str]:
     print("getting opponents for game id: ", game.id, " and user ", user.username)
-    print("players: ", games[game.id].players)
-    opponents = games[game.id].players.copy()
+    print("players: ", manager.games[game.id].players)
+    opponents = manager.games[game.id].players.copy()
     opponents.remove(user.username)  # keep all but queried user
-    print("opponents: ", games[game.id].players)
+    print("opponents: ", manager.games[game.id].players)
     return opponents
 
 

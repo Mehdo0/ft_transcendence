@@ -3,7 +3,7 @@ import uuid
 from utils.getters import get_random_word, get_total_score, get_opponents
 from utils.utils import send_msg_to_opponents
 import asyncio
-from core.setup import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
+from core.setup import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND, manager
 from fastapi import WebSocket, WebSocketException, status
 from core.database import get_user, update_user_elo
 from schemas.data import Game, GameState, User
@@ -44,17 +44,17 @@ async def create_game(players: list[User], is_ranked: bool):
 
     print("creating task for game id ", game.id, "...")
 
-    games[game.id] = game
+    manager.manager.games[game.id] = game
 
     for player in players:
         game.scores[player.username] = 0
         game.ai_scores[player.username] = 0
         game.score_bonuses[player.username] = 0
         game.round_wins[player.username] = 0
-        player_games[player.username] = game.id
+        manager.player_manager.games[player.username] = game.id
         opponents = get_opponents(player, game)
         print("opponents of player ", player.username, opponents)
-        websocket = connections[player.username]
+        websocket = manager.connections[player.username]
         await websocket.send_json(
             {
                 "type": "match_found",
@@ -70,7 +70,7 @@ async def create_game(players: list[User], is_ranked: bool):
             }
         )
 
-    game_timers[game.id] = asyncio.create_task(game_timer(game.id))
+    manager.game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
 
 async def end_game(game: Game, winner: User, reason: str | None = None):
@@ -133,7 +133,7 @@ async def start_next_round(game: Game):
             )
 
     cancel_timer(game.id)
-    game_timers[game.id] = asyncio.create_task(game_timer(game.id))
+    manager.game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
 
 async def end_game_by_timeout(game_id: str):
@@ -141,7 +141,7 @@ async def end_game_by_timeout(game_id: str):
     print("asserting game exists...")
 
     assert game_id in games
-    game = games[game_id]
+    game = manager.manager.games[game_id]
 
     print("fetching users...\nusers:")
     users = get_users_unsafe(game.players)
@@ -179,12 +179,12 @@ async def end_game_by_timeout(game_id: str):
 
 async def start_game(payload: dict, user: User):
     code = payload.get("code")
-    if not code or code not in lobbies:
+    if not code or code not in manager.lobbies:
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION, reason="Must provide lobby code"
         )
 
-    lobby: dict[str, str] = lobbies[code]
+    lobby: dict[str, str] = manager.lobbies[code]
     if lobby["host"] != user.username:
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION, reason="Only host can start game"
@@ -218,7 +218,7 @@ async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> None:
     if game_id is None or game_id not in games:
         raise ValueError("You are not part of any games")
 
-    game = games[game_id]
+    game = manager.games[game_id]
     strokes = payload.get("strokes", [])
     guess = await make_ai_guess(strokes, game.word)
     game.ai_scores[user.username] = guess.get(game.word) or 0
@@ -244,7 +244,7 @@ async def surrender_game(user: User) -> None:
     if game_id is None or game_id not in games:
         # NOT an assert since this function can be directly triggered by an user
         raise ValueError("game doesnt exist")
-    game = games[game_id]
+    game = manager.games[game_id]
     opponents = get_opponents(user, game)
     if len(opponents) == 1:
         winner = get_user(opponents[0]) if opponents else None
@@ -265,7 +265,7 @@ async def surrender_game(user: User) -> None:
 
 
 async def increase_scores(game_id: str):
-    game = games[game_id]
+    game = manager.games[game_id]
     for username in game.players:
         game.score_bonuses[username] = (
             game.score_bonuses.get(username, 0) + SCORE_INCREMENT_PER_SECOND

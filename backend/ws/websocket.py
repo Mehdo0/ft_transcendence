@@ -11,7 +11,7 @@ from state.state import (
     matchmaking_queue,
     player_games,
 )
-from core.setup import router
+from core.setup import router, manager
 from game.lobby_logic import (
     create_lobby,
     join_lobby,
@@ -26,12 +26,12 @@ from utils.utils import disconnect, send_msg_to_opponents
 @router.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
     user = await authenticate_user_trough_ws(websocket)
-    connections[user.username] = websocket
+    manager.connections[user.username] = websocket
 
-    if user.username in disconnected_players:
-        disconnected_players.remove(user.username)  # user reconnected
+    if user.username in manager.disconnected_players:
+        manager.disconnected_players.remove(user.username)  # user reconnected
 
-    if user.username in player_games:
+    if user.username in manager.player_games:
         await reconnect_user(user, websocket)
 
     try:
@@ -112,9 +112,9 @@ async def authenticate_user_trough_ws(websocket) -> User:
 async def disconnect_user(user: User):
     assert user.username in connections
     connections.pop(user.username, None)
-    if user.username in player_games:  # user is part of a game
-        game_id = player_games[user.username]
-        game = games[game_id]  # game should exist if player is a part of it
+    if user.username in manager.player_games:  # user is part of a game
+        game_id = manager.player_games[user.username]
+        game = manager.games[game_id]  # game should exist if player is a part of it
         await send_msg_to_opponents(
             game,
             user,
@@ -130,11 +130,11 @@ async def disconnect_user(user: User):
 
 
 async def reconnect_user(user: User, websocket: WebSocket):
-    game_id = player_games[user.username]
+    game_id = manager.player_games[user.username]
     if game_id not in games:
         raise RuntimeError("player is in player_games but game does not exist")
 
-    game = games[game_id]
+    game = manager.games[game_id]
     opponents = get_opponents(user, game)
     loop = asyncio.get_running_loop()
     time_left = max(0, round(game.ends_at - loop.time())) if game.ends_at else None
@@ -156,14 +156,14 @@ async def reconnect_user(user: User, websocket: WebSocket):
 
 
 async def handle_disconnect_grace_period(user: User, game: Game):
-    disconnected_players.append(user.username)
+    manager.disconnected_players.append(user.username)
     await asyncio.sleep(10)
 
-    if user.username not in disconnected_players:  # user reconnected since
+    if user.username not in manager.disconnected_players:  # user reconnected since
         return
 
     opponents = get_opponents(user, game)
-    disconnected_players.remove(user.username)  # remove player from game definitely
+    manager.disconnected_players.remove(user.username)  # remove player from game definitely
     disconnect(user)
 
     if len(opponents) == 1:
@@ -182,16 +182,16 @@ async def handle_disconnect_grace_period(user: User, game: Game):
 
 
 async def find_player(user: User):
-    if user.username in player_games:  # player should not be in active game
+    if user.username in manager.player_games:  # player should not be in active game
         raise ValueError("player is already in a game")
-    if user.username in matchmaking_queue:  # player should not be in queue
+    if user.username in manager.matchmaking_queue:  # player should not be in queue
         raise ValueError("player is already in matchmaking")
 
     print("GAME: player '" + user.username + "' is looking for a game...")
 
-    if len(matchmaking_queue) >= 1:  # another player is already waiting
+    if len(manager.matchmaking_queue) >= 1:  # another player is already waiting
         print("\tfound another player to match ", user.username, " against!")
-        opponent_name = matchmaking_queue.pop(0)
+        opponent_name = manager.matchmaking_queue.pop(0)
         print("\t" + user.username + " vs " + opponent_name)
         assert get_user(opponent_name) is not None
         opponent = get_user(opponent_name)
@@ -200,8 +200,8 @@ async def find_player(user: User):
         return
     else:
         print("\tno player waiting, adding ", user.username, "to queue")
-        matchmaking_queue.append(user.username)
-        await connections[user.username].send_json({"type": "waiting"})
+        manager.matchmaking_queue.append(user.username)
+        await manager.onnections[user.username].send_json({"type": "waiting"})
 
 
 # async def send_error_raise()

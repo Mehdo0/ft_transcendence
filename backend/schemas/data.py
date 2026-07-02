@@ -1,7 +1,8 @@
 from enum import Enum
 import asyncio, uuid
 from fastapi import WebSocket
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
+from utils.getters import get_random_word
 
 
 class GameState(str, Enum):
@@ -98,8 +99,10 @@ class GameManager:
             del self.disconnected_players[user.username]
 
     def disconnect(self, user: User):
+        # Only remove the active socket connection.
         self.connections.pop(user.username, None)
-        self.player_games.pop(user.username, None)
+
+        # Pull them out of the queue so they don't match while offline
         if user.username in self.matchmaking_queue:
             self.matchmaking_queue.remove(user.username)
 
@@ -110,17 +113,17 @@ class GameManager:
         ):
             return
 
-        # Defensive queue checking (Skipping ghosts!)
+        # Defensive queue checking
         while len(self.matchmaking_queue) > 0:
             opponent_name = self.matchmaking_queue.pop(0)
             if opponent_name in self.connections:
-                # Found a real player!
                 await self.create_game([opponent_name, user.username], is_ranked=True)
                 return
 
         # Nobody available, join the queue
         self.matchmaking_queue.append(user.username)
-        await self.connections[user.username].send_json({"type": "waiting"})
+        if user.username in self.connections:
+            await self.connections[user.username].send_json({"type": "waiting"})
 
     async def create_game(self, usernames: list[str], is_ranked: bool):
         game_id = str(uuid.uuid4())
@@ -131,6 +134,40 @@ class GameManager:
         # Broadcast match_found using the helper
         await self.broadcast_to_game(
             game_id, {"type": "match_found", "game_id": game_id}
+        )
+        loop = asyncio.get_running_loop()
+
+        # 1. Properly instantiate the Game model
+        game = Game(
+            id=game_id,
+            players=usernames,
+            word=get_random_word(),
+            ends_at=loop.time() + 60,
+            is_ranked=is_ranked,
+        )
+
+        # Initialize zero values for all players
+        for name in usernames:
+            game.scores[name] = 0.0
+            game.round_wins[name] = 0
+
+        # 2. Correct dictionary assignment
+        self.games[game_id] = game
+
+        # 3. Assign players to the game
+        for name in usernames:
+            self.player_games[name] = game_id
+
+        # 4. Broadcast to the lobby
+        await self.broadcast_to_game(
+            game_id,
+            {
+                "type": "match_found",
+                "game_id": game_id,
+                "word": game.word,
+                "duration": 60,
+                "round_wins": game.round_wins,
+            },
         )
 
 

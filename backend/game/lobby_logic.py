@@ -5,12 +5,13 @@ from fastapi import WebSocket
 from schemas.data import User
 from state.state import connections, lobbies
 from utils.utils import remove_from_matchmaking
+from core.setup import manager
 
 
 async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
     code = payload.get("code")
-    if code in lobbies:
-        lobby = lobbies[code]
+    if code in manager.lobbies:
+        lobby = manager.lobbies[code]
         await websocket.send_json(
             {
                 "type": "lobby_info",
@@ -35,9 +36,9 @@ async def create_lobby(user: User, websocket: WebSocket):
 
     while True:
         code = shortuuid.ShortUUID().random(length=6).upper()
-        while code in lobbies:  # ensure no duplicate lobbies
+        while code in manager.lobbies:  # ensure no duplicate lobbies
             code = shortuuid.ShortUUID().random(length=6).upper()
-        lobbies[code] = {"host": user.username, "players": [user.username]}
+        manager.lobbies[code] = {"host": user.username, "players": [user.username]}
         await websocket.send_json({"type": "lobby_created", "code": code})
         return
 
@@ -48,11 +49,11 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
         await websocket.send_json({"type": "error", "message": "wrong code"})
         return
 
-    if code not in lobbies:
+    if code not in manager.lobbies:
         await websocket.send_json({"type": "error", "message": "lobby not found"})
         return
 
-    lobby = lobbies[code]
+    lobby = manager.lobbies[code]
     if len(lobby["players"]) >= 4:
         await websocket.send_json({"type": "error", "message": "lobby already full"})
         return
@@ -75,12 +76,12 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
 
 
 async def cleanup_lobby_on_disconnect(user: User):  # audit TODO
-    for code, lobby in list(lobbies.items()):
+    for code, lobby in list(manager.lobbies.items()):
         if user.username not in lobby["players"]:
             continue
 
         if lobby["host"] == user.username:
-            closed_lobby = lobbies.pop(code)
+            closed_lobby = manager.lobbies.pop(code)
             for player in closed_lobby["players"]:
                 player_ws = connections.get(player)
                 assert player_ws is not None
