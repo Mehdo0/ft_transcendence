@@ -1,4 +1,5 @@
 from schemas.data import Game, User
+from core.setup  import manager
 from state.state import (
     connections,
     disconnected_players,
@@ -10,7 +11,7 @@ from state.state import (
 
 
 def cancel_timer(game_id: str) -> None:
-    task = game_timers.pop(game_id, None)
+    task = manager.game_timers.pop(game_id, None)
     # assert task is not None  # this is the only place where we cancel the task
     task.cancel()
 
@@ -27,8 +28,8 @@ async def calculate_new_elo(player1: User, player2: User, result: int):
 def cleanup_game(game: Game) -> None:
     for user in game.players:
         player_games.pop(user, None)
-        if user in disconnected_players:
-            disconnected_players.remove(user)
+        if user in manager.disconnected_players:
+            manager.disconnected_players.remove(user)
     games.pop(game.id)
 
 
@@ -39,8 +40,8 @@ def disconnect(user: User):
 
 
 def remove_from_matchmaking(username: str):
-    if username in matchmaking_queue:
-        matchmaking_queue.remove(username)
+    if username in manager.matchmaking_queue:
+        manager.matchmaking_queue.remove(username)
 
 
 async def send_msg_to_opponents(
