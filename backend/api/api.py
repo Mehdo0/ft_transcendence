@@ -85,8 +85,8 @@ async def API_session_is_authenticate(
     current_user: Annotated[User | None, Depends(get_session)],
 ):
     if current_user is None:
-        return {"authenticated": False}
-    return {"authenticated": True}
+        return {"authenticated": False, "User" : None}
+    return {"authenticated": True, "User": API_get_users_me(request, current_user)}
     
 
 @router.post("/api/register/")
