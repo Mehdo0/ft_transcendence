@@ -14,7 +14,7 @@ from core.exceptions import (
     WeakPassword,
     ImpossibleEmail,
 )
-from fastapi import Depends, HTTPException, WebSocketException, status
+from fastapi import Depends, HTTPException, WebSocketException, status, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
 from schemas.data import Token, User, UserRegister
@@ -25,6 +25,7 @@ from state.config import (
     SECRET_KEY,
     cookie_scheme,
 )
+
 
 async def get_random_word() -> str:
     data = load_word_list()
@@ -96,6 +97,20 @@ def get_authenticated_user(username: str, password: str) -> User:
         raise ValueError("Passwords dont match")
     return user
 
+async def get_session(access_token: str | None = Cookie(default=None)):
+    if not access_token:
+        return None
+        
+    try:
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            return None
+    except InvalidTokenError:
+        return None
+        
+    user = get_user(username)
+    return user
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()

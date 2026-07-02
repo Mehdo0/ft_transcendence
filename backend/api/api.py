@@ -12,6 +12,7 @@ from core.exceptions import (
     WeakPassword,
     ImpossibleEmail,
 )
+from services.services import get_session
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from schemas.data import User, UserRegister
@@ -76,6 +77,18 @@ async def API_get_users_me(
 ) -> User:
     return current_user
 
+
+@router.get("/api/session/")
+@limiter.limit("120/minute")
+async def API_session_is_authenticate(
+    request: Request,
+    current_user: Annotated[User | None, Depends(get_session)],
+):
+    if current_user is None:
+        return {"ok": False, "user": None}
+        
+    return API_get_users_me(request, current_user)
+    
 
 @router.post("/api/register/")
 @limiter.limit("30/minute")
