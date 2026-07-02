@@ -9,7 +9,7 @@
 
 	onMount(async () => {
 		try {
-			const meRes = await fetch('/api/users/me/', { credentials: 'same-origin' });
+			const meRes = await fetch('/api/session/', { credentials: 'same-origin' });
 			if (meRes.ok) me = (await meRes.json()).username;
 		} catch {
 			// not logged in — no highlighting

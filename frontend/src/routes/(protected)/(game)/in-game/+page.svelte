@@ -204,7 +204,7 @@
 	}
 
 	function loadUserData() {
-		fetch('/api/users/me/', { credentials: 'same-origin' })
+		fetch('/api/session/', { credentials: 'same-origin' })
 			.then((response) => (response.ok ? response.json() : null))
 			.then((data) => {
 				if (!data) return;

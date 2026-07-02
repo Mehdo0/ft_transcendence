@@ -39,7 +39,7 @@
 	
 
 	onMount(async () => {
-		const response = await fetch('/api/users/me/', {
+		const response = await fetch('/api/session/', {
 			method: 'GET',
 			credentials: 'same-origin'
 		});
