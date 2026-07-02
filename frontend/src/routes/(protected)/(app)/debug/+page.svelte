@@ -1,9 +1,9 @@
-<script lang="ts">
-	import { onMount } from 'svelte';
+	<script lang="ts">
+		import { onMount } from 'svelte';
+		import { send, subscribe } from '$lib/stores/wsManager';
 
-	let data = $state(null);
-	let messages: string[] = $state([]);
-	let socket: WebSocket;
+		let data = $state(null);
+		let messages: string[] = $state([]);
 
 	async function load_data() {
 		try {
@@ -14,35 +14,20 @@
 		}
 	}
 
-	function connect() {
-		socket = new WebSocket('/ws/');
-
-		socket.onopen = () => {
-			console.log('WebSocket connected');
-			messages = [...messages, 'connected to server'];
-		};
-
-		socket.onmessage = (event) => {
-			console.log('received:', event.data);
-			messages = [...messages, `server: ${event.data}`];
-		};
-
-		socket.onclose = () => {
-			console.log('WebSocket closed');
-			messages = [...messages, 'disconnected'];
-		};
-	}
-
-	function sendMessage() {
-		if (socket?.readyState === WebSocket.OPEN) {
-			socket.send('hello from browser at ' + new Date().toISOString());
+		function sendMessage() {
+			send({ type: 'debug', message: 'hello from browser at ' + new Date().toISOString() });
 		}
-	}
-	onMount(async () => {
-		load_data();
-		connect();
-	});
-</script>
+		onMount(() => {
+			load_data();
+			const unsubscribe = subscribe((message) => {
+				messages = [...messages, `server: ${JSON.stringify(message)}`];
+			});
+
+			return () => {
+				unsubscribe();
+			};
+		});
+	</script>
 
 <svelte:head>
 	<title>Debug — Draw Meter</title>

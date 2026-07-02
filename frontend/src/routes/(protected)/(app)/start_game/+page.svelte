@@ -1,61 +1,46 @@
-<script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { getWs } from '$lib/stores/ws';
-	import { game } from '$lib/stores/game.svelte';
+	<script lang="ts">
+		import { onMount } from 'svelte';
+		import { goto } from '$app/navigation';
+		import { isOpen, send, subscribe } from '$lib/stores/wsManager';
+		import { game } from '$lib/stores/game.svelte';
 
 	let isConnected = $state(false);
 	let isSearching = $state(false);
 	let statusMessage = $state('Disconnected');
 
-	function connect() {
-		const ws = getWs();
-		if (!ws) return;
-		if (ws.readyState === WebSocket.OPEN) {
-			isConnected = true;
-			statusMessage = 'Connected';
+		function handleMatchFound(msg: any) {
+			isSearching = false;
+			statusMessage = 'Game found';
+			game.id = msg.game_id;
+			game.opponent = msg.opponent;
+			game.players = msg.players ?? [];
+			game.me = msg.me ?? '';
+			game.word = msg.word;
+			game.scores = {};
+			game.is_ranked = msg.is_ranked ?? true;
+			sessionStorage.removeItem('private_lobby_code');
+			sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
+			goto('/in-game');
 		}
-		ws.onmessage = (event) => {
-			console.log('server says:', event.data);
-			const msg = JSON.parse(event.data);
-			if (msg.type === 'match_found') {
-				isSearching = false;
-				statusMessage = 'Game found';
-				console.log('Game found');
-				game.id = msg.game_id;
-				game.opponent = msg.opponent;
-				game.players = msg.players ?? [];
-				game.me = msg.me ?? '';
-				game.word = msg.word;
-				game.scores = {};
-				game.is_ranked = msg.is_ranked ?? true;
-				sessionStorage.removeItem('private_lobby_code');
-				sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
-				goto('/game/in-game');
-			}
-		};
-		ws.onclose = () => {
-			console.log('WebSocket closed');
-			isConnected = false;
-			statusMessage = 'Disconnected';
-		};
-		ws.onerror = (event) => {
-			console.log('WebSocket error:', event);
-			isConnected = false;
-			statusMessage = 'Error';
-		};
-	}
 
-	function findGame() {
-		const ws = getWs();
-		ws?.send(JSON.stringify({ type: 'find_player' }));
-		isSearching = true;
-		statusMessage = 'Searching...';
-	}
-	onMount(() => {
-		connect();
-	});
-</script>
+		async function findGame() {
+			send({ type: 'find_player' });
+			isSearching = true;
+			statusMessage = 'Searching...';
+		}
+		onMount(() => {
+			isConnected = true;
+			statusMessage = isOpen() ? 'Connected' : 'Connecting';
+
+			const unsubscribe = subscribe((message) => {
+				if (message.type === 'match_found') handleMatchFound(message);
+			});
+
+			return () => {
+				unsubscribe();
+			};
+		});
+	</script>
 
 <svelte:head>
 	<title>Matchmaking — Draw Meter</title>

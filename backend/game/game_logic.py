@@ -41,9 +41,10 @@ async def create_game(players: list[User], is_ranked: bool):
         ", ends_at: ",
         game.ends_at,
     )
-    games[game.id] = game
+
     print("creating task for game id ", game.id, "...")
-    game_timers[game.id] = asyncio.create_task(game_timer(game.id))
+
+    games[game.id] = game
 
     for player in players:
         game.scores[player.username] = 0
@@ -68,7 +69,8 @@ async def create_game(players: list[User], is_ranked: bool):
                 "is_ranked": game.is_ranked,
             }
         )
-    games[game.id] = game
+
+    game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
 
 async def end_game(game: Game, winner: User, reason: str | None = None):
@@ -190,7 +192,8 @@ async def start_game(payload: dict, user: User):
     assert lobby["players"]
     if len(lobby["players"]) < 2:
         raise WebSocketException(
-            code=status.WS_1008_POLICY_VIOLATION, reason="Cannot start game alone" #bah si non ? 
+            code=status.WS_1008_POLICY_VIOLATION,
+            reason="Cannot start game alone",  # bah si non ?
         )
 
     for player in lobby["players"]:
@@ -201,7 +204,7 @@ async def start_game(payload: dict, user: User):
             )
 
     players: list[User] = []
-    
+
     for player in lobby["players"]:
         assert player in connections
         assert get_user(player) is not None
@@ -256,6 +259,9 @@ async def surrender_game(user: User) -> None:
                 "user": user.username,
             },
         )
+        player_games.pop(user.username)
+        game.players.remove(user.username)
+        connections.pop(user.username)
 
 
 async def increase_scores(game_id: str):

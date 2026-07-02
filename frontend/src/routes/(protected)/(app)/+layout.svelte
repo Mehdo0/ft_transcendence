@@ -2,18 +2,11 @@
 	import { page } from '$app/stores';
 	import favicon from '$lib/draw_meter_logo.svg';
 	import { onMount } from 'svelte';
-	import { getWs, setWs } from '$lib/stores/ws';
 
 	let { children } = $props();
+
 	let login = $state(false);
 	let menuOpen = $state(false);
-
-	const navLinks = [
-		{ href: '/', label: 'Dashboard' },
-		{ href: '/start_game', label: 'Play Now!' },
-		{ href: '/lobby', label: 'Private Game' },
-		{ href: '/ranking', label: 'Leaderboard' }
-	];
 
 	function toggleMenu() {
 		menuOpen = !menuOpen;
@@ -37,7 +30,12 @@
 		location.assign('/');
 	}
 
-	
+	const navLinks = [
+		{ href: '/', label: 'Dashboard' },
+		{ href: '/start_game', label: 'Play Now!' },
+		{ href: '/lobby', label: 'Private Game' },
+		{ href: '/ranking', label: 'Leaderboard' }
+	];
 
 	onMount(async () => {
 		const response = await fetch('/api/users/me/', {
@@ -47,11 +45,6 @@
 
 		if (response.ok) {
 			login = true;
-			const existing = getWs();
-			if (!existing || existing.readyState >= WebSocket.CLOSING) {
-				const ws = new WebSocket('/ws/');
-				setWs(ws);
-			}
 		}
 	});
 </script>

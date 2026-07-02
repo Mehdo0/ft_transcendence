@@ -9,7 +9,7 @@ export default defineConfig({
 		hmr: {
 			protocol: 'wss',
 			host: 'localhost',
-			clientPort: 443
+			clientPort: 8443
 		},
 		allowedHosts: ['vite']
 	}

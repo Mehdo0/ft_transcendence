@@ -38,14 +38,13 @@
 
 		loading = true;
 		try {
-			const hashed_password = await hashPassword(password);
-			const reg = await registerUser(username.trim(), email.trim(), hashed_password);
+			const reg = await registerUser(username.trim(), email.trim(), password);
 			if (!reg.ok) {
 				serverError = reg.detail;
 				return;
 			}
 
-			const log = await login(username.trim(), hashed_password);
+			const log = await login(username.trim(), password);
 			if (!log.ok) {
 				serverError = 'Account created, but automatic login failed. Please go to the login page.';
 				return;

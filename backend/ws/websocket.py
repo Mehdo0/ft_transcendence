@@ -68,8 +68,9 @@ async def authenticate_user_trough_ws(websocket) -> User:
         token = websocket.cookies.get("access_token")
         if token is None:
             raise ValueError("no token found")
-        print("connecting user with token: " + token)
+        print("connecting user through ws token")
         user = get_user_from_ws_token(token)
+        print("user ", user.username, " connected.")
     except ValueError as e:
         await websocket.accept()
         await websocket.send_json(
@@ -166,8 +167,8 @@ async def handle_disconnect_grace_period(user: User, game: Game):
     disconnect(user)
 
     if len(opponents) == 1:
-        assert get_user(opponents[0]) is not None
         winner = get_user(opponents[0])
+        assert winner is not None
         await end_game(game, winner, "opponent_left")
     await send_msg_to_opponents(
         game,
@@ -189,16 +190,18 @@ async def find_player(user: User):
     print("GAME: player '" + user.username + "' is looking for a game...")
 
     if len(matchmaking_queue) >= 1:  # another player is already waiting
-        print("\tfound another player to match " + user.username + " against!")
+        print("\tfound another player to match ", user.username, " against!")
         opponent_name = matchmaking_queue.pop(0)
         print("\t" + user.username + " vs " + opponent_name)
-        assert get_user(opponent_name) is not None 
+        assert get_user(opponent_name) is not None
         opponent = get_user(opponent_name)
+        assert opponent is not None
         await create_game([opponent, user], True)
         return
-
-    matchmaking_queue.append(user.username)
-    await connections[user.username].send_json({"type": "waiting"})
+    else:
+        print("\tno player waiting, adding ", user.username, "to queue")
+        matchmaking_queue.append(user.username)
+        await connections[user.username].send_json({"type": "waiting"})
 
 
 # async def send_error_raise()
