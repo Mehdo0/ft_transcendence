@@ -20,6 +20,6 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 cookie_scheme = APIKeyCookie(name="access_token")
 WORD_LIST = "list.txt"
-COOKIE_SECURE == getenv("COOKIE_SECURE", "true").lower() not in ("false", "0", "no")
+COOKIE_SECURE = getenv("COOKIE_SECURE", "true").lower() not in ("false", "0", "no")
 
 limiter = Limiter(key_func=get_remote_address)
