@@ -2,7 +2,7 @@
 		import { game } from '$lib/stores/game.svelte';
 		import { send, subscribe } from '$lib/stores/wsManager';
 		import { onMount } from 'svelte';
-		import { goto } from '$app/navigation';
+		import { goto, beforeNavigate } from '$app/navigation';
 
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
@@ -400,9 +400,9 @@
 		makeAiGuess();
 	}
 
-		function makeAiGuess() {
-			send({ type: 'guess', strokes: stack });
-		}
+	function makeAiGuess() {
+		send({ type: 'guess', strokes: stack });
+	}
 
 	function finishStroke() {
 		if (!last) return;
@@ -420,6 +420,12 @@
 		const code = sessionStorage.getItem('private_lobby_code');
 		goto(code ? `/lobby/${code}` : '/lobby');
 	}
+
+	beforeNavigate((nav) => {
+		if (nav.to?.url.pathname !== '/in-game') {
+			send({ type: 'leave_lobby'});
+		}
+	});
 </script>
 
 <svelte:window onresize={resize} />

@@ -59,6 +59,8 @@ async def websocket_endpoint(websocket: WebSocket):
                     await ai_guess(user, payload, websocket)
                 case "surrender":
                     await surrender_game(user)
+                case "leave_lobby":
+                    await disconnect_user(user)
     except WebSocketDisconnect:
         await disconnect_user(user)
 

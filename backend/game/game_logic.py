@@ -54,21 +54,22 @@ async def create_game(players: list[User], is_ranked: bool):
         player_games[player.username] = game.id
         opponents = get_opponents(player, game)
         print("opponents of player ", player.username, opponents)
-        websocket = connections[player.username]
-        await websocket.send_json(
-            {
-                "type": "match_found",
-                "game_id": game.id,
-                "opponent": opponents,
-                "players": player_usernames,
-                "me": player.username,
-                "word": game.word,
-                "duration": ROUND_DURATION,
-                "scores": game.scores,
-                "round_wins": game.round_wins,
-                "is_ranked": game.is_ranked,
-            }
-        )
+        if player.username in connections:
+            websocket = connections[player.username]
+            await websocket.send_json(
+                {
+                    "type": "match_found",
+                    "game_id": game.id,
+                    "opponent": opponents,
+                    "players": player_usernames,
+                    "me": player.username,
+                    "word": game.word,
+                    "duration": ROUND_DURATION,
+                    "scores": game.scores,
+                    "round_wins": game.round_wins,
+                    "is_ranked": game.is_ranked,
+                }
+            )
 
     game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
