@@ -206,7 +206,11 @@ async def start_game(payload: dict, user: User):
     players: list[User] = []
 
     for player in lobby["players"]:
-        assert player in connections
+        if player not in connections:
+            await connections[user.username].send_json(
+                {"type": "error", "message": "a player is disconnected, try again"}
+            )
+            return
         assert get_user(player) is not None
         players.append(get_user(player))
 

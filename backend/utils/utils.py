@@ -1,3 +1,4 @@
+import asyncio
 from schemas.data import Game, User
 from state.state import (
     connections,
@@ -7,6 +8,8 @@ from state.state import (
     matchmaking_queue,
     player_games,
 )
+
+GRACE_PERIOD = 10
 
 
 def cancel_timer(game_id: str) -> None:
@@ -36,6 +39,15 @@ def disconnect(user: User):
     connections.pop(user.username, None)
     player_games.pop(user.username, None)
     remove_from_matchmaking(user.username)
+
+
+async def run_disconnect_grace_period(username: str, on_timeout):
+    disconnected_players.append(username)
+    await asyncio.sleep(GRACE_PERIOD)
+    if username not in disconnected_players:  # reconnected in the meantime
+        return
+    disconnected_players.remove(username)
+    await on_timeout()
 
 
 def remove_from_matchmaking(username: str):

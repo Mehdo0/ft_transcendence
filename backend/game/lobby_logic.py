@@ -4,7 +4,7 @@ import shortuuid
 from fastapi import WebSocket
 from schemas.data import User
 from state.state import connections, lobbies
-from utils.utils import remove_from_matchmaking
+from utils.utils import remove_from_matchmaking, disconnect, run_disconnect_grace_period
 
 
 async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
@@ -72,6 +72,14 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
             await player_ws.send_json(
                 {"type": "player_joined", "username": user.username}
             )
+
+
+async def handle_lobby_disconnect_grace_period(user: User):
+    async def on_timeout():
+        await cleanup_lobby_on_disconnect(user)
+        disconnect(user)
+
+    await run_disconnect_grace_period(user.username, on_timeout)
 
 
 async def cleanup_lobby_on_disconnect(user: User):  # audit TODO

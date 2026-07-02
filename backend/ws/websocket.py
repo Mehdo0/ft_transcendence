@@ -16,11 +16,11 @@ from game.lobby_logic import (
     create_lobby,
     join_lobby,
     get_lobby_info,
-    cleanup_lobby_on_disconnect,
+    handle_lobby_disconnect_grace_period,
 )
 from game.game_logic import start_game, surrender_game, ai_guess, create_game, end_game
 from utils.getters import get_opponents
-from utils.utils import disconnect, send_msg_to_opponents
+from utils.utils import disconnect, send_msg_to_opponents, run_disconnect_grace_period
 
 
 @router.websocket("/ws/")
@@ -125,8 +125,7 @@ async def disconnect_user(user: User):
         )
         asyncio.create_task(handle_disconnect_grace_period(user, game))
         return
-    await cleanup_lobby_on_disconnect(user)
-    disconnect(user)
+    asyncio.create_task(handle_lobby_disconnect_grace_period(user))
 
 
 async def reconnect_user(user: User, websocket: WebSocket):
@@ -156,29 +155,23 @@ async def reconnect_user(user: User, websocket: WebSocket):
 
 
 async def handle_disconnect_grace_period(user: User, game: Game):
-    disconnected_players.append(user.username)
-    await asyncio.sleep(10)
+    async def on_timeout():
+        opponents = get_opponents(user, game)
+        disconnect(user)
+        if len(opponents) == 1:
+            winner = get_user(opponents[0])
+            assert winner is not None
+            await end_game(game, winner, "opponent_left")
+        await send_msg_to_opponents(
+            game,
+            user,
+            {
+                "type": "opponent_left",
+                "user": user.username,
+            },
+        )
 
-    if user.username not in disconnected_players:  # user reconnected since
-        return
-
-    opponents = get_opponents(user, game)
-    disconnected_players.remove(user.username)  # remove player from game definitely
-    disconnect(user)
-
-    if len(opponents) == 1:
-        winner = get_user(opponents[0])
-        assert winner is not None
-        await end_game(game, winner, "opponent_left")
-    await send_msg_to_opponents(
-        game,
-        user,
-        {
-            "type": "opponent_left",
-            "user": user.username,
-        },
-    )
-    return
+    await run_disconnect_grace_period(user.username, on_timeout)
 
 
 async def find_player(user: User):
