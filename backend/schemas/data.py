@@ -1,8 +1,7 @@
 from enum import Enum
-import asyncio, uuid
+import asyncio, uuid, random
 from fastapi import WebSocket
 from pydantic import BaseModel, Field
-from utils.getters import get_random_word
 
 
 class GameState(str, Enum):
@@ -89,6 +88,10 @@ class GameManager:
         self.disconnected_players: dict[str, dict] = {}
         self.game_timers: dict[str, asyncio.Task] = {}
 
+    def _random_word(self) -> str:
+        from services.ai_service import load_word_list
+        return random.choice(load_word_list())
+
     async def connect(self, user: User, websocket: WebSocket):
         await websocket.accept()
         self.connections[user.username] = websocket
@@ -141,7 +144,7 @@ class GameManager:
         game = Game(
             id=game_id,
             players=usernames,
-            word=get_random_word(),
+            word=self._random_word(),
             ends_at=loop.time() + 60,
             is_ranked=is_ranked,
         )
