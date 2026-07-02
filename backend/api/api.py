@@ -69,15 +69,6 @@ async def API_login(
     return {"ok": True}
 
 
-@router.get("/api/users/me/")
-@limiter.limit("30/minute")
-async def API_get_users_me(
-    request: Request,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-) -> User:
-    return current_user
-
-
 @router.get("/api/session/")
 @limiter.limit("120/minute")
 async def API_session_is_authenticate(

@@ -80,19 +80,17 @@ async def cleanup_lobby_on_disconnect(user: User):  # audit TODO
             continue
 
         if lobby["host"] == user.username:
-            closed_lobby = lobbies.pop(code, None)
-            if closed_lobby is None:
-                continue
+            closed_lobby = lobbies.pop(code)
             for player in closed_lobby["players"]:
                 player_ws = connections.get(player)
-                if player_ws:
-                    await player_ws.send_json({"type": "lobby_closed"})
-            continue
+                assert player_ws is not None
+                await player_ws.send_json({"type": "lobby_closed"})
+            return
 
         lobby["players"].remove(user.username)
         for player in lobby["players"]:
             player_ws = connections.get(player)
-            if player_ws:
-                await player_ws.send_json(
-                    {"type": "player_left", "username": user.username}
-                )
+            assert player_ws is not None
+            await player_ws.send_json(
+                {"type": "player_left", "username": user.username}
+            )

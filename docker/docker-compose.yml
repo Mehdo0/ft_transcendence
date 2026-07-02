@@ -40,7 +40,7 @@ services:
     volumes:
       - ../logs:/var/log/nginx;
     ports:
-      - "8080:80" #needed host port >1024 to compile without root access (school pc)
+      - "8080:80"
       - "8443:443"
     depends_on:
       - backend

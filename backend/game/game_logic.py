@@ -261,7 +261,7 @@ async def surrender_game(user: User) -> None:
         )
         player_games.pop(user.username)
         game.players.remove(user.username)
-        connections.pop(user.username)
+        # connections.pop(user.username)
 
 
 async def increase_scores(game_id: str):
