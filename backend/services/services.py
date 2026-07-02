@@ -131,7 +131,6 @@ async def get_current_user(token: Annotated[str, Depends(cookie_scheme)]):
 
 def get_user_from_ws_token(token: str) -> User:
     try:
-        # Decode the token exactly like we did in the HTTP bouncer
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
         if username is None:
@@ -141,14 +140,12 @@ def get_user_from_ws_token(token: str) -> User:
             raise WebSocketException(code=status.HTTP_404_NOT_FOUND)
         return user
     except jwt.InvalidTokenError:
-        # If the token is fake or expired, instantly kill the connection
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
 
 
 async def get_current_active_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    # Note: Ensure the User model has a 'disabled' attribute or adjust accordingly
     if hasattr(current_user, "disabled") and current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
