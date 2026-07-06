@@ -1,0 +1,13 @@
+fastapi[standard]>=0.115,<0.116
+uvicorn[standard]>=0.32,<0.33
+numpy>=2.0,<3.0
+slowapi
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+pyjwt
+shortuuid
+pwdlib[argon2]
+sqlalchemy>=2.0.50
+bcrypt
+validators

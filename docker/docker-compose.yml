@@ -1,0 +1,64 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    container_name: trsc_back
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../backend:/app
+      - ../data:/app/data
+    networks:
+      - trsc_net
+    secrets:
+      - secret_key
+
+  vite:
+    build:
+      context: ..
+      dockerfile: docker/vite.Dockerfile
+    container_name: trsc_vite
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - trsc_net
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: docker/nginx.Dockerfile
+    container_name: trsc_nginx
+    restart: unless-stopped
+    volumes:
+      - ../logs:/var/log/nginx;
+    ports:
+      - "8080:80"
+      - "8443:443"
+    depends_on:
+      - backend
+      - vite
+    networks:
+      - trsc_net
+    secrets:
+      - server_crt
+      - server_key
+
+networks:
+  trsc_net:
+    driver: bridge
+
+secrets:
+  server_crt:
+    file: ../secrets/server.crt
+  server_key:
+    file: ../secrets/server.key
+  secret_key:
+    file: ../secrets/secret_key

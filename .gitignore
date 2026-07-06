@@ -1,0 +1,38 @@
+# Node
+node_modules/
+dist/
+.vite/
+
+# SvelteKit
+.svelte-kit/
+frontend/build/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# SQLite
+*.db
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+secrets/
+build_ai/data_clean/
+
+# Docker
+docker/wheels/*.whl
