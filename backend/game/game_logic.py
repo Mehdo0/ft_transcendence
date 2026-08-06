@@ -274,8 +274,10 @@ async def send_end_game(
         "payload": payload,
     }])
 
-def _start_game_timer(event, data):
+async def _start_game_timer(event, data):
     game = data["game"]
-    game.timer = asyncio.create_task(game_timer(game.id))
+    task = asyncio.create_task(game_timer(game.id))
+    game.timer = task
+    manager.game_timers[game.id] = task
 
 manager.on("game_created", _start_game_timer)

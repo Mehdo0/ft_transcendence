@@ -86,8 +86,8 @@ async def cleanup_lobby_on_disconnect(user: User):
         lobby["players"].remove(user.username)
         for player in lobby["players"]:
             player_ws = manager.connections.get(player)
-            assert player_ws is not None
-            await player_ws.send_json({
-                "type": "player_left",
-                "username": user.username,
-            })
+            if player_ws:
+                await player_ws.send_json({
+                    "type": "player_left",
+                    "username": user.username,
+                })

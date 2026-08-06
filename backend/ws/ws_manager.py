@@ -28,7 +28,11 @@ class WSManager:
         for item in payloads:
             ws = self.connections.get(item["username"])
             if ws:
-                await ws.send_json(item["payload"])
+                try:
+                    await ws.send_json(item["payload"])
+                except RuntimeError:
+                    self.connections.pop(item["username"], None)
+
 
 
     async def connect(self, user: User, websocket: WebSocket):
