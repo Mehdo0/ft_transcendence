@@ -289,41 +289,6 @@ async def game_timer(game_id: str):
     await end_game_by_timeout(game_id) # game_manager
 
 
-async def broadcast_player_score( #ws_manager
-    game: Game,
-    username: str,
-    score: float,
-    guess: dict | None = None,
-    include_self: bool = False,
-):
-    for player in game.players:
-        player_ws = connections.get(player)
-        assert player_ws is not None
-        if player == username and not include_self:
-            continue
-        payload = {
-            "type": "player_guess",
-            "username": username,
-            "score": score,
-        }
-        if guess is not None:
-            payload["guess"] = guess
-        await player_ws.send_json(payload)
 
 
-async def send_end_game( #ws_manager
-    username: str, status: str, elo_diff: int, new_elo: int, reason: str | None = None
-):
-    websocket = connections.get(username)
-    if websocket is None:
-        return
 
-    payload = {
-        "type": "end_game",
-        "status": status,
-        "elo_diff": elo_diff,
-        "new_elo": new_elo,
-    }
-    if reason is not None:
-        payload["reason"] = reason
-    await websocket.send_json(payload)

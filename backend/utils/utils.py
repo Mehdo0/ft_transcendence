@@ -44,21 +44,4 @@ def remove_from_matchmaking(username: str):
         manager.matchmaking_queue.remove(username)
 
 
-async def send_msg_to_opponents(
-    game: Game,
-    user: User,
-    msg: dict[str, str],
-):
-    for p in game.players:
-        if p != user.username:  # message all opponents
-            assert p in connections  # opponent should be connected
-            await connections[p].send_json(msg)
 
-
-async def send_msg_to_players(
-    game: Game,
-    msg: dict[str, str],
-):
-    for p in game.players:
-        assert p in connections  # opponent should be connected
-        await connections[p].send_json(msg)
