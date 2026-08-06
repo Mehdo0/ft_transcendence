@@ -2,7 +2,6 @@ import random
 from core.database import get_user
 from schemas.data import Game, User
 from services.ai_service import load_word_list
-from state.state import games
 from core.setup import manager
 
 
