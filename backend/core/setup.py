@@ -2,14 +2,16 @@ import os
 from fastapi import APIRouter
 from game.game_manager import GameManager
 from ws.ws_manager import WSManager
+import state.state as state_module
+
 
 os.makedirs("data", exist_ok=True)
 
-game_manager = GameManager()
-ws_manager = WSManager(game_manager)
-manager = game_manager
+manager = GameManager()
+ws_manager = WSManager(manager)
+manager.connections = ws_manager.connections
 
-import state.state as state_module
+
 state_module.connections = ws_manager.connections
 
 router = APIRouter()

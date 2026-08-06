@@ -16,6 +16,26 @@ class WSManager:
     def __init__(self, game_manager):
         self.game_manager = game_manager
         self.connections: dict[str, WebSocket] = {}
+        self._setup_events()
+
+    def _setup_events(self):
+        gm = self.game_manager
+
+        gm.on("matchmaking_waiting", self._on_matchmaking_waiting)
+        gm.on("game_created", self._on_game_created)
+
+    async def _on_matchmaking_waiting(self, event, data):
+        user = data["user"]
+        ws = self.connections.get(user.username)
+        if ws:
+            await ws.send_json({"type": "waiting"})
+
+    async def _on_game_created(self, event, data):
+        game = data["game"]
+        for username in game.players:
+            ws = self.connections.get(username)
+            if ws:
+                await ws.send_json({"type": "match_found"})
 
     async def connect(self, user: User, websocket: WebSocket):
         if user.username in self.connections:

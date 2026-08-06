@@ -49,7 +49,7 @@ from utils.utils import cancel_timer, calculate_new_elo, cleanup_game
 #         manager.player_manager.games[player.username] = game.id
 #         opponents = get_opponents(player, game)
 #         print("opponents of player ", player.username, opponents)
-#         websocket = manager.connections[player.username]
+#         websocket = manager.manager.connections[player.username]
 #         await websocket.send_json(
 #             {
 #                 "type": "match_found",
@@ -115,7 +115,7 @@ async def start_next_round(game: Game):
     game.ends_at = loop.time() + ROUND_DURATION
 
     for username in game.players:
-        websocket = connections.get(username) #link to ws_manager
+        websocket = manager.connections.get(username) #link to ws_manager
         if websocket:
             await websocket.send_json(
                 {
@@ -161,7 +161,7 @@ async def end_game_by_timeout(game_id: str):
 
     if len(winners) > 1:
         for user in users:
-            websocket = connections.get(user.username) #link this to ws_manager
+            websocket = manager.connections.get(user.username) #link this to ws_manager
             assert websocket is not None
             await websocket.send_json({"type": "round_tie"})
         await start_next_round(game) # game_manager
@@ -201,7 +201,7 @@ async def start_game(payload: dict, user: User): #is this function specific to l
     players= lobby[code][players]
 
     for player in players:
-        assert player in connections # ws_manager
+        assert player in manager.connections # ws_manager
         assert get_user(player) is not None
 
     await manager.create_game(players, False)
@@ -254,7 +254,7 @@ async def surrender_game(user: User) -> None:
         )
         manager.player_games.pop(user.username)
         game.players.remove(user.username)
-        # connections.pop(user.username)
+        # manager.connections.pop(user.username)
 
 
 async def increase_scores(game_id: str):
@@ -297,7 +297,7 @@ async def broadcast_player_score( #ws_manager
     include_self: bool = False,
 ):
     for player in game.players:
-        player_ws = connections.get(player)
+        player_ws = manager.connections.get(player)
         assert player_ws is not None
         if player == username and not include_self:
             continue
@@ -314,7 +314,7 @@ async def broadcast_player_score( #ws_manager
 async def send_end_game( #ws_manager
     username: str, status: str, elo_diff: int, new_elo: int, reason: str | None = None
 ):
-    websocket = connections.get(username)
+    websocket = manager.connections.get(username)
     if websocket is None:
         return
 
