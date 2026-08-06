@@ -82,23 +82,27 @@ class GameManager:
             game.ai_scores[player.username] = 0
             game.score_bonuses[player.username] = 0
             game.round_wins[player.username] = 0
-            self.player_self.games[player.username] = game.id
+            self.player_games[player.username] = game.id
             opponents = get_opponents(player, game)
             print("opponents of player ", player.username, opponents)
-            websocket = self.connections[player.username]
-            await websocket.send_json(    # move this to the ws manager class 
-                {
-                    "type": "match_found",
-                    "game_id": game.id,
-                    "opponent": opponents,
-                    "players": player_usernames,
-                    "me": player.username,
-                    "word": game.word,
-                    "duration": ROUND_DURATION,
-                    "scores": game.scores,
-                    "round_wins": game.round_wins,
-                    "is_ranked": game.is_ranked,
-                }
-            )
+            payloads = []
+            for player in players:
+                opponents = get_opponents(player, game)
+                payloads.append({
+                    "username": player.username,
+                    "payload": {
+                        "type": "match_found",
+                        "game_id": game.id,
+                        "opponent": opponents,
+                        "players": player_usernames,
+                        "me": player.username,
+                        "word": game.word,
+                        "duration": ROUND_DURATION,
+                        "scores": game.scores,
+                        "round_wins": game.round_wins,
+                        "is_ranked": game.is_ranked,
+                    }
+                })
+        self._emit("broadcast_to_players", payloads=payloads)
         game.timer = asyncio.create_task(game.timer)
         #self.game_timers[game.id] = asyncio.create_task(self.game_timer(game.id))

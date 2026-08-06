@@ -3,13 +3,12 @@ import uuid
 from utils.getters import get_random_word, get_total_score, get_opponents
 from utils.utils import send_msg_to_opponents
 import asyncio
-from game.game_manager import manager
 from core.config import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
 from fastapi import WebSocket, WebSocketException, status
 from core.database import get_user, update_user_elo
+from core.setup import manager
 from schemas.data import Game, GameState, User
 from services.services import make_ai_guess
-from game.game_manager import manager
 from utils.getters import get_users_unsafe
 from utils.utils import cancel_timer, calculate_new_elo, cleanup_game
 
@@ -114,19 +113,19 @@ async def start_next_round(game: Game):
     loop = asyncio.get_running_loop()
     game.ends_at = loop.time() + ROUND_DURATION
 
+    payloads = []
     for username in game.players:
-        websocket = manager.connections.get(username) #link to ws_manager
-        if websocket:
-            await websocket.send_json(
-                {
-                    "type": "next_round",
-                    "word": game.word,
-                    "duration": ROUND_DURATION,
-                    "scores": game.scores,
-                    "round_wins": game.round_wins,
-                }
-            )
-
+        payloads.append({
+            "username": username,
+            "payload": {
+                "type": "next_round",
+                "word": game.word,
+                "duration": ROUND_DURATION,
+                "scores": game.scores,
+                "round_wins": game.round_wins,
+            }
+        })
+    manager._emit("broadcast_to_players", payloads=payloads)
     cancel_timer(game.id)
     manager.game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
@@ -219,22 +218,24 @@ async def ai_guess(user: User, payload: dict, websocket: WebSocket) -> None:
     score = get_total_score(game, user.username)
     game.scores[user.username] = score
 
-    await websocket.send_json( # ws_manager
-        {
-            "type": "ai_guess",
-            "guess": guess,
+    payloads = []
+    for user in game.players:
+        payloads.append({
             "username": user.username,
-            "score": score,
-        }
-    )
-    await broadcast_player_score(game, user.username, score, guess, True)
+            "payload": {
+                "type": "ai_guess",
+                "guess": guess,
+                "scores": score,
+            }
+        })
+    manager._emit("broadcast_to_players", payloads=payloads)
 
     if score >= 100:
         await handle_round_end(game, user)
 
 
 async def surrender_game(user: User) -> None:
-    game_id = manager.get_game_id(user)
+    game_id = manager.player_games.get(user.username)
     if game_id is None:
         raise ValueError("game doesnt exist")
     game = manager.games[game_id]
@@ -244,17 +245,17 @@ async def surrender_game(user: User) -> None:
         assert winner is not None  # if there is another opponent, it should exist TODO: remove
         await end_game(game, winner, "opponent_surrendered") # game_manager
     else:
-        await send_msg_to_opponents( # ws_manager
-            game,
-            user,
-            {
-                "type": "opponent_disconnected",
-                "user": user.username,
-            },
-        )
+        payloads = []
+        for user in game.players:
+            payloads.append({
+                "username": user.username,
+                "payload": {
+                    "type": "opponent_disconnected",
+                }
+            })
+        manager._emit("broadcast_to_players", payloads=payloads)
         manager.player_games.pop(user.username)
         game.players.remove(user.username)
-        # manager.connections.pop(user.username)
 
 
 async def increase_scores(game_id: str):
@@ -289,7 +290,7 @@ async def game_timer(game_id: str):
     await end_game_by_timeout(game_id) # game_manager
 
 
-async def broadcast_player_score( #ws_manager
+async def broadcast_player_score(
     game: Game,
     username: str,
     score: float,
@@ -308,7 +309,7 @@ async def broadcast_player_score( #ws_manager
         }
         if guess is not None:
             payload["guess"] = guess
-        await player_ws.send_json(payload)
+        manager._emit("broadcast_to_players", payload=payload)
 
 
 async def send_end_game( #ws_manager
@@ -323,7 +324,7 @@ async def send_end_game( #ws_manager
         "status": status,
         "elo_diff": elo_diff,
         "new_elo": new_elo,
-    }
+    }   
     if reason is not None:
         payload["reason"] = reason
-    await websocket.send_json(payload)
+    manager._emit("broadcast_to_players", payload=payload)

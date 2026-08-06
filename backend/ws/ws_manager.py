@@ -21,21 +21,15 @@ class WSManager:
     def _setup_events(self):
         gm = self.game_manager
 
-        gm.on("matchmaking_waiting", self._on_matchmaking_waiting)
-        gm.on("game_created", self._on_game_created)
+        gm.on("broadcast_to_players", self._on_broadcast_to_players)
 
-    async def _on_matchmaking_waiting(self, event, data):
-        user = data["user"]
-        ws = self.connections.get(user.username)
-        if ws:
-            await ws.send_json({"type": "waiting"})
-
-    async def _on_game_created(self, event, data):
-        game = data["game"]
-        for username in game.players:
-            ws = self.connections.get(username)
+    async def _on_broadcast_to_players(self, event, data):
+        payloads = data["payloads"]
+        for item in payloads:
+            ws = self.connections.get(item["username"])
             if ws:
-                await ws.send_json({"type": "match_found"})
+                await ws.send_json(item["payload"])
+
 
     async def connect(self, user: User, websocket: WebSocket):
         if user.username in self.connections:
