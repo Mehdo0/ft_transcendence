@@ -13,7 +13,7 @@ class GameManager:
         self.lobbies: dict[str, dict] = {}
         
         self.matchmaking_queue: list[str] = []
-        self.disconnected_players: dict[str, dict] = {}
+        self.disconnected_players: list[str] = []
         self.game_timers: dict[str, asyncio.Task] = {}
         self._listeners: dict[str, list] = {}
 

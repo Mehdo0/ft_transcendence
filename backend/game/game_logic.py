@@ -140,6 +140,11 @@ async def start_game(payload: dict, user: User):
                 code=status.WS_1008_POLICY_VIOLATION,
                 reason="Some Players are already in other games",
             )
+        if manager.connections.get(player) is None:
+            raise WebSocketException(
+                code=status.WS_1008_POLICY_VIOLATION,
+                reason="Not all players are connected"
+            )
 
     players = lobby["players"]
 
@@ -153,7 +158,7 @@ async def start_game(payload: dict, user: User):
 
 
 async def ai_guess(user: User, payload: dict) -> None:
-    game_id = manager.get_game_id(user)
+    game_id = manager.player_games.get(user.username)
     if game_id is None:
         raise ValueError("You are not part of any games")
 

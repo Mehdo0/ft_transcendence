@@ -37,11 +37,13 @@ class WSManager:
 
     async def connect(self, user: User, websocket: WebSocket):
         if user.username in self.connections:
-            await websocket.accept()
-            await websocket.send_json({
-                "type": "error",
-                "message": "already connected — close your other tab first",
-            })
+            try:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "already connected — close your other tab first",
+                })
+            except RuntimeError:
+                pass
             raise WebSocketException(
                 code=status.WS_1008_POLICY_VIOLATION,
                 reason="Only one connection allowed",
