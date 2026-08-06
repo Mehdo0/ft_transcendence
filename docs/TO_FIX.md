@@ -23,3 +23,5 @@ si on retourne au lobby et on lance le jeu avant le retour de tous les joueurs Ã
 surrender doesnt do anything when solo game
 
 Add refresh token
+
+remove tout les assert avant de push

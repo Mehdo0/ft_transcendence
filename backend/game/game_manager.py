@@ -6,22 +6,19 @@ from utils.getters import get_opponents, get_random_word, get_user
 
 class GameManager:
     def __init__(self):
-        # 1. Active Connections
-        self.connections: dict[str, WebSocket] = {}
+        self.connections: dict[str, WebSocket] = {} #preferably put this in ws_manager not here
         
-        # 2. Game & Lobby State
         self.games: dict[str, Game] = {}
         self.player_games: dict[str, str] = {}
         self.lobbies: dict[str, dict] = {}
         
-        # 3. Matchmaking & Disconnects
         self.matchmaking_queue: list[str] = []
         self.disconnected_players: dict[str, dict] = {}
         self.game_timers: dict[str, asyncio.Task] = {}
 
 
 
-    async def connect(self, user: User, websocket: WebSocket):
+    async def connect(self, user: User, websocket: WebSocket): #move this into ws_manager
         await websocket.accept()
         self.connections[user.username] = websocket
         
@@ -30,10 +27,19 @@ class GameManager:
             self.disconnected_players[user.username]["reconnected"] = True
             del self.disconnected_players[user.username]
 
+                    
+    def get_game_id(self, user: User | None = None) -> str | None:
+        if user is None:
+            return None
+
+        for game_id, game in self.games.items():
+            if user in game.players:
+                return game_id
+
+        return None
 
 
-
-    def disconnect(self, user: User):
+    def disconnect(self, user: User): #move this into ws manager
         # Only remove the active socket connection. 
         self.connections.pop(user.username, None)
         
@@ -45,7 +51,7 @@ class GameManager:
 
             
 
-    async def broadcast_to_game(self, game_id: str, payload: dict, exclude: str = None):
+    async def broadcast_to_game(self, game_id: str, payload: dict, exclude: str = None): #move this into ws manager
         """Sends a message to everyone in a specific game."""
         game = self.games.get(game_id)
         if not game:
@@ -62,7 +68,7 @@ class GameManager:
 
 
     async def find_player(self, user: User):
-        if user.username in self.player_games:  # player should not be in active game
+        if self.player_games.get(user.username):  # player should not be in active game
             raise ValueError("player is already in a game")
         if user.username in self.matchmaking_queue:  # player should not be in queue
             raise ValueError("player is already in matchmaking")
@@ -71,7 +77,7 @@ class GameManager:
 
         if len(self.matchmaking_queue) >= 1:  # another player is already waiting
             print("\tfound another player to match ", user.username, " against!")
-            opponent_name = self.matchmaking_queue.pop(0)
+            opponent_name = self.matchmaking_queue.pop(0) #maybe add matchmacking logic
             print("\t" + user.username + " vs " + opponent_name)
             assert get_user(opponent_name) is not None
             opponent = get_user(opponent_name)
@@ -81,7 +87,7 @@ class GameManager:
         else:
             print("\tno player waiting, adding ", user.username, "to queue")
             self.matchmaking_queue.append(user.username)
-            await self.onnections[user.username].send_json({"type": "waiting"})
+            await self.connections[user.username].send_json({"type": "waiting"}) #link this to the ws manager
 
 
 
@@ -122,7 +128,7 @@ class GameManager:
             opponents = get_opponents(player, game)
             print("opponents of player ", player.username, opponents)
             websocket = self.connections[player.username]
-            await websocket.send_json(
+            await websocket.send_json(    # move this to the ws manager class 
                 {
                     "type": "match_found",
                     "game_id": game.id,
@@ -136,7 +142,7 @@ class GameManager:
                     "is_ranked": game.is_ranked,
                 }
             )
-
-        self.game_timers[game.id] = asyncio.create_task(self.game_timer(game.id))
+        game.timer = asyncio.create_task(game.timer)
+        #self.game_timers[game.id] = asyncio.create_task(self.game_timer(game.id))
 
 manager = GameManager()

@@ -8,7 +8,6 @@ from state.config import limiter
 from api.api import router as api_router
 from ws.websocket import router as websocket_router
 
-# CRITICAL FIX: Import directly from database, NOT from setup
 from core.database import setup_database
 
 app = FastAPI()
