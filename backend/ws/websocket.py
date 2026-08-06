@@ -1,5 +1,5 @@
 import json
-from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
+from fastapi import WebSocket, WebSocketDisconnect
 from services.services import get_user_from_ws_token
 from schemas.data import User
 from core.setup import router, ws_manager

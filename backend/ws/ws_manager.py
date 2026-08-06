@@ -1,14 +1,6 @@
 import json, asyncio
-from fastapi import WebSocket, WebSocketDisconnect, WebSocketException, status
+from fastapi import WebSocket, WebSocketException, status
 from schemas.data import User, Game
-from services.services import get_user_from_ws_token
-from state.state import (
-    connections,
-    disconnected_players,
-    games,
-    matchmaking_queue,
-    player_games,
-)
 from game.lobby_logic import (
     create_lobby,
     join_lobby,
@@ -17,17 +9,17 @@ from game.lobby_logic import (
 )
 from game.game_logic import start_game, surrender_game, ai_guess, end_game
 from utils.getters import get_opponents, get_user
-from utils.utils import disconnect as utils_disconnect, send_msg_to_opponents
+from utils.utils import disconnect, send_msg_to_opponents
 
 
 class WSManager:
     def __init__(self, game_manager):
         self.game_manager = game_manager
+        self.connections: dict[str, WebSocket] = {}
 
     async def connect(self, user: User, websocket: WebSocket):
-        await websocket.accept()
-
-        if user.username in connections:
+        if user.username in self.connections:
+            await websocket.accept()
             await websocket.send_json({
                 "type": "error",
                 "message": "already connected — close your other tab first",
@@ -37,17 +29,17 @@ class WSManager:
                 reason="Only one connection allowed",
             )
 
-        connections[user.username] = websocket
+        await websocket.accept()
+        self.connections[user.username] = websocket
 
         if user.username in self.game_manager.disconnected_players:
             self.game_manager.disconnected_players.remove(user.username)
 
-        if user.username in player_games:
+        if user.username in self.game_manager.player_games:
             await self._reconnect_user(user, websocket)
 
     async def disconnect(self, user: User):
-        assert user.username in connections
-        connections.pop(user.username, None)
+        self.connections.pop(user.username, None)
 
         if user.username in self.game_manager.player_games:
             game_id = self.game_manager.player_games[user.username]
@@ -60,7 +52,7 @@ class WSManager:
             return
 
         await cleanup_lobby_on_disconnect(user)
-        utils_disconnect(user)
+        disconnect(user)
 
     async def handle_message(self, user: User, payload: dict):
         message_type = payload.get("type")
@@ -72,30 +64,23 @@ class WSManager:
 
         match message_type:
             case "create_lobby":
-                ws = connections[user.username]
-                await create_lobby(user, ws)
+                await create_lobby(user, self.connections[user.username])
             case "join_lobby":
                 code = payload.get("code", "").upper().strip()
-                ws = connections[user.username]
-                await join_lobby(user, code, ws)
+                await join_lobby(user, code, self.connections[user.username])
             case "get_lobby":
-                ws = connections[user.username]
-                await get_lobby_info(payload, ws, user)
+                await get_lobby_info(payload, self.connections[user.username], user)
             case "start_game":
                 await start_game(payload, user)
             case "find_player":
                 await self.game_manager.find_player(user)
             case "guess":
-                ws = connections[user.username]
-                await ai_guess(user, payload, ws)
+                await ai_guess(user, payload, self.connections[user.username])
             case "surrender":
                 await surrender_game(user)
 
     async def _reconnect_user(self, user: User, websocket: WebSocket):
-        game_id = player_games[user.username]
-        if game_id not in games:
-            raise RuntimeError("player is in player_games but game does not exist")
-
+        game_id = self.game_manager.player_games[user.username]
         game = self.game_manager.games[game_id]
         opponents = get_opponents(user, game)
         loop = asyncio.get_running_loop()
@@ -123,7 +108,7 @@ class WSManager:
 
         opponents = get_opponents(user, game)
         self.game_manager.disconnected_players.remove(user.username)
-        utils_disconnect(user)
+        disconnect(user)
 
         if len(opponents) == 1:
             winner = get_user(opponents[0])
