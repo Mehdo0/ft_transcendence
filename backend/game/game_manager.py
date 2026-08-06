@@ -22,7 +22,7 @@ class GameManager:
 
     def _emit(self, event: str, **data):
         for cb in self._listeners.get(event, []):
-            cb(event, data)
+            asyncio.create_task(cb(event, data))
 
     async def find_player(self, user: User):
         if self.player_games.get(user.username):
@@ -104,4 +104,4 @@ class GameManager:
                 }
             })
         self._emit("broadcast_to_players", payloads=payloads)
-        game.timer = asyncio.create_task(game.timer)
+        self._emit("game_created", game=game)

@@ -41,6 +41,7 @@ class User(BaseModel):
 
 
 class Game(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     id: str
     game_state: GameState = GameState.CONNECTING
     players: list[str] = Field(default_factory=list)
@@ -51,7 +52,7 @@ class Game(BaseModel):
     round_wins: dict[str, int] = Field(default_factory=dict)
     ends_at: float
     is_ranked: bool = False
-    timer: asyncio.Task
+    timer: asyncio.Task | None = None
 
 
 

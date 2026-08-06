@@ -123,31 +123,33 @@ async def start_game(payload: dict, user: User):
         )
 
     lobby: dict[str, dict] = manager.lobbies[code]
-    if lobby[code]["host"] != user.username:
+    if lobby["host"] != user.username:
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION, reason="Only host can start game"
         )
-    assert lobby[code]["players"]
+    assert lobby["players"]
     if len(lobby["players"]) < 2:
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION,
             reason="Cannot start game alone",
         )
 
-    for player in lobby[code]["players"]:
+    for player in lobby["players"]:
         if manager.player_games.get(player) is not None:
             raise WebSocketException(
                 code=status.WS_1008_POLICY_VIOLATION,
                 reason="Some Players are already in other games",
             )
 
-    players = lobby[code]["players"]
+    players = lobby["players"]
 
-    for player in players:
-        assert player in manager.connections
-        assert get_user(player) is not None
+    user_objects = []
+    for username in players:
+        user = get_user(username)
+        assert user is not None
+        user_objects.append(user)
 
-    await manager.create_game(players, False)
+    await manager.create_game(user_objects, False)
 
 
 async def ai_guess(user: User, payload: dict) -> None:
@@ -271,3 +273,9 @@ async def send_end_game(
         "username": username,
         "payload": payload,
     }])
+
+def _start_game_timer(event, data):
+    game = data["game"]
+    game.timer = asyncio.create_task(game_timer(game.id))
+
+manager.on("game_created", _start_game_timer)

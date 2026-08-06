@@ -43,7 +43,6 @@ class WSManager:
                 reason="Only one connection allowed",
             )
 
-        await websocket.accept()
         self.connections[user.username] = websocket
 
         if user.username in self.game_manager.disconnected_players:

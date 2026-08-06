@@ -79,8 +79,8 @@ async def cleanup_lobby_on_disconnect(user: User):
             closed_lobby = manager.lobbies.pop(code)
             for player in closed_lobby["players"]:
                 player_ws = manager.connections.get(player)
-                assert player_ws is not None
-                await player_ws.send_json({"type": "lobby_closed"})
+                if player_ws:
+                    await player_ws.send_json({"type": "lobby_closed"})
             return
 
         lobby["players"].remove(user.username)
