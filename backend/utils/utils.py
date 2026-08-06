@@ -17,7 +17,7 @@ def cancel_timer(game_id: str) -> None:
 
 async def calculate_new_elo(player1: User, player2: User, result: int):
     average = (player1.elo + player2.elo) / 2
-    coefficient = 40 - round(average / 50)
+    coefficient = max(5, 40 - round(average / 50))
     expected = 1 / (1 + 10 ** ((player2.elo - player1.elo) / 400))
     new_elo = round(player1.elo + (coefficient * (result - expected)))
     diff = new_elo - player1.elo
