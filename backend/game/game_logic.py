@@ -111,6 +111,7 @@ async def end_game_by_timeout(game_id: str):
         await start_next_round(game)
         return
     else:
+        assert get_user(winners[0]) is not None #TODO: remove 
         await handle_round_end(game, get_user(winners[0]))
 
 
