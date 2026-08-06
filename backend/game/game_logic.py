@@ -302,14 +302,14 @@ async def broadcast_player_score(
         assert player_ws is not None
         if player == username and not include_self:
             continue
-        payload = {
+        payloads = {
             "type": "player_guess",
             "username": username,
             "score": score,
         }
         if guess is not None:
-            payload["guess"] = guess
-        manager._emit("broadcast_to_players", payload=payload)
+            payloads["guess"] = guess
+        manager._emit("broadcast_to_players", payloads=payloads)
 
 
 async def send_end_game( #ws_manager
@@ -319,12 +319,12 @@ async def send_end_game( #ws_manager
     if websocket is None:
         return
 
-    payload = {
+    payloads = {
         "type": "end_game",
         "status": status,
         "elo_diff": elo_diff,
         "new_elo": new_elo,
     }   
     if reason is not None:
-        payload["reason"] = reason
-    manager._emit("broadcast_to_players", payload=payload)
+        payloads["reason"] = reason
+    manager._emit("broadcast_to_players", payloads=payloads)
