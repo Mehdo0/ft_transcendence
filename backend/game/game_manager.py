@@ -25,16 +25,16 @@ class GameManager:
             cb(event, data)
 
     async def find_player(self, user: User):
-        if self.player_games.get(user.username):  # player should not be in active game
+        if self.player_games.get(user.username):
             raise ValueError("player is already in a game")
-        if user.username in self.matchmaking_queue:  # player should not be in queue
+        if user.username in self.matchmaking_queue:
             raise ValueError("player is already in matchmaking")
 
         print("GAME: player '" + user.username + "' is looking for a game...")
         
-        if len(self.matchmaking_queue) >= 1:  # another player is already waiting
+        if len(self.matchmaking_queue) >= 1:
             print("\tfound another player to match ", user.username, " against!")
-            opponent_name = self.matchmaking_queue.pop(0) #maybe add matchmacking logic
+            opponent_name = self.matchmaking_queue.pop(0)
             print("\t" + user.username + " vs " + opponent_name)
             assert get_user(opponent_name) is not None
             opponent = get_user(opponent_name)
@@ -44,8 +44,10 @@ class GameManager:
         else:
             print("\tno player waiting, adding ", user.username, "to queue")
             self.matchmaking_queue.append(user.username)
-            self._emit("matchmaking_waiting", user)
-
+            self._emit("broadcast_to_players", payloads=[{
+                "username": user.username,
+                "payload": {"type": "waiting"}
+            }])
 
 
 
@@ -75,7 +77,6 @@ class GameManager:
         print("creating task for game id ", game.id, "...")
 
         self.games[game.id] = game
-        self._emit("game_created", game, players)
 
         for player in players:
             game.scores[player.username] = 0
@@ -83,9 +84,9 @@ class GameManager:
             game.score_bonuses[player.username] = 0
             game.round_wins[player.username] = 0
             self.player_games[player.username] = game.id
-            opponents = get_opponents(player, game)
-            print("opponents of player ", player.username, opponents)
-            payloads = []
+
+        payloads = []
+        for player in players:
             opponents = get_opponents(player, game)
             payloads.append({
                 "username": player.username,
@@ -104,4 +105,3 @@ class GameManager:
             })
         self._emit("broadcast_to_players", payloads=payloads)
         game.timer = asyncio.create_task(game.timer)
-        #self.game_timers[game.id] = asyncio.create_task(self.game_timer(game.id))
