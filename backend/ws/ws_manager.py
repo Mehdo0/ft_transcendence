@@ -89,7 +89,7 @@ class WSManager:
             case "find_player":
                 await self.game_manager.find_player(user)
             case "guess":
-                await ai_guess(user, payload, self.connections[user.username])
+                await ai_guess(user, payload)
             case "surrender":
                 await surrender_game(user)
 
