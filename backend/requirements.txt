@@ -9,3 +9,5 @@ pyjwt
 shortuuid
 pwdlib[argon2]
 sqlalchemy>=2.0.50
+bcrypt
+validators

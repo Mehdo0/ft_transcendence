@@ -11,29 +11,15 @@ lang: FR
 
 # RESTE À FAIRE
 
-Lobby cassé retour au lobby -> guest ne voit pas les participants
--> host ne peut pas lancer la game
-
 Quand websocket est fermé sur page lobby -> erreur + renvoye sur page home/login OU reconnection du websocket
-
-websocket ne s'ouvre pas car le serveur pense qu'on est deja connecté sur une autre page ce qui n'est pas le cas
-
-
-Si on clique pas `return to lobby` ⇾ on est pas ajouté a la game d'après -> retour automatique au lobby
 
 Si on quitte la page on est pas retiré de la game / lobby
   -> on peut lancer un quickmatch en revenant sur home alors qu'on fait toujours partie d'un lobby privé techniquement (partiellement fixé par onbeforeunload)
 
 retour en arrière peut rejoindre une game qui n'existe pas (partiellement fixé par beforeNavigate)
 
-les dessin restent parfois dans le front quand on relance un lobby
-
 si on retourne au lobby et on lance le jeu avant le retour de tous les joueurs ça casse tout. host ne peu plus lancer le jeu.
 
 surrender doesnt do anything when solo game
 
 Add refresh token
-
-enlever les asserts (juste avant push)
-
-ajouter check pour mdp solide (frontend)

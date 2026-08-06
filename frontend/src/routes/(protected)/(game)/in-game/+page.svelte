@@ -1,8 +1,8 @@
-<script lang="ts">
-	import { game } from '$lib/stores/game.svelte';
-	import { getWs, setWs } from '$lib/stores/ws';
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
+	<script lang="ts">
+		import { game } from '$lib/stores/game.svelte';
+		import { send, subscribe } from '$lib/stores/wsManager';
+		import { onMount } from 'svelte';
+		import { goto, beforeNavigate } from '$app/navigation';
 
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
@@ -25,26 +25,15 @@
 	let pointsSinceLastGuess = $state(0);
 	let roundWins = $state<Record<string, number>>({});
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
-	let currentRound = $derived(
-		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
-	);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
 	const DRAW_WIDTH = 0.01;
 
-	
+	let currentRound = $derived(
+		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
+	);
 
-	
-	// utilities functions --------------------------------------------------------
-	function handleHardExit() {
-		if (!result) {
-			const ws = getWs();
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				ws.send(JSON.stringify({ type: 'surrender' }));
-			}
-		}
-	}
 	function readJson<T>(key: string, fallback: T) {
 		const value = sessionStorage.getItem(key);
 		if (!value) return fallback;
@@ -55,55 +44,21 @@
 		}
 	}
 
-	function backAfterGame() {
-		if (game.is_ranked) {
-			goto('/');
-			return;
-		}
-		const code = sessionStorage.getItem('private_lobby_code');
-		goto(code ? `/lobby/${code}` : '/lobby');
-	}
-
-	function surrender() {
-		if (confirm('Are you sure you want to forfeit the match?')) {
-			const ws = getWs();
-			ws?.send(JSON.stringify({ type: 'surrender' }));
-		}
-	}
-
-
-	// timer related function ----------------------------------------------------
 	function tick() {
 		timeLeft = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
 	}
+
 	function startTimer() {
 		if (timerId) clearInterval(timerId);
 		tick();
 		timerId = setInterval(tick, 250);
 	}
+
 	function stopTimer() {
 		if (timerId) clearInterval(timerId);
 		timerId = null;
 	}
-	function triggerCountdown() {
-		showCountdown = true;
-		countdownNum = 3;
-		setTimeout(() => {
-			countdownNum = 2;
-		}, 1000);
-		setTimeout(() => {
-			countdownNum = 1;
-		}, 2000);
-		setTimeout(() => {
-			countdownNum = 0;
-		}, 3000);
-		setTimeout(() => {
-			showCountdown = false;
-		}, 3600);
-	}
 
-
-	// users related functions --------------------------------------------------
 	function applyPlayers(players: string[]) {
 		game.players = players;
 		const scores = { ...game.scores };
@@ -116,6 +71,14 @@
 		roundWins = wins;
 	}
 
+	function scorePlayers() {
+		if (game.players.length > 0) return game.players;
+		const players: string[] = [];
+		if (game.me || myUsername) players.push(game.me || myUsername);
+		if (game.opponent) players.push(game.opponent);
+		return players;
+	}
+
 	function isMe(player: string) {
 		return player === game.me || player === myUsername;
 	}
@@ -124,26 +87,9 @@
 		return isMe(player) ? 'You' : player;
 	}
 
-	function opponentLabel() {
-		const others = scorePlayers().filter((player) => !isMe(player));
-		if (others.length === 0) return 'Solo';
-		if (others.length === 1) return others[0];
-		return `${scorePlayers().length} Players`;
-	}
-
-
-	// Score related function ---------------------------------------------------------------
 	function scoreFor(player: string) {
 		if (isMe(player)) return game.scores[player] ?? game.my_score ?? 0;
 		return game.scores[player] ?? (player === game.opponent ? game.opponent_score : 0);
-	}
-
-	function scorePlayers() {
-		if (game.players.length > 0) return game.players;
-		const players: string[] = [];
-		if (game.me || myUsername) players.push(game.me || myUsername);
-		if (game.opponent) players.push(game.opponent);
-		return players;
 	}
 
 	function setPlayerScore(username: string, score: number) {
@@ -171,8 +117,13 @@
 		updateScores(scores);
 	}
 
+	function opponentLabel() {
+		const others = scorePlayers().filter((player) => !isMe(player));
+		if (others.length === 0) return 'Solo';
+		if (others.length === 1) return others[0];
+		return `${scorePlayers().length} Players`;
+	}
 
-	// Round related function ------------------------------------------------------------
 	function updateRoundWins(wins: Record<string, number>) {
 		const nextWins = { ...wins };
 		if (game.players.length === 0 && Object.keys(nextWins).length > 0) {
@@ -187,8 +138,6 @@
 		return roundWins[player] ?? 0;
 	}
 
-
-	// Saved data function ------------------------------------------------------------------
 	function saveGameData() {
 		sessionStorage.setItem('draw_word', game.word);
 		sessionStorage.setItem('draw_opponent', game.opponent);
@@ -213,9 +162,23 @@
 		sessionStorage.removeItem('draw_ends_at');
 	}
 
+	function triggerCountdown() {
+		showCountdown = true;
+		countdownNum = 3;
+		setTimeout(() => {
+			countdownNum = 2;
+		}, 1000);
+		setTimeout(() => {
+			countdownNum = 1;
+		}, 2000);
+		setTimeout(() => {
+			countdownNum = 0;
+		}, 3000);
+		setTimeout(() => {
+			showCountdown = false;
+		}, 3600);
+	}
 
-
-	// loading things functions -----------------------------------------------------------
 	function loadSessionData() {
 		stack = readJson<Trait[]>('draw_stack', []);
 		game.scores = readJson<Record<string, number>>('draw_scores', {});
@@ -241,14 +204,15 @@
 	}
 
 	function loadUserData() {
-		fetch('/api/users/me/', { credentials: 'same-origin' })
-			.then((response) => (response.ok ? response.json() : null))
-			.then((data) => {
-				if (!data) return;
-				myUsername = data.username;
-				myElo = data.elo;
-				if (!game.me) game.me = data.username;
-				if (!game.players.includes(data.username)) applyPlayers([data.username, ...game.players]);
+		fetch('/api/session/', { credentials: 'same-origin' })
+			.then((response) => response.json())
+			.then((session) => {
+				if (!session.authenticated || !session.user) return;
+				const user = session.user;
+				myUsername = user.username;
+				myElo = user.elo;
+				if (!game.me) game.me = user.username;
+				if (!game.players.includes(user.username)) applyPlayers([user.username, ...game.players]);
 			})
 			.catch(() => {});
 
@@ -262,92 +226,95 @@
 			.catch(() => {});
 	}
 
-	onMount(() => {
-		const isReconnect = !!sessionStorage.getItem('draw_word');
-		loadSessionData();
-		startTimer();
-
-		if (!isReconnect) {
-			triggerCountdown();
-			loadUserData();
-		}
-
-		let ws = getWs();
-		if (!ws || ws.readyState !== WebSocket.OPEN) {
-			ws = new WebSocket('/ws/');
-			setWs(ws);
-		}
-
-		ws.onmessage = (event) => {
-			const msg = JSON.parse(event.data);
-			console.log(msg)
-			switch (msg.type) {
-				case 'ai_guess':
-					setPlayerScore(
-						game.me || myUsername || msg.username,
-						msg.score ?? msg.guess?.[game.word] ?? 0
-					);
-					break;
-				case 'player_guess':
-					setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
-					break;
-				case 'opponent_guess':
-					setPlayerScore(game.opponent, msg.score ?? msg.guess?.[game.word] ?? 0);
-					break;
-				case 'opponent_disconnected':
-					disconnectedPlayers[msg.username] = true;
-					break;
-				case 'reconnect_game':
-					game.id = msg.game_id;
-					game.opponent = msg.opponent;
-					game.me = msg.me ?? game.me;
-					game.word = msg.word;
-					game.is_ranked = msg.is_ranked ?? game.is_ranked;
-					disconnectedPlayers = {};
-					applyPlayers(msg.players ?? []);
-					updateScores(msg.scores ?? {});
-					updateRoundWins(msg.round_wins ?? {});
-					saveGameData();
-					if (msg.time_left != null) {
-						endsAt = Date.now() + msg.time_left * 1000;
-						sessionStorage.setItem('draw_ends_at', String(endsAt));
-						startTimer();
-					}
-					break;
-				case 'next_round':
-					game.word = msg.word;
-					if (msg.scores) updateScores(msg.scores);
-					else resetScores();
-					updateRoundWins(msg.round_wins ?? roundWins);
-					sessionStorage.setItem('draw_word', game.word);
-					stack = [];
-					redoStack = [];
-					last = null;
-					pointsSinceLastGuess = 0;
-					if (context) redraw();
-					if (msg.duration != null) {
-						endsAt = Date.now() + msg.duration * 1000;
-						sessionStorage.setItem('draw_ends_at', String(endsAt));
-						startTimer();
-					}
-					triggerCountdown();
-					break;
-				case 'end_game':
-					stopTimer();
-					elo_diff = msg.elo_diff;
-					result = msg.status;
-					setTimeout(() => {
-						backAfterGame();
-					}, 3000);
-					clearSessionData();
-					break;
-				default:
-					console.log(msg);
+		beforeNavigate((nav) => {
+			if (result) return;
+			if (nav.willUnload) return;
+			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
+				send({ type: 'surrender' });
+			} else {
+				nav.cancel();
 			}
-		};
+		});
 
-		return () => stopTimer();
-	});
+		onMount(() => {
+			const isReconnect = !!sessionStorage.getItem('draw_word');
+			loadSessionData();
+			startTimer();
+
+			if (!isReconnect) {
+				triggerCountdown();
+				loadUserData();
+			}
+
+			const unsubscribe = subscribe((msg: any) => {
+				switch (msg.type) {
+					case 'ai_guess':
+						setPlayerScore(
+							game.me || myUsername || msg.username,
+							msg.score ?? msg.guess?.[game.word] ?? 0
+						);
+						break;
+					case 'player_guess':
+						setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
+						break;
+					case 'opponent_guess':
+						setPlayerScore(game.opponent, msg.score ?? msg.guess?.[game.word] ?? 0);
+						break;
+					case 'opponent_disconnected':
+						disconnectedPlayers[msg.username] = true;
+						break;
+					case 'reconnect_game':
+						game.id = msg.game_id;
+						game.opponent = msg.opponent;
+						game.me = msg.me ?? game.me;
+						game.word = msg.word;
+						game.is_ranked = msg.is_ranked ?? game.is_ranked;
+						disconnectedPlayers = {};
+						applyPlayers(msg.players ?? []);
+						updateScores(msg.scores ?? {});
+						updateRoundWins(msg.round_wins ?? {});
+						saveGameData();
+						if (msg.time_left != null) {
+							endsAt = Date.now() + msg.time_left * 1000;
+							sessionStorage.setItem('draw_ends_at', String(endsAt));
+							startTimer();
+						}
+						break;
+					case 'next_round':
+						game.word = msg.word;
+						if (msg.scores) updateScores(msg.scores);
+						else resetScores();
+						updateRoundWins(msg.round_wins ?? roundWins);
+						sessionStorage.setItem('draw_word', game.word);
+						stack = [];
+						redoStack = [];
+						last = null;
+						pointsSinceLastGuess = 0;
+						if (context) redraw();
+						if (msg.duration != null) {
+							endsAt = Date.now() + msg.duration * 1000;
+							sessionStorage.setItem('draw_ends_at', String(endsAt));
+							startTimer();
+						}
+						triggerCountdown();
+						break;
+					case 'end_game':
+						stopTimer();
+						elo_diff = msg.elo_diff;
+						result = msg.status;
+						setTimeout(() => {
+							backAfterGame();
+						}, 3000);
+						clearSessionData();
+						break;
+				}
+			});
+
+			return () => {
+				unsubscribe();
+				stopTimer();
+			};
+		});
 
 	$effect(() => {
 		sessionStorage.setItem('draw_stack', JSON.stringify(stack));
@@ -360,8 +327,12 @@
 		}
 	});
 
+		function surrender() {
+			if (confirm('Are you sure you want to forfeit the match?')) {
+				send({ type: 'surrender' });
+			}
+		}
 
-	// Game related functions ---------------------------------------------------------------
 	function resize() {
 		if (!canvas || !context) return;
 		const dpr = window.devicePixelRatio || 1;
@@ -439,10 +410,9 @@
 		makeAiGuess();
 	}
 
-	function makeAiGuess() {
-		const ws = getWs();
-		ws?.send(JSON.stringify({ type: 'guess', strokes: stack }));
-	}
+		function makeAiGuess() {
+			send({ type: 'guess', strokes: stack });
+		}
 
 	function finishStroke() {
 		if (!last) return;
@@ -452,9 +422,17 @@
 		makeAiGuess();
 	}
 
+	function backAfterGame() {
+		if (game.is_ranked) {
+			goto('/');
+			return;
+		}
+		const code = sessionStorage.getItem('private_lobby_code');
+		goto(code ? `/lobby/${code}` : '/lobby');
+	}
 </script>
 
-<svelte:window onresize={resize} onbeforeunload={handleHardExit} />
+<svelte:window onresize={resize} />
 
 {#if showCountdown}
 	<div class="cd-page" data-count={countdownNum} aria-live="assertive" aria-atomic="true">

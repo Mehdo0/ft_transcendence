@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { getWs, setWs } from '$lib/stores/ws';
+	import { send, subscribe } from '$lib/stores/wsManager';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { game } from '$lib/stores/game.svelte';
-	import { beforeNavigate, goto } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 
 
 	const code = page.params.code ?? '';
@@ -11,45 +11,40 @@
 	let me = $state('');
 	let isHost = $state(false);
 	let copied = $state(false);
+	let leaving = false;
+
+	beforeNavigate((nav) => {
+		if (leaving) return;
+		if (nav.willUnload) return;
+		if (confirm('Quitter le lobby ?')) {
+			send({ type: 'leave' });
+		} else {
+			nav.cancel();
+		}
+	});
 
 	function clearSessionData() {
 		sessionStorage.removeItem('players');
 		sessionStorage.removeItem('isHost');
 	}
 
-	beforeNavigate(({ to }) => {
-		if (to?.route.id !== '/game/in-game') {
-			const ws = getWs();
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				ws.close();
-				setWs(null);
-			}
-		}
-	});
-
-	onMount(() => {
-		const savedPlayers = sessionStorage.getItem('players');
-		if (savedPlayers) players = JSON.parse(savedPlayers);
+		onMount(() => {
+			const savedPlayers = sessionStorage.getItem('players');
+			if (savedPlayers) players = JSON.parse(savedPlayers);
 
 		const savedHost = sessionStorage.getItem('isHost');
 		if (savedHost) isHost = savedHost === 'true';
 
-		let ws = getWs();
-		if (!ws || ws.readyState !== WebSocket.OPEN) {
-			const newWs = new WebSocket('/ws/');
-			setWs(newWs);
-			ws = newWs;
-			newWs.onopen = () => {
-				newWs.send(JSON.stringify({ type: 'get_lobby', code }));
-			};
-		} else {
-			ws.send(JSON.stringify({ type: 'get_lobby', code }));
-		}
-		ws.addEventListener('message', handleMessage);
-	});
+			const unsubscribe = subscribe(handleMessage);
 
-	function handleMessage(event: MessageEvent<any>) {
-		const msg = JSON.parse(event.data);
+			send({ type: 'get_lobby', code });
+
+			return () => {
+				unsubscribe();
+			};
+		});
+
+		function handleMessage(msg: any) {
 		if (msg.type === 'lobby_info') {
 			players = msg.players;
 			me = msg.me;
@@ -67,6 +62,7 @@
 		}
 		if (msg.type === 'lobby_closed') {
 			clearSessionData();
+			leaving = true;
 			goto('/lobby');
 		}
 		if (msg.type === 'match_found') {
@@ -80,7 +76,8 @@
 			clearSessionData();
 			sessionStorage.setItem('private_lobby_code', code);
 			sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
-			goto('/game/in-game');
+			leaving = true;
+			goto('/in-game');
 		}
 	}
 
@@ -88,10 +85,9 @@
 		return name.length > max ? name.slice(0, max) + '…' : name;
 	}
 
-	function startGame() {
-		const ws = getWs();
-		ws?.send(JSON.stringify({ type: 'start_game', code }));
-	}
+			function startGame() {
+				send({ type: 'start_game', code });
+			}
 
 	function copyCode() {
 		if (!code) return;

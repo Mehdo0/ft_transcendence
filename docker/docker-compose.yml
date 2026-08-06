@@ -12,6 +12,8 @@ services:
       - ../data:/app/data
     networks:
       - trsc_net
+    secrets:
+      - secret_key
 
   vite:
     build:
@@ -38,7 +40,7 @@ services:
     volumes:
       - ../logs:/var/log/nginx;
     ports:
-      - "8080:80" #needed host port >1024 to compile without root access (school pc)
+      - "8080:80"
       - "8443:443"
     depends_on:
       - backend
@@ -58,3 +60,5 @@ secrets:
     file: ../secrets/server.crt
   server_key:
     file: ../secrets/server.key
+  secret_key:
+    file: ../secrets/secret_key

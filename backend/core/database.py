@@ -1,4 +1,5 @@
 import random
+import bcrypt
 
 from models.models import Base, UserModel
 from schemas.data import User, UserRegister
@@ -31,21 +32,27 @@ def setup_database():
 
 
 def add_user(user: UserRegister) -> User:
+    # hash the password using a random salt.
+    # the salt is stored directly inside the hash
+    hashed_salted_password: str = bcrypt.hashpw(
+        user.password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
     with SessionLocal() as session:
-        user = UserModel(
+        user_model = UserModel(
             username=user.username,
-            password=user.password,
+            hashed_password=hashed_salted_password,
             email=user.email,
             elo=500,
         )
         try:
-            session.add(user)
+            session.add(user_model)
             session.commit()
 
             return User(
-                username=user.username,
-                email=user.email,
-                elo=user.elo,
+                username=user_model.username,
+                email=user_model.email,
+                elo=user_model.elo,
             )
         except IntegrityError:
             session.rollback()
@@ -76,11 +83,11 @@ def get_user(username: str) -> User | None:
         )
 
 
-def get_user_password(user: User) -> str:
+def get_user_hashed_password(user: User) -> str:
     with SessionLocal() as session:
-        user = session.get(UserModel, user.username)
-        assert user is not None
-        return user.password
+        user_model = session.get(UserModel, user.username)
+        assert user_model is not None
+        return user_model.hashed_password
 
 
 def update_user_elo(user: User, new_elo: int):

@@ -20,13 +20,15 @@
 	onMount(async () => {
 		clearSessionData();
 		try {
-			const response = await fetch('/api/users/me/', {
+			const response = await fetch('/api/session/', {
 				method: 'GET',
 				credentials: 'same-origin'
 			});
-			if (response.ok) {
-				const userData = await response.json();
-				username = userData.username;
+			const session = await response.json();
+
+			if (session.authenticated && session.user) {
+				username = session.user.username;
+				return;
 			}
 		} catch {
 			// backend unreachable, stay as guest

@@ -6,18 +6,6 @@
 	let errorMessage = $state('');
 	let isLoading = $state(false);
 
-	async function hashPassword(password: string) {
-		const encoder = new TextEncoder();
-		const data = encoder.encode(password);
-
-		const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		const hashHex = hashArray.map((byte) => byte.toString(16).padStart(2, '0')).join('');
-
-		return hashHex;
-	}
-
 	async function handleLogin(event: Event) {
 		event.preventDefault();
 
@@ -25,7 +13,7 @@
 		isLoading = true;
 
 		try {
-			const result = await login(username, await hashPassword(password));
+			const result = await login(username, password);
 			if (!result.ok) {
 				errorMessage = result.detail;
 				return;

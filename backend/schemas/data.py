@@ -1,7 +1,7 @@
 from enum import Enum
 
 from fastapi import WebSocket
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class GameState(str, Enum):
@@ -61,3 +61,5 @@ class UserRegister(BaseModel):
     username: str
     password: str
     email: str
+
+    

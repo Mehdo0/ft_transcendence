@@ -1,18 +1,25 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
+    import { connect } from '$lib/stores/wsManager';
     
     let { children } = $props();
     let checking = $state(true);
 
-    onMount(async () => {
-        const res = await fetch('/api/users/me/', { credentials: 'same-origin' });
-        if (!res.ok) {
-            goto('/account/login');
-            return;
-        }
-        checking = false;
-    });
+	onMount(async () => {
+		const response = await fetch('/api/session/', {
+			method: 'GET',
+			credentials: 'same-origin'
+		});
+		const session = await response.json();
+
+		if (!session.authenticated) {
+			goto('/account/login');
+			return;
+		}
+		connect();
+		checking = false;
+	});
 </script>
 
 {#if checking}

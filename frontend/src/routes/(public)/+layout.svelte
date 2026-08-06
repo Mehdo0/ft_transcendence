@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import favicon from '$lib/draw_meter_logo.svg';
 	import { onMount } from 'svelte';
-	import { getWs, setWs } from '$lib/stores/ws';
 
 	let { children } = $props();
 	let login = $state(false);
@@ -40,18 +39,15 @@
 	
 
 	onMount(async () => {
-		const response = await fetch('/api/users/me/', {
+		const response = await fetch('/api/session/', {
 			method: 'GET',
 			credentials: 'same-origin'
 		});
+		const session = await response.json();
 
-		if (response.ok) {
+		if (session.authenticated) {
 			login = true;
-			const existing = getWs();
-			if (!existing || existing.readyState >= WebSocket.CLOSING) {
-				const ws = new WebSocket('/ws/');
-				setWs(ws);
-			}
+			return;
 		}
 	});
 </script>
