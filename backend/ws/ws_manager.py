@@ -1,99 +1,121 @@
-from fastapi import WebSocket
-from game.game_manager import GameManager
+import json, asyncio
+from fastapi import WebSocket, WebSocketException, status
 from schemas.data import User, Game
+from game.lobby_logic import (
+    create_lobby,
+    join_lobby,
+    get_lobby_info,
+    cleanup_lobby_on_disconnect,
+)
+from game.game_logic import start_game, surrender_game, ai_guess, end_game
+from utils.getters import get_opponents, get_user
+from utils.utils import disconnect, send_msg_to_opponents
 
 
-class Ws_Manager:
-    def __init__(self):
+class WSManager:
+    def __init__(self, game_manager):
+        self.game_manager = game_manager
         self.connections: dict[str, WebSocket] = {}
-        self.gameManager = GameManager
 
     async def connect(self, user: User, websocket: WebSocket):
+        if user.username in self.connections:
             await websocket.accept()
-            self.connections[user.username] = websocket
-            
-            # Handle grace period recovery natively
-            if user.username in self.disconnected_players:
-                self.disconnected_players[user.username]["reconnected"] = True
-                del self.disconnected_players[user.username]
+            await websocket.send_json({
+                "type": "error",
+                "message": "already connected — close your other tab first",
+            })
+            raise WebSocketException(
+                code=status.WS_1008_POLICY_VIOLATION,
+                reason="Only one connection allowed",
+            )
 
-    def disconnect(self, user: User):
-            # Only remove the active socket connection. 
-            self.connections.pop(user.username, None)
-            
-            # Pull them out of the queue so they don't match while offline
-            if user.username in self.matchmaking_queue:
-                self.matchmaking_queue.remove(user.username)
+        await websocket.accept()
+        self.connections[user.username] = websocket
 
-    async def broadcast_to_game(self, game_id: str, payload: dict, exclude: str = None):
-            """Sends a message to everyone in a specific game."""
-            game = self.games.get(game_id)
-            if not game:
-                return
-                
-            for username in game.players:
-                if username == exclude:
-                    continue
-                ws = self.connections.get(username)
-                if ws:
-                    await ws.send_json(payload) 
+        if user.username in self.game_manager.disconnected_players:
+            self.game_manager.disconnected_players.remove(user.username)
 
-    async def send_end_game(
-    self, username: str, status: str, elo_diff: int, new_elo: int, reason: str | None = None
-    ):
-        websocket = self.connections.get(username)
-        if websocket is None:
+        if user.username in self.game_manager.player_games:
+            await self._reconnect_user(user, websocket)
+
+    async def disconnect(self, user: User):
+        self.connections.pop(user.username, None)
+
+        if user.username in self.game_manager.player_games:
+            game_id = self.game_manager.player_games[user.username]
+            game = self.game_manager.games[game_id]
+            await send_msg_to_opponents(game, user, {
+                "type": "opponent_disconnected",
+                "user": user.username,
+            })
+            asyncio.create_task(self._handle_disconnect_grace_period(user, game))
             return
 
-        payload = {
-            "type": "end_game",
-            "status": status,
-            "elo_diff": elo_diff,
-            "new_elo": new_elo,
-        }
-        if reason is not None:
-            payload["reason"] = reason
-        await websocket.send_json(payload)
+        await cleanup_lobby_on_disconnect(user)
+        disconnect(user)
 
-    async def broadcast_player_score(
-        self,
-        game: Game,
-        username: str,
-        score: float,
-        guess: dict | None = None,
-        include_self: bool = False,
-    ):
-        for player in game.players:
-            player_ws = self.connections.get(player)
-            assert player_ws is not None
-            if player == username and not include_self:
-                continue
-            payload = {
-                "type": "player_guess",
-                "username": username,
-                "score": score,
-            }
-            if guess is not None:
-                payload["guess"] = guess
-            await player_ws.send_json(payload)
+    async def handle_message(self, user: User, payload: dict):
+        message_type = payload.get("type")
+        print("WS: received msg, type: " + str(message_type))
+        if message_type != "guess":
+            print("WS: user " + user.username + ", msg " + json.dumps(payload))
+        else:
+            print("WS: user " + user.username + " guessed")
 
-    async def send_msg_to_opponents(
-        self,
-        game: Game,
-        user: User,
-        msg: dict[str, str],
-    ):
-        for p in game.players:
-            if p != user.username:  # message all opponents
-                assert p in self.connections  # opponent should be connected
-                await self.connections[p].send_json(msg)
+        match message_type:
+            case "create_lobby":
+                await create_lobby(user, self.connections[user.username])
+            case "join_lobby":
+                code = payload.get("code", "").upper().strip()
+                await join_lobby(user, code, self.connections[user.username])
+            case "get_lobby":
+                await get_lobby_info(payload, self.connections[user.username], user)
+            case "start_game":
+                await start_game(payload, user)
+            case "find_player":
+                await self.game_manager.find_player(user)
+            case "guess":
+                await ai_guess(user, payload, self.connections[user.username])
+            case "surrender":
+                await surrender_game(user)
 
+    async def _reconnect_user(self, user: User, websocket: WebSocket):
+        game_id = self.game_manager.player_games[user.username]
+        game = self.game_manager.games[game_id]
+        opponents = get_opponents(user, game)
+        loop = asyncio.get_running_loop()
+        time_left = max(0, round(game.ends_at - loop.time())) if game.ends_at else None
 
-    async def send_msg_to_players(
-        self,
-        game: Game,
-        msg: dict[str, str],
-    ):
-        for p in game.players:
-            assert p in self.connections  # opponent should be connected
-            await self.connections[p].send_json(msg)
+        await websocket.send_json({
+            "type": "reconnect_game",
+            "game_id": game.id,
+            "opponent": opponents[0] if opponents else "",
+            "players": game.players,
+            "me": user.username,
+            "word": game.word,
+            "scores": game.scores,
+            "round_wins": game.round_wins,
+            "is_ranked": game.is_ranked,
+            "time_left": time_left,
+        })
+
+    async def _handle_disconnect_grace_period(self, user: User, game: Game):
+        self.game_manager.disconnected_players.append(user.username)
+        await asyncio.sleep(10)
+
+        if user.username not in self.game_manager.disconnected_players:
+            return
+
+        opponents = get_opponents(user, game)
+        self.game_manager.disconnected_players.remove(user.username)
+        disconnect(user)
+
+        if len(opponents) == 1:
+            winner = get_user(opponents[0])
+            assert winner is not None
+            await end_game(game, winner, "opponent_left")
+
+        await send_msg_to_opponents(game, user, {
+            "type": "opponent_left",
+            "user": user.username,
+        })

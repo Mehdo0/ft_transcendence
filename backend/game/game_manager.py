@@ -1,11 +1,12 @@
 import asyncio, uuid
 from schemas.data import Game, User, GameState
 from core.config import ROUND_DURATION
-
+from fastapi import WebSocket
 from utils.getters import get_opponents, get_random_word, get_user
 
 class GameManager:
     def __init__(self):
+        self.connections: dict[str, WebSocket] = {} #preferably put this in ws_manager not here
         
         self.games: dict[str, Game] = {}
         self.player_games: dict[str, str] = {}
@@ -15,13 +16,18 @@ class GameManager:
         self.disconnected_players: dict[str, dict] = {}
         self.game_timers: dict[str, asyncio.Task] = {}
 
-    def on(self, event: str, callback):
-        self._listeners.setdefault(event, []).append(callback)
 
-    def _emit(self, event: str, **data):
-        for cb in self._listeners.get(event, []):
-            cb(event, data)
-      
+
+    async def connect(self, user: User, websocket: WebSocket): #move this into ws_manager
+        await websocket.accept()
+        self.connections[user.username] = websocket
+        
+        # Handle grace period recovery natively
+        if user.username in self.disconnected_players:
+            self.disconnected_players[user.username]["reconnected"] = True
+            del self.disconnected_players[user.username]
+
+                    
     def get_game_id(self, user: User | None = None) -> str | None:
         if user is None:
             return None
@@ -31,6 +37,35 @@ class GameManager:
                 return game_id
 
         return None
+
+
+    def disconnect(self, user: User): #move this into ws manager
+        # Only remove the active socket connection. 
+        self.connections.pop(user.username, None)
+        
+        # Pull them out of the queue so they don't match while offline
+        if user.username in self.matchmaking_queue:
+            self.matchmaking_queue.remove(user.username)
+
+
+
+            
+
+    async def broadcast_to_game(self, game_id: str, payload: dict, exclude: str = None): #move this into ws manager
+        """Sends a message to everyone in a specific game."""
+        game = self.games.get(game_id)
+        if not game:
+            return
+            
+        for username in game.players:
+            if username == exclude:
+                continue
+            ws = self.connections.get(username)
+            if ws:
+                await ws.send_json(payload)
+
+
+
 
     async def find_player(self, user: User):
         if self.player_games.get(user.username):  # player should not be in active game
@@ -53,6 +88,8 @@ class GameManager:
             print("\tno player waiting, adding ", user.username, "to queue")
             self.matchmaking_queue.append(user.username)
             await self.connections[user.username].send_json({"type": "waiting"}) #link this to the ws manager
+
+
 
 
     async def create_game(self, players: list[User], is_ranked: bool):
