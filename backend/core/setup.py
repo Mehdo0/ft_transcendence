@@ -1,13 +1,15 @@
 import os
-from core.database import setup_database
 from fastapi import APIRouter
+from game.game_manager import GameManager
 
-# DB var
-setup_database()
+
 os.makedirs("data", exist_ok=True)
-setup_database()
+
+manager = GameManager()
+
+from ws.ws_manager import WSManager
+
+ws_manager = WSManager(manager)
+manager.connections = ws_manager.connections
 
 router = APIRouter()
-ROUND_DURATION = 60
-ROUND_WIN_TARGET = 2
-SCORE_INCREMENT_PER_SECOND = 0.5

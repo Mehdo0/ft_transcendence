@@ -1,7 +1,7 @@
 from enum import Enum
-
+import asyncio, uuid, random
 from fastapi import WebSocket
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class GameState(str, Enum):
@@ -41,6 +41,7 @@ class User(BaseModel):
 
 
 class Game(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     id: str
     game_state: GameState = GameState.CONNECTING
     players: list[str] = Field(default_factory=list)
@@ -51,6 +52,8 @@ class Game(BaseModel):
     round_wins: dict[str, int] = Field(default_factory=dict)
     ends_at: float
     is_ranked: bool = False
+    timer: asyncio.Task | None = None
+
 
 
 class ImagePayload(BaseModel):
@@ -61,5 +64,3 @@ class UserRegister(BaseModel):
     username: str
     password: str
     email: str
-
-    
