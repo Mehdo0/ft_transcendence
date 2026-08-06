@@ -1,5 +1,3 @@
-import random
-import string
 import shortuuid
 from fastapi import WebSocket
 from schemas.data import User
