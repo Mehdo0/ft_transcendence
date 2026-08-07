@@ -52,13 +52,18 @@ async def send_msg_to_opponents(
     user: User,
     msg: dict[str, str],
 ):
-    for p in game.players:
-        if p != user.username:
-            ws = manager.connections.get(p)
-        if ws:
-            await ws.send_json(msg)
-            await manager.connections[p].send_json(msg)
+    ws = None
 
+    for player in game.players:
+        if player != user.username:
+            ws = manager.connections.get(player)
+            break
+
+    if ws is not None:
+        try:
+            await ws.send_json(msg)
+        except Exception:
+            pass
 
 async def send_msg_to_players(
     game: Game,

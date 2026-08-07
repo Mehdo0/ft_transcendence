@@ -1,6 +1,6 @@
 import asyncio, uuid
 from schemas.data import Game, User, GameState
-from core.config import ROUND_DURATION
+from core.config import ROUND_DURATION, MATCHMAKING_MAX_RANGE, MATCHMAKING_RANGE_STEP, MATCHMAKING_WAIT_PER_STEP
 from fastapi import WebSocket
 from utils.getters import get_opponents, get_random_word, get_user
 
@@ -24,30 +24,48 @@ class GameManager:
         for cb in self._listeners.get(event, []):
             asyncio.create_task(cb(event, data))
 
+    
     async def find_player(self, user: User):
         if self.player_games.get(user.username):
             raise ValueError("player is already in a game")
         if user.username in self.matchmaking_queue:
             raise ValueError("player is already in matchmaking")
 
-        print("GAME: player '" + user.username + "' is looking for a game...")
-        
-        if len(self.matchmaking_queue) >= 1:
-            print("\tfound another player to match ", user.username, " against!")
-            opponent_name = self.matchmaking_queue.pop(0)
-            print("\t" + user.username + " vs " + opponent_name)
-            assert get_user(opponent_name) is not None
-            opponent = get_user(opponent_name)
-            assert opponent is not None
+        print("GAME: player '" + user.username + "' (" + str(user.elo) + " ELO) looking for game...")
+
+        opponent = None
+        for search_range in range(MATCHMAKING_RANGE_STEP, MATCHMAKING_MAX_RANGE + 1, MATCHMAKING_RANGE_STEP):
+            low = user.elo - search_range
+            high = user.elo + search_range
+
+            for _ in range(MATCHMAKING_WAIT_PER_STEP):
+                candidates = []
+                for queued_name in self.matchmaking_queue:
+                    queued_user = get_user(queued_name)
+                    if queued_user and low <= queued_user.elo <= high:
+                        candidates.append(queued_user)
+
+                if candidates:
+                    opponent = min(candidates, key=lambda u: abs(u.elo - user.elo))
+                    break
+
+                await asyncio.sleep(1)
+
+            if opponent:
+                break
+
+        if opponent:
+            self.matchmaking_queue.remove(opponent.username)
+            print("\tfound opponent " + opponent.username + " (" + str(opponent.elo) + " ELO)")
             await self.create_game([opponent, user], True)
             return
-        else:
-            print("\tno player waiting, adding ", user.username, "to queue")
-            self.matchmaking_queue.append(user.username)
-            self._emit("broadcast_to_players", payloads=[{
-                "username": user.username,
-                "payload": {"type": "waiting"}
-            }])
+
+        print("\tno opponent found, adding to queue")
+        self.matchmaking_queue.append(user.username)
+        self._emit("broadcast_to_players", payloads=[{
+            "username": user.username,
+            "payload": {"type": "waiting"}
+        }])
 
 
 
