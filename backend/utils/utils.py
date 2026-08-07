@@ -34,11 +34,11 @@ def disconnect(user: User):
 
 
 async def run_disconnect_grace_period(username: str, on_timeout):
-    disconnected_players.append(username)
+    manager.disconnected_players.append(username)
     await asyncio.sleep(GRACE_PERIOD)
-    if username not in disconnected_players:  # reconnected in the meantime
+    if username not in manager.disconnected_players:  # reconnected in the meantime
         return
-    disconnected_players.remove(username)
+    manager.disconnected_players.remove(username)
     await on_timeout()
 
 
@@ -54,7 +54,9 @@ async def send_msg_to_opponents(
 ):
     for p in game.players:
         if p != user.username:
-            assert p in manager.connections
+            ws = manager.connections.get(p)
+        if ws:
+            await ws.send_json(msg)
             await manager.connections[p].send_json(msg)
 
 
@@ -63,5 +65,7 @@ async def send_msg_to_players(
     msg: dict[str, str],
 ):
     for p in game.players:
-        assert p in manager.connections
+        ws = manager.connections.get(p)
+        if ws:
+            await ws.send_json(msg)
         await manager.connections[p].send_json(msg)

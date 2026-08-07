@@ -83,20 +83,12 @@ class WSManager:
 
         match message_type:
             case "create_lobby":
-                ws = self.connections.get(user.username)
-                if ws:
-                    await create_lobby(user, ws)
-
+                await create_lobby(user, self.connections[user.username])
             case "join_lobby":
                 code = payload.get("code", "").upper().strip()
-                ws = self.connections.get(user.username)
-                if ws:
-                    await join_lobby(user, code, ws)
-
+                await join_lobby(user, code, self.connections[user.username])
             case "get_lobby":
-                ws = self.connections.get(user.username)
-                if ws:
-                    await get_lobby_info(payload, ws, user)
+                await get_lobby_info(payload, self.connections[user.username], user)
             case "start_game":
                 await start_game(payload, user)
             case "find_player":

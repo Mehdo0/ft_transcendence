@@ -124,7 +124,13 @@
 
 		<div class="action-footer">
 			{#if isHost}
-				<button class="nb-btn nb-btn--primary start-btn" onclick={startGame}>Start game</button>
+				<button
+					class="nb-btn nb-btn--primary start-btn"
+					onclick={startGame}
+					disabled={players.length < 2}
+				>
+					{players.length < 2 ? 'Waiting for players…' : 'Start game'}
+				</button>
 			{:else}
 				<p class="hint">Waiting for the host to start…</p>
 			{/if}
