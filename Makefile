@@ -18,7 +18,6 @@ logs:
 	$(COMPOSE) logs -f
 
 fclean: down
-	rm -rf data
 
 re: fclean up
 

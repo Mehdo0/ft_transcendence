@@ -83,12 +83,20 @@ class WSManager:
 
         match message_type:
             case "create_lobby":
-                await create_lobby(user, self.connections[user.username])
+                ws = self.connections.get(user.username)
+                if ws:
+                    await create_lobby(user, ws)
+
             case "join_lobby":
                 code = payload.get("code", "").upper().strip()
-                await join_lobby(user, code, self.connections[user.username])
+                ws = self.connections.get(user.username)
+                if ws:
+                    await join_lobby(user, code, ws)
+
             case "get_lobby":
-                await get_lobby_info(payload, self.connections[user.username], user)
+                ws = self.connections.get(user.username)
+                if ws:
+                    await get_lobby_info(payload, ws, user)
             case "start_game":
                 await start_game(payload, user)
             case "find_player":
@@ -97,6 +105,9 @@ class WSManager:
                 await ai_guess(user, payload)
             case "surrender":
                 await surrender_game(user)
+            case "leave":
+                await cleanup_lobby_on_disconnect(user)
+                disconnect(user)
 
     async def _reconnect_user(self, user: User, websocket: WebSocket):
         game_id = self.game_manager.player_games[user.username]
@@ -132,9 +143,9 @@ class WSManager:
         if len(opponents) == 1:
             winner = get_user(opponents[0])
             assert winner is not None
-            await end_game(game, winner, "opponent_left")
+            await end_game(game, winner, "opponent_disconnected")
 
         await send_msg_to_opponents(game, user, {
-            "type": "opponent_left",
-            "user": user.username,
+            "type": "opponent_disconnected",
+            "username": user.username,
         })
