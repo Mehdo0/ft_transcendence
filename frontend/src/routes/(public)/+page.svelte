@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { connect, send, subscribe } from '$lib/stores/wsManager';
 
 	let username = $state('');
+	let showRejoin = $state(false);
+	let rejoinGame = $state({
+	opponent: '',
+	players: [] as string[],
+	time_left: 0,
+	is_ranked: false
+	});
 
 	function clearSessionData() {
 		sessionStorage.removeItem('draw_stack');
@@ -19,24 +28,77 @@
 		sessionStorage.removeItem('players');
 	}
 
-	onMount(async () => {
-		clearSessionData();
+	function rejoin() {
+		sessionStorage.setItem('draw_opponent', rejoinGame.opponent);
+		sessionStorage.setItem('draw_players', JSON.stringify(rejoinGame.players));
+		sessionStorage.setItem('draw_me', username);
+		sessionStorage.setItem('draw_is_ranked', rejoinGame.is_ranked.toString());
+		goto('/start_game');
+	}
+
+	function forfeit() {
+		send({ type: 'surrender' });
+		showRejoin = false;
+	}
+
+		onMount(async () => {
+			let authenticated = false;
 		try {
 			const response = await fetch('/api/session/', {
 				method: 'GET',
 				credentials: 'same-origin'
 			});
-			const session = await response.json();
-
-			if (session.authenticated && session.user) {
-				username = session.user.username;
+				const session = await response.json();
+				if (session.authenticated && session.user) {
+					username = session.user.username;
+					authenticated = true;
+				}
+				} catch {
 				return;
-			}
-		} catch {
-			// backend unreachable, stay as guest
-		}
-	});
-</script>
+				}
+
+				if (!authenticated) return;
+
+				connect();
+
+				let unsub = () => {};
+				const timeout = setTimeout(() => unsub(), 3000);
+
+				unsub = subscribe((msg: any) => {
+				if (msg.type !== 'reconnect_game') return;
+					clearTimeout(timeout);
+					unsub();
+					rejoinGame = {
+						opponent: msg.opponent || '',
+						players: msg.players || [],
+						time_left: msg.time_left ?? 0,
+						is_ranked: msg.is_ranked ?? false
+					};
+				showRejoin = true;
+				});
+
+				return () => {
+					clearTimeout(timeout);
+					unsub();
+				};
+				});
+		</script>
+
+{#if showRejoin}
+ <div class="popup-overlay" role="dialog" aria-label="Game reconnection">
+  <div class="popup-card">
+   <h2>You have an active game</h2>
+   <p>vs {rejoinGame.opponent || rejoinGame.players.filter((p: string) => p !== username).join(', ') || 'opponent'}</p>
+   {#if rejoinGame.time_left > 0}
+    <p>{Math.ceil(rejoinGame.time_left)}s remaining</p>
+   {/if}
+   <div class="popup-actions">
+    <button class="popup-btn popup-btn--rejoin" onclick={rejoin}>Rejoin</button>
+    <button class="popup-btn popup-btn--forfeit" onclick={forfeit}>Surrender</button>
+   </div>
+  </div>
+ </div>
+{/if}
 
 <div class="dashboard-wrapper">
 	<header class="dashboard-header">
@@ -176,4 +238,77 @@
 			font-size: var(--fs-2xl);
 		}
 	}
+		
+	.popup-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.7);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	}
+
+	.popup-card {
+	background: var(--c-bg);
+	border: var(--border-lg);
+	box-shadow: var(--shadow-lg);
+	padding: var(--space-7);
+	max-width: 400px;
+	width: 90%;
+	text-align: center;
+	}
+
+	.popup-card h2 {
+	font-family: var(--font-display);
+	font-size: var(--fs-xl);
+	text-transform: uppercase;
+	margin: 0 0 var(--space-4);
+	}
+
+	.popup-card p {
+	color: var(--c-muted);
+	margin: 0 0 var(--space-2);
+	}
+
+	.popup-actions {
+	display: flex;
+	gap: var(--space-4);
+	margin-top: var(--space-6);
+	}
+
+	.popup-btn {
+	flex: 1;
+	padding: var(--space-4);
+	font-family: var(--font-display);
+	font-size: var(--fs-sm);
+	font-weight: var(--fw-bold);
+	text-transform: uppercase;
+	border: var(--border);
+	cursor: pointer;
+	transition:
+	transform var(--transition),
+	box-shadow var(--transition);
+	}
+
+	.popup-btn--rejoin {
+	background: var(--c-primary);
+	color: var(--c-on-primary);
+	}
+
+	.popup-btn--forfeit {
+	background: var(--c-danger);
+	color: var(--c-on-primary);
+	}
+
+	.popup-btn:hover {
+	transform: translate(calc(-1 * var(--nudge)), calc(-1 * var(--nudge)));
+	box-shadow: var(--shadow);
+	}
+
+	.popup-btn:active {
+	transform: translate(var(--press), var(--press));
+	box-shadow: none;
+	}
+
 </style>

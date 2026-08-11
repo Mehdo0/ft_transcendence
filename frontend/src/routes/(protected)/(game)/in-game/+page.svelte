@@ -218,8 +218,6 @@
 			})
 			.catch(() => {});
 
-		if (!game.is_ranked || !game.opponent) return;
-
 		fetch(`/api/users/${game.opponent}/stats`, { credentials: 'same-origin' })
 			.then((response) => (response.ok ? response.json() : null))
 			.then((data) => {
@@ -244,6 +242,7 @@
 			loadSessionData();
 			startTimer();
 			loadUserData();
+			
 
 			if (!isReconnect) {
 				triggerCountdown();
@@ -314,6 +313,9 @@
 						break;
 					case 'lobby_closed':
 						back_lobby = false;
+					case 'lobby_info':
+						if (!msg.running)
+							goto("/");
 				}
 			});
 
@@ -430,11 +432,7 @@
 	}
 
 	function backAfterGame() {
-		if (game.is_ranked) {
-			goto('/');
-			return;
-		}
-		if (!back_lobby) {
+		if (game.is_ranked || !back_lobby) {
 			goto('/');
 			return;
 		}
