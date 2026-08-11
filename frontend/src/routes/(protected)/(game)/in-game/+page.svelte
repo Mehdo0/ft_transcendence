@@ -26,6 +26,7 @@
 	let roundWins = $state<Record<string, number>>({});
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
 	let back_lobby = $state(true);
+	let exist = $state(true);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
@@ -229,6 +230,7 @@
 		beforeNavigate((nav) => {
 			if (result) return;
 			if (nav.willUnload) return;
+			if (exist) return;
 			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
 				send({ type: 'surrender' });
 			} else {
@@ -313,9 +315,14 @@
 						break;
 					case 'lobby_closed':
 						back_lobby = false;
+						break;
 					case 'lobby_info':
-						if (!msg.running)
+						console.log(msg.exist)
+						const does_exist = msg.exist;
+						if (!does_exist)
+							exist = false;
 							goto("/");
+						break;
 				}
 			});
 

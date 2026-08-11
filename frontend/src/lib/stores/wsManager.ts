@@ -9,6 +9,7 @@ export function connect() {
 	socket.onmessage = (event) => {
 		const message = JSON.parse(event.data);
 		subscribers.forEach((handler) => handler(message));
+		
 	};
 
 	socket.onclose = () => {
