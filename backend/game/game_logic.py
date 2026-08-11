@@ -1,12 +1,24 @@
-from utils.getters import get_random_word, get_total_score, get_opponents, get_users_unsafe
 import asyncio
-from core.config import ROUND_DURATION, COUNTDOWN_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
+
 from fastapi import WebSocketException, status
+
+from core.config import (
+    COUNTDOWN_DURATION,
+    ROUND_DURATION,
+    ROUND_WIN_TARGET,
+    SCORE_INCREMENT_PER_SECOND,
+)
 from core.database import get_user, update_user_elo
 from core.setup import manager
 from schemas.data import Game, User
 from services.services import make_ai_guess
-from utils.utils import cancel_timer, calculate_new_elo, cleanup_game, disconnect
+from utils.getters import (
+    get_opponents,
+    get_random_word,
+    get_total_score,
+    get_users_unsafe,
+)
+from utils.utils import calculate_new_elo, cancel_timer, cleanup_game, disconnect
 
 
 async def end_game(game: Game, winner: User, reason: str | None = None):
@@ -57,17 +69,19 @@ async def start_next_round(game: Game):
 
     payloads = []
     for username in game.players:
-        payloads.append({
-            "username": username,
-            "payload": {
-                "type": "next_round",
-                "word": game.word,
-                "duration": ROUND_DURATION,
-                "countdown": COUNTDOWN_DURATION,
-                "scores": game.scores,
-                "round_wins": game.round_wins,
+        payloads.append(
+            {
+                "username": username,
+                "payload": {
+                    "type": "next_round",
+                    "word": game.word,
+                    "duration": ROUND_DURATION,
+                    "countdown": COUNTDOWN_DURATION,
+                    "scores": game.scores,
+                    "round_wins": game.round_wins,
+                },
             }
-        })
+        )
     manager._emit("broadcast_to_players", payloads=payloads)
     cancel_timer(game.id)
     manager.game_timers[game.id] = asyncio.create_task(game_timer(game.id))
@@ -97,15 +111,12 @@ async def end_game_by_timeout(game_id: str):
     if len(winners) > 1:
         payloads = []
         for username in users:
-            payloads.append({
-                "username": username,
-                "payload": {"type": "round_tie"}
-            })
+            payloads.append({"username": username, "payload": {"type": "round_tie"}})
         manager._emit("broadcast_to_players", payloads=payloads)
         await start_next_round(game)
         return
     else:
-        assert get_user(winners[0]) is not None #TODO: remove 
+        assert get_user(winners[0]) is not None  # TODO: remove
         await handle_round_end(game, get_user(winners[0]))
 
 
@@ -137,16 +148,16 @@ async def start_game(payload: dict, user: User):
         if manager.connections.get(player) is None:
             raise WebSocketException(
                 code=status.WS_1008_POLICY_VIOLATION,
-                reason="Not all players are connected"
+                reason="Not all players are connected",
             )
 
     players = lobby["players"]
 
     user_objects = []
     for username in players:
-        user = get_user(username)
-        assert user is not None
-        user_objects.append(user)
+        player = get_user(username)
+        assert player is not None
+        user_objects.append(player)
 
     await manager.create_game(user_objects, False)
 
@@ -165,14 +176,16 @@ async def ai_guess(user: User, payload: dict) -> None:
 
     payloads = []
     for username in game.players:
-        payloads.append({
-            "username": username,
-            "payload": {
-                "type": "ai_guess",
-                "guess": guess,
-                "scores": score,
+        payloads.append(
+            {
+                "username": username,
+                "payload": {
+                    "type": "ai_guess",
+                    "guess": guess,
+                    "scores": score,
+                },
             }
-        })
+        )
     manager._emit("broadcast_to_players", payloads=payloads)
 
     if score >= 100:
@@ -192,12 +205,14 @@ async def surrender_game(user: User) -> None:
     else:
         payloads = []
         for player in game.players:
-            payloads.append({
-                "username": player,
-                "payload": {
-                    "type": "opponent_surrendered",
+            payloads.append(
+                {
+                    "username": player,
+                    "payload": {
+                        "type": "opponent_surrendered",
+                    },
                 }
-            })
+            )
         manager._emit("broadcast_to_players", payloads=payloads)
         disconnect(user)
 
@@ -277,16 +292,23 @@ async def send_end_game(
     }
     if reason is not None:
         payload["reason"] = reason
-    manager._emit("broadcast_to_players", payloads=[{
-        "username": username,
-        "payload": payload,
-    }])
+    manager._emit(
+        "broadcast_to_players",
+        payloads=[
+            {
+                "username": username,
+                "payload": payload,
+            }
+        ],
+    )
+
 
 async def _start_game_timer(event, data):
     game = data["game"]
     task = asyncio.create_task(game_timer(game.id))
     game.timer = task
     manager.game_timers[game.id] = task
+
 
 def init_game_events():
     manager.on("game_created", _start_game_timer)

@@ -1,17 +1,27 @@
-import asyncio, uuid
-from schemas.data import Game, User, GameState
-from core.config import ROUND_DURATION, COUNTDOWN_DURATION, MATCHMAKING_MAX_RANGE, MATCHMAKING_RANGE_STEP, MATCHMAKING_WAIT_PER_STEP
+import asyncio
+import uuid
+
 from fastapi import WebSocket
+
+from core.config import (
+    COUNTDOWN_DURATION,
+    MATCHMAKING_MAX_RANGE,
+    MATCHMAKING_RANGE_STEP,
+    MATCHMAKING_WAIT_PER_STEP,
+    ROUND_DURATION,
+)
+from schemas.data import Game, GameState, User
 from utils.getters import get_opponents, get_random_word, get_user
+
 
 class GameManager:
     def __init__(self):
         self.connections: dict[str, WebSocket] = {}
-        
+
         self.games: dict[str, Game] = {}
         self.player_games: dict[str, str] = {}
         self.lobbies: dict[str, dict] = {}
-        
+
         self.matchmaking_queue: list[str] = []
         self.disconnected_players: list[str] = []
         self.game_timers: dict[str, asyncio.Task] = {}
@@ -24,7 +34,6 @@ class GameManager:
         for cb in self._listeners.get(event, []):
             asyncio.create_task(cb(event, data))
 
-    
     async def find_player(self, user: User):
         if self.player_games.get(user.username):
             raise ValueError("player is already in a game")
@@ -33,7 +42,9 @@ class GameManager:
 
         self.matchmaking_queue.append(user.username)
 
-        for search_range in range(MATCHMAKING_RANGE_STEP, MATCHMAKING_MAX_RANGE + 1, MATCHMAKING_RANGE_STEP):
+        for search_range in range(
+            MATCHMAKING_RANGE_STEP, MATCHMAKING_MAX_RANGE + 1, MATCHMAKING_RANGE_STEP
+        ):
             for _ in range(MATCHMAKING_WAIT_PER_STEP):
                 if user.username not in self.matchmaking_queue:
                     return
@@ -56,13 +67,10 @@ class GameManager:
                 await asyncio.sleep(1)
 
         self.matchmaking_queue.remove(user.username)
-        self._emit("broadcast_to_players", payloads=[{
-            "username": user.username,
-            "payload": {"type": "waiting"}
-        }])
-
-
-
+        self._emit(
+            "broadcast_to_players",
+            payloads=[{"username": user.username, "payload": {"type": "waiting"}}],
+        )
 
     async def create_game(self, players: list[User], is_ranked: bool):
         player_usernames = [player.username for player in players]
@@ -101,21 +109,23 @@ class GameManager:
         payloads = []
         for player in players:
             opponents = get_opponents(player, game)
-            payloads.append({
-                "username": player.username,
-                "payload": {
-                    "type": "match_found",
-                    "game_id": game.id,
-                    "opponent": opponents,
-                    "players": player_usernames,
-                    "me": player.username,
-                    "word": game.word,
-                    "duration": ROUND_DURATION,
-                    "countdown": COUNTDOWN_DURATION,
-                    "scores": game.scores,
-                    "round_wins": game.round_wins,
-                    "is_ranked": game.is_ranked,
+            payloads.append(
+                {
+                    "username": player.username,
+                    "payload": {
+                        "type": "match_found",
+                        "game_id": game.id,
+                        "opponent": opponents,
+                        "players": player_usernames,
+                        "me": player.username,
+                        "word": game.word,
+                        "duration": ROUND_DURATION,
+                        "countdown": COUNTDOWN_DURATION,
+                        "scores": game.scores,
+                        "round_wins": game.round_wins,
+                        "is_ranked": game.is_ranked,
+                    },
                 }
-            })
+            )
         self._emit("broadcast_to_players", payloads=payloads)
         self._emit("game_created", game=game)
