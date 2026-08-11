@@ -88,10 +88,7 @@ async def API_reconnect_user(
     current_user: Annotated[User | None, Depends(get_session)],
 ):
     if current_user is None:
-        raise HTTPException(
-            401,
-            "only authenticated users can reconnect to past game",
-        )
+        return {"reconnect": False}
     id = manager.player_games.get(current_user)
     if id:
         return {"reconnect": True, "id": id}

@@ -14,7 +14,7 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
         await websocket.send_json(
             {
                 "type": "lobby_info",
-                "running": True,
+                "exist": True,
                 "players": connected,
                 "host": lobby["host"] if lobby["host"] in manager.connections else "",
                 "me": user.username,
@@ -24,7 +24,7 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
         await websocket.send_json(
             {
                 "type": "lobby_info",
-                "running": False,
+                "exist": False,
             }
         )
 

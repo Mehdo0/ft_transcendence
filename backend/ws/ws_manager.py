@@ -132,6 +132,7 @@ class WSManager:
 
     async def _handle_disconnect_grace_period(self, user: User, game: Game):
         self.game_manager.disconnected_players.append(user.username)
+        print("user", user.username)
         await asyncio.sleep(10)
 
         if user.username not in self.game_manager.disconnected_players:

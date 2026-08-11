@@ -28,7 +28,7 @@ async def authenticate_user_trough_ws(websocket) -> User:
         user = get_user_from_ws_token(token)
         print("user " + user.username + " connected.")
     except ValueError:
-        print("WS: auth failed for user", user.username)
+        print("WS: auth failed")
         await websocket.accept()
         await websocket.send_json(
             {
