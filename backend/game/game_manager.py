@@ -4,6 +4,7 @@ import uuid
 from fastapi import WebSocket
 
 from core.config import (
+    COUNTDOWN_DURATION,
     MATCHMAKING_MAX_RANGE,
     MATCHMAKING_RANGE_STEP,
     MATCHMAKING_WAIT_PER_STEP,
@@ -81,7 +82,7 @@ class GameManager:
             players=player_usernames,
             word=get_random_word(),
             is_ranked=is_ranked,
-            ends_at=loop.time() + ROUND_DURATION,
+            ends_at=loop.time() + COUNTDOWN_DURATION + ROUND_DURATION,
         )
         print(
             "game id: ",
@@ -119,6 +120,7 @@ class GameManager:
                         "me": player.username,
                         "word": game.word,
                         "duration": ROUND_DURATION,
+                        "countdown": COUNTDOWN_DURATION,
                         "scores": game.scores,
                         "round_wins": game.round_wins,
                         "is_ranked": game.is_ranked,

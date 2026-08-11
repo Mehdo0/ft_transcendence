@@ -13,6 +13,8 @@
 		sessionStorage.removeItem('draw_me');
 		sessionStorage.removeItem('draw_scores');
 		sessionStorage.removeItem('draw_is_ranked');
+		sessionStorage.removeItem('draw_ends_at');
+		sessionStorage.removeItem('draw_in_progress');
 		sessionStorage.removeItem('isHost');
 		sessionStorage.removeItem('players');
 	}
