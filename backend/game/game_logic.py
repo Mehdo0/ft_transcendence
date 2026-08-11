@@ -1,22 +1,24 @@
-from utils.getters import (
-    get_random_word,
-    get_total_score,
-    get_opponents,
-    get_users_unsafe,
-)
 import asyncio
+
+from fastapi import WebSocketException, status
+
 from core.config import (
-    ROUND_DURATION,
     COUNTDOWN_DURATION,
+    ROUND_DURATION,
     ROUND_WIN_TARGET,
     SCORE_INCREMENT_PER_SECOND,
 )
-from fastapi import WebSocketException, status
 from core.database import get_user, update_user_elo
 from core.setup import manager
 from schemas.data import Game, User
 from services.services import make_ai_guess
-from utils.utils import cancel_timer, calculate_new_elo, cleanup_game, disconnect
+from utils.getters import (
+    get_opponents,
+    get_random_word,
+    get_total_score,
+    get_users_unsafe,
+)
+from utils.utils import calculate_new_elo, cancel_timer, cleanup_game, disconnect
 
 
 async def end_game(game: Game, winner: User, reason: str | None = None):

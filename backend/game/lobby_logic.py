@@ -1,8 +1,9 @@
 import shortuuid
 from fastapi import WebSocket
+
+from core.setup import manager
 from schemas.data import User
 from utils.utils import remove_from_matchmaking
-from core.setup import manager
 
 
 async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
@@ -10,12 +11,22 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
     if code in manager.lobbies:
         lobby = manager.lobbies[code]
         connected = [p for p in lobby["players"] if p in manager.connections]
-        await websocket.send_json({
-            "type": "lobby_info",
-            "players": connected,
-            "host": lobby["host"] if lobby["host"] in manager.connections else connected[0] if connected else "",
-            "me": user.username,
-        })
+        await websocket.send_json(
+            {
+                "type": "lobby_info",
+                "running": True,
+                "players": connected,
+                "host": lobby["host"] if lobby["host"] in manager.connections else "",
+                "me": user.username,
+            }
+        )
+    else:
+        await websocket.send_json(
+            {
+                "type": "lobby_info",
+                "running": False,
+            }
+        )
 
 
 async def create_lobby(user: User, websocket: WebSocket):
@@ -46,10 +57,9 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
         return
 
     if user.username in lobby["players"]:
-        await websocket.send_json({
-            "type": "error",
-            "message": "player already in lobby"
-        })
+        await websocket.send_json(
+            {"type": "error", "message": "player already in lobby"}
+        )
         return
 
     lobby["players"].append(user.username)
@@ -58,10 +68,12 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
     for player in lobby["players"]:
         player_ws = manager.connections.get(player)
         if player != user.username and player_ws:
-            await player_ws.send_json({
-                "type": "player_joined",
-                "username": user.username,
-            })
+            await player_ws.send_json(
+                {
+                    "type": "player_joined",
+                    "username": user.username,
+                }
+            )
 
 
 async def cleanup_lobby_on_disconnect(user: User):
@@ -81,7 +93,9 @@ async def cleanup_lobby_on_disconnect(user: User):
         for player in lobby["players"]:
             player_ws = manager.connections.get(player)
             if player_ws:
-                await player_ws.send_json({
-                    "type": "player_left",
-                    "username": user.username,
-                })
+                await player_ws.send_json(
+                    {
+                        "type": "player_left",
+                        "username": user.username,
+                    }
+                )
