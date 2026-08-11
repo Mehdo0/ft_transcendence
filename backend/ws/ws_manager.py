@@ -137,6 +137,8 @@ class WSManager:
             assert winner is not None
             await end_game(game, winner, "opponent_disconnected")
 
+        await cleanup_lobby_on_disconnect(user)
+
         await send_msg_to_opponents(game, user, {
             "type": "opponent_disconnected",
             "username": user.username,

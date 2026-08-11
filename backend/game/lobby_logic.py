@@ -9,18 +9,13 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
     code = payload.get("code")
     if code in manager.lobbies:
         lobby = manager.lobbies[code]
+        connected = [p for p in lobby["players"] if p in manager.connections]
         await websocket.send_json({
             "type": "lobby_info",
-            "players": lobby["players"],
-            "host": lobby["host"],
+            "players": connected,
+            "host": lobby["host"] if lobby["host"] in manager.connections else connected[0] if connected else "",
             "me": user.username,
         })
-        return
-
-    await websocket.send_json({
-        "type": "error",
-        "message": "lobby doesn't exist",
-    })
 
 
 async def create_lobby(user: User, websocket: WebSocket):
