@@ -29,6 +29,7 @@
 	}
 
 	function rejoin() {
+		sessionStorage.setItem('draw_word', rejoinGame.word);
 		sessionStorage.setItem('draw_opponent', rejoinGame.opponent);
 		sessionStorage.setItem('draw_players', JSON.stringify(rejoinGame.players));
 		sessionStorage.setItem('draw_me', username);

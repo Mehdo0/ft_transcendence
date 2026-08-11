@@ -218,7 +218,7 @@
 				if (!game.players.includes(user.username)) applyPlayers([user.username, ...game.players]);
 			})
 			.catch(() => {});
-
+			if (!game.is_ranked || !game.opponent) return;
 		fetch(`/api/users/${game.opponent}/stats`, { credentials: 'same-origin' })
 			.then((response) => (response.ok ? response.json() : null))
 			.then((data) => {
@@ -250,8 +250,8 @@
 				triggerCountdown();
 			}
 			const code = sessionStorage.getItem('private_lobby_code');
-			console.log("lobby code = ", code)
-			send({ type: 'get_lobby', code });
+			if (code)
+				send({ type: 'get_lobby', code });
 			const unsubscribe = subscribe((msg: any) => {
 				switch (msg.type) {
 					case 'ai_guess':
@@ -319,9 +319,11 @@
 					case 'lobby_info':
 						console.log(msg.exist)
 						const does_exist = msg.exist;
-						if (!does_exist)
+						if (!does_exist){
 							exist = false;
 							goto("/");
+						}
+							
 						break;
 				}
 			});
