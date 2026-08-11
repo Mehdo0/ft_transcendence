@@ -7,7 +7,8 @@ GRACE_PERIOD = 10
 
 def cancel_timer(game_id: str) -> None:
     task = manager.game_timers.pop(game_id, None)
-    task.cancel()
+    if task is not None:
+        task.cancel()
 
 
 async def calculate_new_elo(player1: User, player2: User, result: int):
@@ -24,7 +25,7 @@ def cleanup_game(game: Game) -> None:
         manager.player_games.pop(user, None)
         if user in manager.disconnected_players:
             manager.disconnected_players.remove(user)
-    manager.games.pop(game.id)
+    manager.games.pop(game.id, None)
 
 
 def disconnect(user: User):
@@ -57,20 +58,10 @@ async def send_msg_to_opponents(
     for player in game.players:
         if player != user.username:
             ws = manager.connections.get(player)
-            break
+            if ws is not None:
+                try:
+                    await ws.send_json(msg)
+                except Exception:
+                    pass
 
-    if ws is not None:
-        try:
-            await ws.send_json(msg)
-        except Exception:
-            pass
-
-async def send_msg_to_players(
-    game: Game,
-    msg: dict[str, str],
-):
-    for p in game.players:
-        ws = manager.connections.get(p)
-        if ws:
-            await ws.send_json(msg)
-        await manager.connections[p].send_json(msg)
+    

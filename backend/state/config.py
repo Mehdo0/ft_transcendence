@@ -3,15 +3,15 @@ from pathlib import Path
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from os import getenv
+import os
 
 
-def read_secret_key() -> str:
-    file = open("/run/secrets/secret_key", "r")
-
-    content = file.read()
-    file.close()
-
-    return content
+def read_secret_key():
+    try:
+        with open("/run/secrets/secret_key") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return os.urandom(32).hex()
 
 
 DB_NAME = "data/game_data.db"
