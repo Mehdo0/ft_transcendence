@@ -16,6 +16,7 @@ from core.exceptions import (
     WeakPassword,
 )
 from core.setup import manager
+from game.game_logic import surrender_game
 from schemas.data import User, UserRegister
 from services.services import (
     create_access_token,
@@ -83,7 +84,7 @@ async def API_session_is_authenticated(
 
 @router.get("api/reconnect")
 @limiter.limit("120/minute")
-async def API_reconnect_user(
+async def API_reconnect(
     request: Request,
     current_user: Annotated[User | None, Depends(get_session)],
 ):
@@ -94,6 +95,25 @@ async def API_reconnect_user(
         return {"reconnect": True, "id": id}
     else:
         return {"reconnect": False}
+
+
+@router.get("api/surrender")
+@limiter.limit("120/minute")
+async def API_surrender(
+    request: Request,
+    current_user: Annotated[User | None, Depends(get_session)],
+):
+    if current_user is None:
+        return {"success": False}
+    id = manager.player_games.get(current_user)
+    if id:
+        try:
+            await surrender_game(current_user)
+        except Exception as e:
+            raise HTTPException(404, e)
+        return {"success": True}
+    else:
+        return {"success": False}
 
 
 @router.post("/api/register/")

@@ -53,5 +53,3 @@ async def send_msg_to_opponents(
                     await ws.send_json(msg)
                 except Exception as e:
                     print(f"send_msg_to_opponents failed: {e}")
-
-    
