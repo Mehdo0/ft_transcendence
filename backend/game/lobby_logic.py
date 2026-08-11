@@ -11,6 +11,7 @@ async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
     if code in manager.lobbies:
         lobby = manager.lobbies[code]
         connected = [p for p in lobby["players"] if p in manager.connections]
+        print("DEBUG: players in lobby ", code, "are: ", connected)
         await websocket.send_json(
             {
                 "type": "lobby_info",
