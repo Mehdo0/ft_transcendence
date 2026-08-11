@@ -75,7 +75,11 @@
 			game.is_ranked = msg.is_ranked ?? false;
 			clearSessionData();
 			sessionStorage.setItem('private_lobby_code', code);
-			sessionStorage.setItem('draw_ends_at', String(Date.now() + ((msg.duration ?? 60) + 3) * 1000));
+			sessionStorage.removeItem('draw_in_progress');
+			sessionStorage.setItem(
+				'draw_ends_at',
+				String(Date.now() + ((msg.duration ?? 60) + (msg.countdown ?? 0)) * 1000)
+			);
 			leaving = true;
 			goto('/in-game');
 		}
