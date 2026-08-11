@@ -201,7 +201,7 @@ async def surrender_game(user: User) -> None:
             payloads.append({
                 "username": player,
                 "payload": {
-                    "type": "opponent_disconnected",
+                    "type": "opponent_surrendered",
                 }
             })
         manager._emit("broadcast_to_players", payloads=payloads)
