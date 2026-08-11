@@ -25,6 +25,7 @@
 	let pointsSinceLastGuess = $state(0);
 	let roundWins = $state<Record<string, number>>({});
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
+	let back_lobby = $state(true);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
@@ -245,7 +246,9 @@
 				triggerCountdown();
 				loadUserData();
 			}
-
+			const code = sessionStorage.getItem('private_lobby_code');
+			console.log("lobby code = ", code)
+			send({ type: 'get_lobby', code });
 			const unsubscribe = subscribe((msg: any) => {
 				switch (msg.type) {
 					case 'ai_guess':
@@ -307,6 +310,8 @@
 						}, 3000);
 						clearSessionData();
 						break;
+					case 'lobby_closed':
+						back_lobby = false;
 				}
 			});
 
@@ -424,6 +429,10 @@
 
 	function backAfterGame() {
 		if (game.is_ranked) {
+			goto('/');
+			return;
+		}
+		if (!back_lobby) {
 			goto('/');
 			return;
 		}

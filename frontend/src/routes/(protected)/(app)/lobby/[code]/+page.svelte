@@ -32,8 +32,8 @@
 			const savedPlayers = sessionStorage.getItem('players');
 			if (savedPlayers) players = JSON.parse(savedPlayers);
 
-		const savedHost = sessionStorage.getItem('isHost');
-		if (savedHost) isHost = savedHost === 'true';
+			const savedHost = sessionStorage.getItem('isHost');
+			if (savedHost) isHost = savedHost === 'true';
 
 			const unsubscribe = subscribe(handleMessage);
 
