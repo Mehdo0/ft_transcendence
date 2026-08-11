@@ -317,7 +317,6 @@
 						back_lobby = false;
 						break;
 					case 'lobby_info':
-						console.log(msg.exist)
 						const does_exist = msg.exist;
 						if (!does_exist){
 							exist = false;
