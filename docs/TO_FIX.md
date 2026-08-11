@@ -25,5 +25,3 @@ surrender doesnt do anything when solo game
 Add refresh token
 
 remove tout les assert avant de push
-
-when quitting the game then coming back to the lobby both users are still there even if not --> check the ws intergrity after each game ?? 

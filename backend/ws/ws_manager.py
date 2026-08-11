@@ -31,7 +31,7 @@ class WSManager:
                 try:
                     await ws.send_json(item["payload"])
                 except RuntimeError:
-                    self.connections.pop(item["username"], None)
+                    pass
 
 
 
@@ -88,7 +88,9 @@ class WSManager:
                 code = payload.get("code", "").upper().strip()
                 await join_lobby(user, code, self.connections[user.username])
             case "get_lobby":
-                await get_lobby_info(payload, self.connections[user.username], user)
+                ws = self.connections.get(user.username)
+                if ws:  
+                    await get_lobby_info(payload, ws, user)
             case "start_game":
                 await start_game(payload, user)
             case "find_player":
