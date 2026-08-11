@@ -1,24 +1,26 @@
 from datetime import timedelta
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.security import OAuth2PasswordRequestForm
+
 from core.database import (
     get_ranking,
     get_user,
 )
 from core.exceptions import (
     EmailAlreadyTakenError,
+    ImpossibleEmail,
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
     WeakPassword,
-    ImpossibleEmail,
 )
-from services.services import get_session
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.security import OAuth2PasswordRequestForm
+from core.setup import manager
 from schemas.data import User, UserRegister
 from services.services import (
     create_access_token,
     get_access_token,
+    get_session,
     register_user,
 )
 from state.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE, limiter
@@ -70,14 +72,32 @@ async def API_login(
 
 @router.get("/api/session/")
 @limiter.limit("120/minute")
-async def API_session_is_authenticate(
+async def API_session_is_authenticated(
     request: Request,
     current_user: Annotated[User | None, Depends(get_session)],
 ):
     if current_user is None:
         return {"authenticated": False, "user": None}
     return {"authenticated": True, "user": current_user}
-    
+
+
+@router.get("api/reconnect")
+@limiter.limit("120/minute")
+async def API_reconnect_user(
+    request: Request,
+    current_user: Annotated[User | None, Depends(get_session)],
+):
+    if current_user is None:
+        raise HTTPException(
+            401,
+            "only authenticated users can reconnect to past game",
+        )
+    id = manager.player_games.get(current_user)
+    if id:
+        return {"reconnect": True, "id": id}
+    else:
+        return {"reconnect": False}
+
 
 @router.post("/api/register/")
 @limiter.limit("30/minute")

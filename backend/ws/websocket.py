@@ -1,8 +1,8 @@
-import json
 from fastapi import WebSocket, WebSocketDisconnect
-from services.services import get_user_from_ws_token
-from schemas.data import User
+
 from core.setup import router, ws_manager
+from schemas.data import User
+from services.services import get_user_from_ws_token
 
 
 @router.websocket("/ws/")
@@ -15,6 +15,7 @@ async def websocket_endpoint(websocket: WebSocket):
             payload = await websocket.receive_json()
             await ws_manager.handle_message(user, payload)
     except WebSocketDisconnect:
+        print("user", user.username, "disconnected")
         await ws_manager.disconnect(user)
 
 
@@ -27,21 +28,27 @@ async def authenticate_user_trough_ws(websocket) -> User:
         user = get_user_from_ws_token(token)
         print("user " + user.username + " connected.")
     except ValueError:
+        print("WS: auth failed for user", user.username)
         await websocket.accept()
-        await websocket.send_json({
-            "type": "error",
-            "message": "authentication failed",
-        })
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "authentication failed",
+            }
+        )
         print("token not found when connecting websocket")
         raise
-    except Exception as e:
+    except Exception:
+        print("WS: auth failed for user", user.username)
         await websocket.accept()
-        await websocket.send_json({
-            "type": "error",
-            "message": "connection failed",
-        })
+        await websocket.send_json(
+            {
+                "type": "error",
+                "message": "connection failed",
+            }
+        )
         print("error while fetching user from token")
-        raise e
+        raise
 
     await websocket.accept()
     return user
