@@ -7,9 +7,10 @@ export function connect() {
 	socket = new WebSocket('/ws/');
 
 	socket.onmessage = (event) => {
-		const message = JSON.parse(event.data);
-		subscribers.forEach((handler) => handler(message));
-		
+		try {
+			const message = JSON.parse(event.data);
+			subscribers.forEach((handler) => handler(message));
+		} catch {}
 	};
 
 	socket.onclose = () => {

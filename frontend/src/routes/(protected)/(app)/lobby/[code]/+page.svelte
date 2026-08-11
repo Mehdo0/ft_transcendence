@@ -30,7 +30,13 @@
 
 		onMount(() => {
 			const savedPlayers = sessionStorage.getItem('players');
-			if (savedPlayers) players = JSON.parse(savedPlayers);
+			if (savedPlayers) {
+				try {
+					players = JSON.parse(savedPlayers);
+				} catch {
+					players = [];
+				}
+			}
 
 			const savedHost = sessionStorage.getItem('isHost');
 			if (savedHost) isHost = savedHost === 'true';

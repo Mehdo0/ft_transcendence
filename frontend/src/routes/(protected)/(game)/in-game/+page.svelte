@@ -230,7 +230,7 @@
 		beforeNavigate((nav) => {
 			if (result) return;
 			if (nav.willUnload) return;
-			if (exist) return;
+			if (!exist) return;
 			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
 				send({ type: 'surrender' });
 			} else {
