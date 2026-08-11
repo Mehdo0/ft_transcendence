@@ -6,7 +6,7 @@ from core.database import get_user, update_user_elo
 from core.setup import manager
 from schemas.data import Game, User
 from services.services import make_ai_guess
-from utils.utils import cancel_timer, calculate_new_elo, cleanup_game
+from utils.utils import cancel_timer, calculate_new_elo, cleanup_game, disconnect
 
 
 async def end_game(game: Game, winner: User, reason: str | None = None):
@@ -92,13 +92,6 @@ async def end_game_by_timeout(game_id: str):
     print("winner(s): ", winners)
 
     assert len(winners) > 0
-
-    if len(users) == 1:
-        print("solo match, user ", users[0], " has won.")
-        await send_end_game(users[0], "draw", 0, 0, "timeout")
-        cancel_timer(game_id)
-        cleanup_game(game)
-        return
 
     if len(winners) > 1:
         payloads = []
@@ -205,8 +198,7 @@ async def surrender_game(user: User) -> None:
                 }
             })
         manager._emit("broadcast_to_players", payloads=payloads)
-        manager.player_games.pop(user.username)
-        game.players.remove(user.username)
+        disconnect(user)
 
 
 async def increase_scores(game_id: str):
@@ -285,4 +277,5 @@ async def _start_game_timer(event, data):
     game.timer = task
     manager.game_timers[game.id] = task
 
-manager.on("game_created", _start_game_timer)
+def init_game_events():
+    manager.on("game_created", _start_game_timer)

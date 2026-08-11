@@ -1,4 +1,3 @@
-import asyncio
 from schemas.data import Game, User
 from core.setup import manager
 
@@ -34,15 +33,6 @@ def disconnect(user: User):
     remove_from_matchmaking(user.username)
 
 
-async def run_disconnect_grace_period(username: str, on_timeout):
-    manager.disconnected_players.append(username)
-    await asyncio.sleep(GRACE_PERIOD)
-    if username not in manager.disconnected_players:  # reconnected in the meantime
-        return
-    manager.disconnected_players.remove(username)
-    await on_timeout()
-
-
 def remove_from_matchmaking(username: str):
     if username in manager.matchmaking_queue:
         manager.matchmaking_queue.remove(username)
@@ -61,7 +51,7 @@ async def send_msg_to_opponents(
             if ws is not None:
                 try:
                     await ws.send_json(msg)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"send_msg_to_opponents failed: {e}")
 
     

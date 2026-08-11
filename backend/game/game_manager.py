@@ -31,41 +31,36 @@ class GameManager:
         if user.username in self.matchmaking_queue:
             raise ValueError("player is already in matchmaking")
 
-        print("GAME: player '" + user.username + "' (" + str(user.elo) + " ELO) looking for game...")
+        self.matchmaking_queue.append(user.username)
 
-        opponent = None
         for search_range in range(MATCHMAKING_RANGE_STEP, MATCHMAKING_MAX_RANGE + 1, MATCHMAKING_RANGE_STEP):
-            low = user.elo - search_range
-            high = user.elo + search_range
-
             for _ in range(MATCHMAKING_WAIT_PER_STEP):
+                if user.username not in self.matchmaking_queue:
+                    return
+
                 candidates = []
                 for queued_name in self.matchmaking_queue:
+                    if queued_name == user.username:
+                        continue
                     queued_user = get_user(queued_name)
-                    if queued_user and low <= queued_user.elo <= high:
+                    if queued_user and abs(queued_user.elo - user.elo) <= search_range:
                         candidates.append(queued_user)
 
                 if candidates:
                     opponent = min(candidates, key=lambda u: abs(u.elo - user.elo))
-                    break
+                    self.matchmaking_queue.remove(opponent.username)
+                    self.matchmaking_queue.remove(user.username)
+                    await self.create_game([opponent, user], True)
+                    return
 
                 await asyncio.sleep(1)
 
-            if opponent:
-                break
-
-        if opponent:
-            self.matchmaking_queue.remove(opponent.username)
-            print("\tfound opponent " + opponent.username + " (" + str(opponent.elo) + " ELO)")
-            await self.create_game([opponent, user], True)
-            return
-
-        print("\tno opponent found, adding to queue")
-        self.matchmaking_queue.append(user.username)
+        self.matchmaking_queue.remove(user.username)
         self._emit("broadcast_to_players", payloads=[{
             "username": user.username,
             "payload": {"type": "waiting"}
         }])
+
 
 
 

@@ -27,13 +27,12 @@ async def create_lobby(user: User, websocket: WebSocket):
     print("GAME: creating lobby, host " + user.username)
     remove_from_matchmaking(user.username)
 
-    while True:
+    code = shortuuid.ShortUUID().random(length=6).upper()
+    while code in manager.lobbies:
         code = shortuuid.ShortUUID().random(length=6).upper()
-        while code in manager.lobbies:
-            code = shortuuid.ShortUUID().random(length=6).upper()
-        manager.lobbies[code] = {"host": user.username, "players": [user.username]}
-        await websocket.send_json({"type": "lobby_created", "code": code})
-        return
+    manager.lobbies[code] = {"host": user.username, "players": [user.username]}
+    await websocket.send_json({"type": "lobby_created", "code": code})
+    return
 
 
 async def join_lobby(user: User, code: str, websocket: WebSocket):

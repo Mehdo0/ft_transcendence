@@ -1,5 +1,3 @@
-from PIL.ImageOps import contain
-from numpy.f2py.auxfuncs import throw_error
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -14,22 +12,16 @@ from core.exceptions import (
     WeakPassword,
     ImpossibleEmail,
 )
-from fastapi import Depends, HTTPException, WebSocketException, status, Cookie
+from fastapi import Depends, WebSocketException, status, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
 from schemas.data import Token, User, UserRegister
-from services.ai_service import internal_make_ai_guess, load_word_list
+from services.ai_service import internal_make_ai_guess
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
     SECRET_KEY,
-    cookie_scheme,
 )
-
-
-async def get_random_word() -> str:
-    data = load_word_list()
-    return random.choice(data)
 
 
 async def make_ai_guess(strokes: list, target_word: str):

@@ -99,6 +99,7 @@ class WSManager:
                 await surrender_game(user)
             case "leave":
                 await cleanup_lobby_on_disconnect(user)
+            case _: print("unknown msg type:", message_type)
 
     async def _reconnect_user(self, user: User, websocket: WebSocket):
         game_id = self.game_manager.player_games[user.username]

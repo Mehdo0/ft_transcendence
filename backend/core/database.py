@@ -1,12 +1,11 @@
-import random
 import bcrypt
 
 from models.models import Base, UserModel
 from schemas.data import User, UserRegister
 from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
-from core.exceptions import UserAlreadyExistsError, EmailAlreadyTakenError
+from core.exceptions import EmailAlreadyTakenError
 
 DB_NAME = "data/game_data.db"
 DATABASE_URL = f"sqlite+pysqlite:///{DB_NAME}"
