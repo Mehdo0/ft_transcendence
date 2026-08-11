@@ -161,6 +161,7 @@
 		sessionStorage.removeItem('draw_round_wins');
 		sessionStorage.removeItem('draw_is_ranked');
 		sessionStorage.removeItem('draw_ends_at');
+		sessionStorage.removeItem('draw_in_progress');
 	}
 
 	function triggerCountdown() {
@@ -238,13 +239,14 @@
 		});
 
 		onMount(() => {
-			const isReconnect = !!sessionStorage.getItem('draw_word');
+			const isReconnect = sessionStorage.getItem('draw_in_progress') === '1';
+			sessionStorage.setItem('draw_in_progress', '1');
 			loadSessionData();
 			startTimer();
+			loadUserData();
 
 			if (!isReconnect) {
 				triggerCountdown();
-				loadUserData();
 			}
 			const code = sessionStorage.getItem('private_lobby_code');
 			console.log("lobby code = ", code)
@@ -295,7 +297,7 @@
 						pointsSinceLastGuess = 0;
 						if (context) redraw();
 						if (msg.duration != null) {
-							endsAt = Date.now() + msg.duration * 1000;
+							endsAt = Date.now() + (msg.duration + (msg.countdown ?? 0)) * 1000;
 							sessionStorage.setItem('draw_ends_at', String(endsAt));
 							startTimer();
 						}

@@ -1,6 +1,6 @@
 from utils.getters import get_random_word, get_total_score, get_opponents, get_users_unsafe
 import asyncio
-from core.config import ROUND_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
+from core.config import ROUND_DURATION, COUNTDOWN_DURATION, ROUND_WIN_TARGET, SCORE_INCREMENT_PER_SECOND
 from fastapi import WebSocketException, status
 from core.database import get_user, update_user_elo
 from core.setup import manager
@@ -53,7 +53,7 @@ async def start_next_round(game: Game):
     game.score_bonuses = {player: 0 for player in game.players}
     game.word = get_random_word()
     loop = asyncio.get_running_loop()
-    game.ends_at = loop.time() + ROUND_DURATION
+    game.ends_at = loop.time() + COUNTDOWN_DURATION + ROUND_DURATION
 
     payloads = []
     for username in game.players:
@@ -63,6 +63,7 @@ async def start_next_round(game: Game):
                 "type": "next_round",
                 "word": game.word,
                 "duration": ROUND_DURATION,
+                "countdown": COUNTDOWN_DURATION,
                 "scores": game.scores,
                 "round_wins": game.round_wins,
             }
@@ -225,9 +226,19 @@ async def increase_scores(game_id: str):
 
 
 async def game_timer(game_id: str):
-    for _ in range(ROUND_DURATION):
-        await asyncio.sleep(1)
-        assert game_id in manager.games
+    loop = asyncio.get_running_loop()
+    await asyncio.sleep(COUNTDOWN_DURATION)
+
+    while True:
+        game = manager.games.get(game_id)
+        if game is None:
+            return
+        remaining = game.ends_at - loop.time()
+        if remaining <= 0:
+            break
+        await asyncio.sleep(min(1, remaining))
+        if game_id not in manager.games:
+            return
         await increase_scores(game_id)
 
     await end_game_by_timeout(game_id)
