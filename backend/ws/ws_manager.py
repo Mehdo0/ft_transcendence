@@ -1,13 +1,22 @@
-import json, asyncio
+import asyncio
+import json
+
 from fastapi import WebSocket, WebSocketException, status
-from schemas.data import User, Game
-from game.lobby_logic import (
-    create_lobby,
-    join_lobby,
-    get_lobby_info,
-    cleanup_lobby_on_disconnect,
+
+from game.game_logic import (
+    ai_guess,
+    end_game,
+    get_game_info,
+    start_game,
+    surrender_game,
 )
-from game.game_logic import start_game, surrender_game, ai_guess, end_game
+from game.lobby_logic import (
+    cleanup_lobby_on_disconnect,
+    create_lobby,
+    get_lobby_info,
+    join_lobby,
+)
+from schemas.data import Game, User
 from utils.getters import get_opponents, get_user
 from utils.utils import disconnect, send_msg_to_opponents
 
@@ -92,9 +101,8 @@ class WSManager:
                 code = payload.get("code", "").upper().strip()
                 await join_lobby(user, code, self.connections[user.username])
             case "get_lobby":
-                ws = self.connections.get(user.username)
-                if ws:
-                    await get_lobby_info(payload, ws, user)
+                ws = self.connections[user.username]
+                await get_lobby_info(payload, ws, user)
             case "start_game":
                 await start_game(payload, user)
             case "find_player":
@@ -105,6 +113,8 @@ class WSManager:
                 await surrender_game(user)
             case "leave":
                 await cleanup_lobby_on_disconnect(user)
+            case "get_info":
+                get_game_info(user)
             case _:
                 print("unknown msg type:", message_type)
 

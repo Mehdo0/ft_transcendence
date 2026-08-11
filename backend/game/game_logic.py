@@ -162,6 +162,45 @@ async def start_game(payload: dict, user: User):
     await manager.create_game(user_objects, False)
 
 
+def get_game_info(user: User) -> None:
+    game_id = manager.player_games.get(user)
+    if not game_id:
+        manager._emit(
+            "broadcast_to_players",
+            payloads=[
+                {
+                    "username": user.username,
+                    "payload": {"type": "game_info", "exist": False},
+                }
+            ],
+        )
+    game = manager.games.get(game_id)
+    assert game is not None
+    opponents = get_opponents(user, game)
+    manager._emit(
+        "broadcast_to_players",
+        payloads=[
+            {
+                "username": user.username,
+                "payload": {
+                    "type": "game_info",
+                    "exist": True,
+                    "game_id": game_id,
+                    "opponent": opponents,
+                    "players": game.players,
+                    "me": user.username,
+                    "word": game.word,
+                    "duration": ROUND_DURATION,
+                    "countdown": COUNTDOWN_DURATION,
+                    "scores": game.scores,
+                    "round_wins": game.round_wins,
+                    "is_ranked": game.is_ranked,
+                },
+            }
+        ],
+    )
+
+
 async def ai_guess(user: User, payload: dict) -> None:
     game_id = manager.player_games.get(user.username)
     if game_id is None:
