@@ -226,6 +226,11 @@
 			.catch(() => {});
 	}
 
+	function loadGameData() {
+		send({ type: 'get_info' });
+		console.log("called get info");
+	}
+
 		beforeNavigate((nav) => {
 			if (result) return;
 			if (nav.willUnload) return;
@@ -242,6 +247,7 @@
 			loadSessionData();
 			startTimer();
 			loadUserData();
+			loadGameData();
 			
 
 			if (!isReconnect) {
@@ -314,8 +320,26 @@
 					case 'lobby_closed':
 						back_lobby = false;
 					case 'lobby_info':
-						if (!msg.running)
+						if (!msg.exist)
 							goto("/");
+					case 'game_info':
+						console.log("received game_info");
+						if (!msg.exist) {
+							console.log("game doesnt exist, leaving");
+							goto("/");
+						}
+						console.log("game exists, loading data: \n" + msg);
+						game.id = msg.game_id;
+						game.opponent = msg.opponent;
+						game.me = msg.me;
+						game.word = msg.word;
+						game.is_ranked = msg.is_ranked;
+						disconnectedPlayers = {};
+						applyPlayers(msg.players);
+						updateScores(msg.scores);
+						updateRoundWins(msg.round_wins);
+						saveGameData();
+						break;
 				}
 			});
 

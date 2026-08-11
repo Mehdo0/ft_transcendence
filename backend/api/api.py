@@ -82,7 +82,7 @@ async def API_session_is_authenticated(
     return {"authenticated": True, "user": current_user}
 
 
-@router.get("api/reconnect")
+@router.get("api/reconnect/")
 @limiter.limit("120/minute")
 async def API_reconnect(
     request: Request,
