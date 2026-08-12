@@ -4,11 +4,15 @@
 		import { onMount } from 'svelte';
 
 		let lobbyCode = $state('');
+		let joinError = $state(false);
 
 		onMount(() => {
 			const unsubscribe = subscribe((message) => {
 				if (message.type === 'lobby_created' || message.type === 'lobby_joined') {
 					goto('/lobby/' + message.code);
+				} else if (message.type === 'error') {
+					joinError = true;
+					setTimeout(() => (joinError = false), 500);
 				}
 			});
 
@@ -57,6 +61,7 @@
 				<div class="input-group">
 					<input
 						class="nb-input nb-input--mono code-input"
+						class:shake={joinError}
 						type="text"
 						bind:value={lobbyCode}
 						oninput={() =>
@@ -167,6 +172,23 @@
 	.code-input {
 		text-align: center;
 		font-size: var(--fs-xl);
+	}
+
+	.shake {
+		border-color: #e03131;
+		animation: shake 0.4s;
+	}
+
+	@keyframes shake {
+		25% {
+			transform: translateX(-6px);
+		}
+		50% {
+			transform: translateX(6px);
+		}
+		75% {
+			transform: translateX(-4px);
+		}
 	}
 
 	.action-btn {
