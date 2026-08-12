@@ -359,10 +359,10 @@
 	function surrender() {
 		if (confirm('Are you sure you want to forfeit the match?')) {
 			send({ type: 'surrender' });
-			surrendered  = true;
+			surrendered = true;
 			const code = sessionStorage.getItem('private_lobby_code');
 			console.log(code);
-			if (code != '' && back_lobby == true)
+			if (code != '' && back_lobby)
 				goto(code ? `/lobby/${code}` : '/lobby');
 			else
 				goto("/");
