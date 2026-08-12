@@ -362,7 +362,7 @@
 			surrendered  = true;
 			const code = sessionStorage.getItem('private_lobby_code');
 			console.log(code);
-			if (code != '' && back_lobby == true)
+			if (!game.is_ranked && code != '' && back_lobby == true)
 				goto(code ? `/lobby/${code}` : '/lobby');
 			else
 				goto("/");
