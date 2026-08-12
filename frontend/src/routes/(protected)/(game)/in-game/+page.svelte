@@ -318,26 +318,26 @@
 						back_lobby = false;
 						break;
 					case 'game_info':
-						if (!msg.exist){
+						if (!msg.exist) {
 							exist = false;
-							goto("/");
+							goto('/');
 							break;
 						}
 						game.id = msg.game_id;
-						game.opponent = msg.opponent;
-						game.me = msg.me ?? game.me;
+						game.opponent = msg.opponent[0] ?? '';
+						game.me = msg.me;
 						game.word = msg.word;
-						game.is_ranked = msg.is_ranked ?? game.is_ranked;
-						disconnectedPlayers = {};
-						applyPlayers(msg.players ?? []);
-						updateScores(msg.scores ?? {});
-						updateRoundWins(msg.round_wins ?? {});
-						saveGameData();
-						if (msg.duration != null) {
-							endsAt = Date.now() + (msg.duration + (msg.countdown ?? 0)) * 1000;
-							sessionStorage.setItem('draw_ends_at', String(endsAt));
-							startTimer();
+						game.isRanked = msg.is_ranked;
+						applyPlayers(msg.players);
+						updateScores(msg.scores);
+						updateRoundWins(msg.round_wins);
+						if (msg.time_left != null) {
+							endsAt = Date.now() + msg.time_left * 1000;
 						}
+						startTimer();
+						loadUserData();
+						break;
+
 						
 				}
 			});
