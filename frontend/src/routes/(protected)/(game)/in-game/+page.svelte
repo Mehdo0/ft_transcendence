@@ -77,7 +77,6 @@
 		if (game.players.length > 0) return game.players;
 		const players: string[] = [];
 		if (game.me || myUsername) players.push(game.me || myUsername);
-		if (game.opponent) players.push(game.opponent);
 		return players;
 	}
 
@@ -91,7 +90,7 @@
 
 	function scoreFor(player: string) {
 		if (isMe(player)) return game.scores[player] ?? game.my_score ?? 0;
-		return game.scores[player] ?? (player === game.opponent ? game.opponent_score : 0);
+		return game.scores[player] ?? 0;
 	}
 
 	function setPlayerScore(username: string, score: number) {
@@ -99,7 +98,6 @@
 		const value = Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0;
 		game.scores = { ...game.scores, [username]: value };
 		if (isMe(username)) game.my_score = value;
-		if (username === game.opponent) game.opponent_score = value;
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 	}
 
@@ -108,7 +106,6 @@
 		for (const player of scorePlayers()) {
 			const score = scores[player] ?? 0;
 			if (isMe(player)) game.my_score = score;
-			if (player === game.opponent) game.opponent_score = score;
 		}
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 	}
@@ -142,7 +139,7 @@
 
 	function saveGameData() {
 		sessionStorage.setItem('draw_word', game.word);
-		sessionStorage.setItem('draw_opponent', game.opponent);
+		sessionStorage.setItem('draw_opponents', JSON.stringify(game.opponents));
 		sessionStorage.setItem('draw_players', JSON.stringify(game.players));
 		sessionStorage.setItem('draw_me', game.me);
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
@@ -155,7 +152,7 @@
 		sessionStorage.removeItem('draw_my_score');
 		sessionStorage.removeItem('draw_opp_score');
 		sessionStorage.removeItem('draw_word');
-		sessionStorage.removeItem('draw_opponent');
+		sessionStorage.removeItem('draw_opponents');
 		sessionStorage.removeItem('draw_players');
 		sessionStorage.removeItem('draw_me');
 		sessionStorage.removeItem('draw_scores');
@@ -199,8 +196,8 @@
 		const savedWord = sessionStorage.getItem('draw_word');
 		if (savedWord) game.word = savedWord;
 
-		const savedOpponent = sessionStorage.getItem('draw_opponent');
-		if (savedOpponent) game.opponent = savedOpponent;
+		const savedOpponents = readJson<string[]>('draw_opponents', []);
+		if (savedOpponents.length > 0) game.opponents = savedOpponents;
 
 		const savedEndsAt = sessionStorage.getItem('draw_ends_at');
 		endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 63000;
@@ -218,8 +215,8 @@
 				if (!game.players.includes(user.username)) applyPlayers([user.username, ...game.players]);
 			})
 			.catch(() => {});
-			if (!game.is_ranked || !game.opponent) return;
-		fetch(`/api/users/${game.opponent}/stats`, { credentials: 'same-origin' })
+			if (!game.is_ranked || game.opponents.length === 0) return;
+			fetch(`/api/users/${game.opponents[0]}/stats`, { credentials: 'same-origin' })
 			.then((response) => (response.ok ? response.json() : null))
 			.then((data) => {
 				if (data) opponentElo = data.Elo;
@@ -267,14 +264,14 @@
 						setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
 						break;
 					case 'opponent_guess':
-						setPlayerScore(game.opponent, msg.score ?? msg.guess?.[game.word] ?? 0);
+						if (msg.username) setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
 						break;
 					case 'opponent_disconnected':
 						disconnectedPlayers[msg.username] = true;
 						break;
 					case 'reconnect_game':
 						game.id = msg.game_id;
-						game.opponent = msg.opponent;
+						game.opponents = Array.isArray(msg.opponent) ? msg.opponent : (msg.opponent ? [msg.opponent] : []);
 						game.me = msg.me ?? game.me;
 						game.word = msg.word;
 						game.is_ranked = msg.is_ranked ?? game.is_ranked;
@@ -326,7 +323,7 @@
 							break;
 						}
 						game.id = msg.game_id;
-						game.opponent = msg.opponent[0] ?? '';
+						game.opponents = msg.opponent ?? [];
 						game.me = msg.me;
 						game.word = msg.word;
 						game.isRanked = msg.is_ranked;
@@ -477,7 +474,7 @@
 					<span class="cd-pname">{playerLabel(player)}</span>
 					{#if game.is_ranked && isMe(player)}
 						<span class="cd-pelo">{myElo !== null ? myElo : '-'}<em>ELO</em></span>
-					{:else if game.is_ranked && player === game.opponent}
+					{:else if game.is_ranked && !isMe(player)}
 						<span class="cd-pelo">{opponentElo !== null ? opponentElo : '-'}<em>ELO</em></span>
 					{/if}
 				</div>
