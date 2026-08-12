@@ -316,7 +316,7 @@
 						game.opponents = msg.opponent ?? [];
 						game.me = msg.me;
 						game.word = msg.word;
-						game.isRanked = msg.is_ranked;
+						game.is_ranked = msg.is_ranked
 						applyPlayers(msg.players);
 						updateScores(msg.scores);
 						updateRoundWins(msg.round_wins);

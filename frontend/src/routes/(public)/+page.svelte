@@ -16,8 +16,6 @@
 
 	function clearSessionData() {
 		sessionStorage.removeItem('draw_stack');
-		sessionStorage.removeItem('draw_my_score');
-		sessionStorage.removeItem('draw_opp_score');
 		sessionStorage.removeItem('draw_word');
 		sessionStorage.removeItem('draw_opponents');
 		sessionStorage.removeItem('draw_players');
@@ -28,13 +26,12 @@
 		sessionStorage.removeItem('draw_in_progress');
 		sessionStorage.removeItem('isHost');
 		sessionStorage.removeItem('players');
-		sessionStorage.removeItem('draw_opponents');
 		sessionStorage.removeItem('draw_round_wins')
 	}
 
 	function rejoin() {
 		sessionStorage.setItem('draw_word', rejoinGame.word);
-		sessionStorage.setItem('draw_opponents', rejoinGame.opponents);
+		JSON.stringify(rejoinGame.opponents)
 		sessionStorage.setItem('draw_players', JSON.stringify(rejoinGame.players));
 		sessionStorage.setItem('draw_me', username);
 		sessionStorage.setItem('draw_is_ranked', rejoinGame.is_ranked.toString());
