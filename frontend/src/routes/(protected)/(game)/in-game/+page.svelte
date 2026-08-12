@@ -1,6 +1,6 @@
 	<script lang="ts">
 		import { game } from '$lib/stores/game.svelte';
-		import { send, subscribe } from '$lib/stores/wsManager';
+		import { send, subscribe, isOpen } from '$lib/stores/wsManager';
 		import { onMount } from 'svelte';
 		import { goto, beforeNavigate } from '$app/navigation';
 
@@ -240,6 +240,7 @@
 
 		onMount(() => {
 			const isReconnect = sessionStorage.getItem('draw_in_progress') === '1';
+			console.log("isReconnect: ", isReconnect)
 			sessionStorage.setItem('draw_in_progress', '1');
 			loadSessionData();
 			startTimer();
