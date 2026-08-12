@@ -129,7 +129,7 @@ class WSManager:
             {
                 "type": "reconnect_game",
                 "game_id": game.id,
-                "opponent": opponents[0] if opponents else "",
+                "opponent": opponents,
                 "players": game.players,
                 "me": user.username,
                 "word": game.word,
@@ -148,17 +148,5 @@ class WSManager:
         if user.username not in self.game_manager.disconnected_players:
             return
 
-        opponents = get_opponents(user, game)
+        await surrender_game(user)
         self.game_manager.disconnected_players.remove(user.username)
-        disconnect(user)
-
-        if len(opponents) == 1:
-            winner = get_user(opponents[0])
-            assert winner is not None
-            await end_game(game, winner, "opponent_disconnected")
-
-        send_msg_to_opponents()
-            
-
-        await cleanup_lobby_on_disconnect(user)
-

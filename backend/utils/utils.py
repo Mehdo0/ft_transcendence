@@ -30,6 +30,10 @@ def cleanup_game(game: Game) -> None:
 def disconnect(user: User):
     manager.connections.pop(user.username, None)
     manager.player_games.pop(user.username, None)
+    try:
+        manager.disconnected_players.remove(user.username)
+    except ValueError:
+        pass
     remove_from_matchmaking(user.username)
 
 
