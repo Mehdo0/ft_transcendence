@@ -255,6 +255,7 @@
 			if (code)
 				send({ type: 'get_lobby', code });
 			const unsubscribe = subscribe((msg: any) => {
+				console.log(msg)
 				switch (msg.type) {
 					case 'ai_guess':
 						setPlayerScore(
