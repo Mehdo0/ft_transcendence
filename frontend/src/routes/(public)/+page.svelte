@@ -9,7 +9,9 @@
 	opponent: '',
 	players: [] as string[],
 	time_left: 0,
-	is_ranked: false
+	is_ranked: false,
+	word: '',
+	scores: [],
 	});
 
 	function clearSessionData() {
@@ -73,7 +75,9 @@
 						opponent: msg.opponent || '',
 						players: msg.players || [],
 						time_left: msg.time_left ?? 0,
-						is_ranked: msg.is_ranked ?? false
+						is_ranked: msg.is_ranked ?? false,
+						word: msg.word || '',
+						scores: msg.scores || []
 					};
 				showRejoin = true;
 				});

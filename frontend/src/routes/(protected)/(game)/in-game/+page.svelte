@@ -255,6 +255,7 @@
 			if (!isReconnect) {
 				triggerCountdown();
 			}
+			send({ type: 'get_info' });
 			const code = sessionStorage.getItem('private_lobby_code');
 			if (code)
 				send({ type: 'get_lobby', code });
@@ -322,12 +323,6 @@
 					case 'lobby_closed':
 						back_lobby = false;
 						break;
-					case 'lobby_info':
-						const does_exist = msg.exist;
-						if (!does_exist){
-							exist = false;
-							goto("/");
-						}
 					case 'game_info':
 						console.log("received game_info");
 						if (!msg.exist) {
@@ -350,6 +345,8 @@
 							startTimer();
 						}
 						saveGameData();
+						startTimer();
+						loadUserData();
 						break;
 				default : 
 					console.log("unexpected WS msg: ", msg);

@@ -192,7 +192,7 @@ def get_game_info(user: User) -> None:
                     "players": game.players,
                     "me": user.username,
                     "word": game.word,
-                    "duration": ROUND_DURATION,
+                    "time_left": time_left,
                     "countdown": COUNTDOWN_DURATION,
                     "scores": game.scores,
                     "round_wins": game.round_wins,
