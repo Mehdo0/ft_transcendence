@@ -2,13 +2,10 @@ from fastapi import FastAPI
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 
-import state.config
-from state.config import limiter
-
 from api.api import router as api_router
-from ws.websocket import router as websocket_router
-
 from core.database import setup_database
+from state.config import limiter
+from ws.websocket import router as websocket_router
 
 app = FastAPI()
 

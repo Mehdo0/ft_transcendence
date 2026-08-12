@@ -26,6 +26,7 @@
 	let roundWins = $state<Record<string, number>>({});
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
 	let back_lobby = $state(true);
+	let exist = $state(true);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
@@ -217,7 +218,7 @@
 				if (!game.players.includes(user.username)) applyPlayers([user.username, ...game.players]);
 			})
 			.catch(() => {});
-
+			if (!game.is_ranked || !game.opponent) return;
 		fetch(`/api/users/${game.opponent}/stats`, { credentials: 'same-origin' })
 			.then((response) => (response.ok ? response.json() : null))
 			.then((data) => {
@@ -226,7 +227,7 @@
 			.catch(() => {});
 	}
 
-	function loadGameData() {
+	function fetchGameData() {
 		send({ type: 'get_info' });
 		console.log("called get info");
 	}
@@ -234,6 +235,7 @@
 		beforeNavigate((nav) => {
 			if (result) return;
 			if (nav.willUnload) return;
+			if (!exist) return;
 			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
 				send({ type: 'surrender' });
 			} else {
@@ -247,15 +249,15 @@
 			loadSessionData();
 			startTimer();
 			loadUserData();
-			loadGameData();
+			fetchGameData();
 			
 
 			if (!isReconnect) {
 				triggerCountdown();
 			}
 			const code = sessionStorage.getItem('private_lobby_code');
-			console.log("lobby code = ", code)
-			send({ type: 'get_lobby', code });
+			if (code)
+				send({ type: 'get_lobby', code });
 			const unsubscribe = subscribe((msg: any) => {
 				switch (msg.type) {
 					case 'ai_guess':
@@ -319,9 +321,13 @@
 						break;
 					case 'lobby_closed':
 						back_lobby = false;
+						break;
 					case 'lobby_info':
-						if (!msg.exist)
+						const does_exist = msg.exist;
+						if (!does_exist){
+							exist = false;
 							goto("/");
+						}
 					case 'game_info':
 						console.log("received game_info");
 						if (!msg.exist) {
@@ -338,9 +344,16 @@
 						applyPlayers(msg.players);
 						updateScores(msg.scores);
 						updateRoundWins(msg.round_wins);
+						if (msg.time_left != null) {
+							endsAt = Date.now() + msg.time_left * 1000;
+							sessionStorage.setItem('draw_ends_at', String(endsAt));
+							startTimer();
+						}
 						saveGameData();
 						break;
-				}
+				default : 
+					console.log("unexpected WS msg: ", msg);
+				}				
 			});
 
 			return () => {

@@ -163,7 +163,7 @@ async def start_game(payload: dict, user: User):
 
 
 def get_game_info(user: User) -> None:
-    game_id = manager.player_games.get(user)
+    game_id = manager.player_games.get(user.username)
     if not game_id:
         manager._emit(
             "broadcast_to_players",
@@ -177,6 +177,8 @@ def get_game_info(user: User) -> None:
     game = manager.games.get(game_id)
     assert game is not None
     opponents = get_opponents(user, game)
+    loop = asyncio.get_running_loop()
+    time_left = max(0, round(game.ends_at - loop.time())) if game.ends_at else None
     manager._emit(
         "broadcast_to_players",
         payloads=[
@@ -195,6 +197,7 @@ def get_game_info(user: User) -> None:
                     "scores": game.scores,
                     "round_wins": game.round_wins,
                     "is_ranked": game.is_ranked,
+                    "time_left": time_left,
                 },
             }
         ],

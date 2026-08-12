@@ -29,11 +29,12 @@
 	}
 
 	function rejoin() {
+		sessionStorage.setItem('draw_word', rejoinGame.word);
 		sessionStorage.setItem('draw_opponent', rejoinGame.opponent);
 		sessionStorage.setItem('draw_players', JSON.stringify(rejoinGame.players));
 		sessionStorage.setItem('draw_me', username);
 		sessionStorage.setItem('draw_is_ranked', rejoinGame.is_ranked.toString());
-		goto('/start_game');
+		goto('/in-game');
 	}
 
 	function forfeit() {

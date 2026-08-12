@@ -46,14 +46,6 @@
 		if (session.authenticated) {
 			login = true;
 		}
-		const in_game = await fetch('/api/reconnect/', {
-			method: 'GET',
-			credentials: 'same-origin'
-		});
-		const reconnect = await in_game.json()
-		if (reconnect.reconnect){
-			HandleReconnect();
-		}
 
 	});
 </script>
