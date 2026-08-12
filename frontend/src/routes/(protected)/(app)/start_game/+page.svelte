@@ -23,7 +23,7 @@
 			isSearching = false;
 			statusMessage = 'Game found';
 			game.id = msg.game_id;
-			game.opponent = msg.opponent;
+			game.opponents = msg.opponent ?? [];
 			game.players = msg.players ?? [];
 			game.me = msg.me ?? '';
 			game.word = msg.word;
