@@ -290,6 +290,8 @@ async def surrender_game(user: User) -> None:
         )
     manager._emit("broadcast_to_players", payloads=payloads)
     winner = get_game_winner(game)
+    if winner is None and len(opponents) == 1:
+        winner = get_user(opponents[0])
     if winner is None:  # TIE
         print("tie, ending game")
         await end_game(game, user, user.username + " surrendered", user)
@@ -298,6 +300,7 @@ async def surrender_game(user: User) -> None:
         await end_game(game, winner, user.username + " surrendered")
     print("clining the lobby...")
     await cleanup_lobby_on_disconnect(user)
+
 
 async def increase_scores(game_id: str):
     game = manager.games[game_id]
