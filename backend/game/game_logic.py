@@ -18,6 +18,7 @@ from utils.getters import (
     get_total_score,
     get_users_unsafe,
 )
+from game.lobby_logic import cleanup_lobby_on_disconnect
 from utils.utils import calculate_new_elo, cancel_timer, cleanup_game, disconnect
 
 
@@ -256,6 +257,7 @@ async def surrender_game(user: User) -> None:
             )
         manager._emit("broadcast_to_players", payloads=payloads)
         disconnect(user)
+        await cleanup_lobby_on_disconnect(user)
 
 
 async def increase_scores(game_id: str):
