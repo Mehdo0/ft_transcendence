@@ -249,9 +249,7 @@
 			if (!isReconnect) {
 				triggerCountdown();
 			}
-			else{
-				send({ type: 'get_info' });
-			}
+			send({ type: 'get_info' });
 			const code = sessionStorage.getItem('private_lobby_code');
 			if (code)
 				send({ type: 'get_lobby', code });
@@ -335,6 +333,11 @@
 						updateScores(msg.scores ?? {});
 						updateRoundWins(msg.round_wins ?? {});
 						saveGameData();
+						if (msg.duration != null) {
+							endsAt = Date.now() + (msg.duration + (msg.countdown ?? 0)) * 1000;
+							sessionStorage.setItem('draw_ends_at', String(endsAt));
+							startTimer();
+						}
 						
 				}
 			});
