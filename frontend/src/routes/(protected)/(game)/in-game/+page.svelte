@@ -27,6 +27,7 @@
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
 	let back_lobby = $state(true);
 	let exist = $state(true);
+	let countdownTimers: ReturnType<typeof setTimeout>[] = [];
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
@@ -89,7 +90,7 @@
 	}
 
 	function scoreFor(player: string) {
-		if (isMe(player)) return game.scores[player] ?? game.my_score ?? 0;
+		if (isMe(player)) return game.scores[player] ?? 0;
 		return game.scores[player] ?? 0;
 	}
 
@@ -97,7 +98,6 @@
 		if (!username) return;
 		const value = Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0;
 		game.scores = { ...game.scores, [username]: value };
-		if (isMe(username)) game.my_score = value;
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 	}
 
@@ -105,7 +105,6 @@
 		game.scores = { ...scores };
 		for (const player of scorePlayers()) {
 			const score = scores[player] ?? 0;
-			if (isMe(player)) game.my_score = score;
 		}
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 	}
@@ -117,8 +116,7 @@
 	}
 
 	function opponentLabel() {
-		const others = scorePlayers().filter((player) => !isMe(player));
-		if (others.length === 0) return 'Solo';
+		const others = scorePlayers().filter((player) => !isMe(player);
 		if (others.length === 1) return others[0];
 		return `${scorePlayers().length} Players`;
 	}
@@ -149,8 +147,6 @@
 
 	function clearSessionData() {
 		sessionStorage.removeItem('draw_stack');
-		sessionStorage.removeItem('draw_my_score');
-		sessionStorage.removeItem('draw_opp_score');
 		sessionStorage.removeItem('draw_word');
 		sessionStorage.removeItem('draw_opponents');
 		sessionStorage.removeItem('draw_players');
@@ -163,20 +159,14 @@
 	}
 
 	function triggerCountdown() {
+    	for (const t of countdownTimers) clearTimeout(t);
+    	countdownTimers = [];
 		showCountdown = true;
-		countdownNum = 3;
-		setTimeout(() => {
-			countdownNum = 2;
-		}, 1000);
-		setTimeout(() => {
-			countdownNum = 1;
-		}, 2000);
-		setTimeout(() => {
-			countdownNum = 0;
-		}, 3000);
-		setTimeout(() => {
-			showCountdown = false;
-		}, 3600);
+    	countdownNum = 3;
+		countdownTimers.push(setTimeout(() => { countdownNum = 2; }, 1000));
+    	countdownTimers.push(setTimeout(() => { countdownNum = 1; }, 2000));
+    	countdownTimers.push(setTimeout(() => { countdownNum = 0; }, 3000));
+    	countdownTimers.push(setTimeout(() => { showCountdown = false; }, 3600));
 	}
 
 	function loadSessionData() {
@@ -257,7 +247,7 @@
 					case 'ai_guess':
 						setPlayerScore(
 							game.me || myUsername || msg.username,
-							msg.score ?? msg.guess?.[game.word] ?? 0
+							msg.scores ?? msg.guess?.[game.word] ?? 0
 						);
 						break;
 					case 'player_guess':
@@ -344,6 +334,7 @@
 			return () => {
 				unsubscribe();
 				stopTimer();
+				for (const t of countdownTimers) clearTimeout(t);
 			};
 		});
 
