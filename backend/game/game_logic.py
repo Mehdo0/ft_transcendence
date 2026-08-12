@@ -129,7 +129,7 @@ def get_game_winner(game: Game) -> User | None:
     max_round_win = max(game.round_wins)
     winners = [user for user in game.players if game.round_wins[user] == max_round_win]
     print("winners:", winners)
-    if len(winners) > 1:  # TIE
+    if len(winners) > 1 or len(winners) == 0:  # TIE
         print("more than 1 winner -> TIE")
         return None
     return get_user(winners[0])
