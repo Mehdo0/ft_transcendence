@@ -25,11 +25,22 @@ from utils.utils import calculate_new_elo, cancel_timer, cleanup_game, disconnec
 async def end_game(
     game: Game, winner: User, reason: str | None = None, surrender: User | None = None
 ):
+    print(
+        "ending game. details:\n",
+        game,
+        "winner:",
+        winner,
+        "reason:",
+        reason,
+        "surrender: ",
+        surrender,
+    )
     users = get_users_unsafe(game.players)
     losers = users.copy()
     losers.remove(winner)
 
     if game.is_ranked and len(losers) == 1:
+        print("ranked game, calculating elo")
         loser = losers[0]
         diff_winner, new_elo_winner = await calculate_new_elo(winner, loser, 1)
         diff_loser, new_elo_loser = await calculate_new_elo(loser, winner, 0)
@@ -39,10 +50,12 @@ async def end_game(
         await send_end_game(loser.username, "looser", diff_loser, new_elo_loser)
     else:
         if surrender:  # One person surrendered, all other win
+            print("user surrenderd ending game")
             for user in users:
                 status = "winner" if user.username != surrender.username else "looser"
                 await send_end_game(user.username, status, 0, user.elo, reason)
         else:
+            print("ending game, winner : ", winner)
             for user in users:
                 status = "winner" if user.username == winner.username else "looser"
                 await send_end_game(user.username, status, 0, user.elo, reason)
@@ -258,11 +271,13 @@ async def ai_guess(user: User, payload: dict) -> None:
 
 
 async def surrender_game(user: User) -> None:
+    print("user", user.username, "is surrendering")
     game_id = manager.player_games.get(user.username)
     if game_id is None:
         raise ValueError("game doesnt exist")
     game = manager.games[game_id]
     opponents = get_opponents(user, game)
+    print("notifying opponents (", opponents, ")")
     payloads = []
     for opponent in opponents:
         payloads.append(
@@ -274,12 +289,13 @@ async def surrender_game(user: User) -> None:
             }
         )
     manager._emit("broadcast_to_players", payloads=payloads)
-    if len(opponents) == 1:
-        winner = get_game_winner(game)
-        if winner is None:  # TIE
-            await end_game(game, user, user.username + " surrendered", user)
-        else:
-            await end_game(game, winner, user.username + " surrendered")
+    winner = get_game_winner(game)
+    if winner is None:  # TIE
+        print("tie, ending game")
+        await end_game(game, user, user.username + " surrendered", user)
+    else:
+        print("winner is", winner.username)
+        await end_game(game, winner, user.username + " surrendered")
     disconnect(user)
 
 

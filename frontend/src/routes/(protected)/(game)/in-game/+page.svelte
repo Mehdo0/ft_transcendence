@@ -116,7 +116,7 @@
 	}
 
 	function opponentLabel() {
-		const others = scorePlayers().filter((player) => !isMe(player);
+		const others = scorePlayers().filter((player) => !isMe(player));
 		if (others.length === 1) return others[0];
 		return `${scorePlayers().length} Players`;
 	}
