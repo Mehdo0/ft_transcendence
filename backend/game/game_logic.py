@@ -163,7 +163,7 @@ async def start_game(payload: dict, user: User):
 
 
 def get_game_info(user: User) -> None:
-    game_id = manager.player_games.get(user)
+    game_id = manager.player_games.get(user.username)
     if not game_id:
         manager._emit(
             "broadcast_to_players",

@@ -249,6 +249,9 @@
 			if (!isReconnect) {
 				triggerCountdown();
 			}
+			else{
+				send({ type: 'get_info' });
+			}
 			const code = sessionStorage.getItem('private_lobby_code');
 			if (code)
 				send({ type: 'get_lobby', code });
@@ -316,14 +319,23 @@
 					case 'lobby_closed':
 						back_lobby = false;
 						break;
-					case 'lobby_info':
-						const does_exist = msg.exist;
-						if (!does_exist){
+					case 'game_info':
+						if (!msg.exist){
 							exist = false;
 							goto("/");
+							break;
 						}
-							
-						break;
+						game.id = msg.game_id;
+						game.opponent = msg.opponent;
+						game.me = msg.me ?? game.me;
+						game.word = msg.word;
+						game.is_ranked = msg.is_ranked ?? game.is_ranked;
+						disconnectedPlayers = {};
+						applyPlayers(msg.players ?? []);
+						updateScores(msg.scores ?? {});
+						updateRoundWins(msg.round_wins ?? {});
+						saveGameData();
+						
 				}
 			});
 
