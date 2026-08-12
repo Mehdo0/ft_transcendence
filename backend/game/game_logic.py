@@ -296,8 +296,6 @@ async def surrender_game(user: User) -> None:
     else:
         print("winner is", winner.username)
         await end_game(game, winner, user.username + " surrendered")
-    disconnect(user)
-
 
 async def increase_scores(game_id: str):
     game = manager.games[game_id]

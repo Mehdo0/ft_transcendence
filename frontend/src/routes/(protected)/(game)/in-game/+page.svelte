@@ -28,6 +28,7 @@
 	let back_lobby = $state(true);
 	let exist = $state(true);
 	let countdownTimers: ReturnType<typeof setTimeout>[] = [];
+	let surrendered= $state(false);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
@@ -218,6 +219,7 @@
 			if (result) return;
 			if (nav.willUnload) return;
 			if (!exist) return;
+			if (surrendered) return;
 			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
 				send({ type: 'surrender' });
 			} else {
@@ -309,7 +311,12 @@
 					case 'game_info':
 						if (!msg.exist) {
 							exist = false;
-							goto('/');
+							const code = sessionStorage.getItem('private_lobby_code');
+							console.log(code);
+							if (code != '' && back_lobby == true)
+								goto(code ? `/lobby/${code}` : '/lobby');
+							else
+								goto("/");
 							break;
 						}
 						game.id = msg.game_id;
@@ -349,11 +356,19 @@
 		}
 	});
 
-		function surrender() {
-			if (confirm('Are you sure you want to forfeit the match?')) {
-				send({ type: 'surrender' });
-			}
+	function surrender() {
+		if (confirm('Are you sure you want to forfeit the match?')) {
+			send({ type: 'surrender' });
+			surrendered  = true;
+			const code = sessionStorage.getItem('private_lobby_code');
+			console.log(code);
+			if (code != '' && back_lobby == true)
+				goto(code ? `/lobby/${code}` : '/lobby');
+			else
+				goto("/");
+				
 		}
+	}
 
 	function resize() {
 		if (!canvas || !context) return;
