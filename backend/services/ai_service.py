@@ -11,7 +11,7 @@ from utils.drawing_parse import strokes_to_tensor
 
 BRAIN_PATH = os.path.join(BASE_DIR, "ai_brain", "transformers.pth")
 device = torch.device("cpu")
-checkpoint = torch.load(BRAIN_PATH, map_location=device, weights_only=False)
+checkpoint = torch.load(BRAIN_PATH, map_location=device, weights_only=True)
 
 
 def load_word_list():

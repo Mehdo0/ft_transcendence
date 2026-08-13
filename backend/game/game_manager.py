@@ -14,6 +14,14 @@ from schemas.data import Game, GameState, User
 from utils.getters import get_opponents, get_random_word, get_user
 
 
+def _on_task_done(task):
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        print("event handler failed:", exc)
+
+
 class GameManager:
     def __init__(self):
         self.connections: dict[str, WebSocket] = {}
@@ -32,7 +40,8 @@ class GameManager:
 
     def _emit(self, event: str, **data):
         for cb in self._listeners.get(event, []):
-            asyncio.create_task(cb(event, data))
+            task = asyncio.create_task(cb(event, data))
+            task.add_done_callback(_on_task_done)
 
     async def find_player(self, user: User):
         if self.player_games.get(user.username):

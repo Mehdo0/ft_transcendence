@@ -82,7 +82,7 @@ async def API_session_is_authenticated(
     return {"authenticated": True, "user": current_user}
 
 
-@router.get("api/reconnect/")
+@router.get("/api/reconnect/")
 @limiter.limit("120/minute")
 async def API_reconnect(
     request: Request,
@@ -90,14 +90,14 @@ async def API_reconnect(
 ):
     if current_user is None:
         return {"reconnect": False}
-    id = manager.player_games.get(current_user)
+    id = manager.player_games.get(current_user.username)
     if id:
         return {"reconnect": True, "id": id}
     else:
         return {"reconnect": False}
 
 
-@router.get("api/surrender")
+@router.get("/api/surrender")
 @limiter.limit("120/minute")
 async def API_surrender(
     request: Request,
@@ -105,7 +105,7 @@ async def API_surrender(
 ):
     if current_user is None:
         return {"success": False}
-    id = manager.player_games.get(current_user)
+    id = manager.player_games.get(current_user.username)
     if id:
         try:
             await surrender_game(current_user)

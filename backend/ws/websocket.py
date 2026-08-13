@@ -39,7 +39,7 @@ async def authenticate_user_trough_ws(websocket) -> User:
         print("token not found when connecting websocket")
         raise
     except Exception:
-        print("WS: auth failed for user", user.username)
+        print("WS: auth failed")
         await websocket.accept()
         await websocket.send_json(
             {

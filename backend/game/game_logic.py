@@ -125,7 +125,7 @@ def get_round_winner(game: Game) -> User | None:
 
 
 def get_game_winner(game: Game) -> User | None:
-    max_round_win = max(game.round_wins)
+    max_round_win = max(game.round_wins.values())
     winners = [user for user in game.players if game.round_wins[user] == max_round_win]
     print("winners:", winners)
     if len(winners) > 1 or len(winners) == 0:  # TIE
@@ -233,7 +233,6 @@ def get_game_info(user: User) -> None:
                     "scores": game.scores,
                     "round_wins": game.round_wins,
                     "is_ranked": game.is_ranked,
-                    "time_left": time_left,
                 },
             }
         ],
@@ -259,6 +258,7 @@ async def ai_guess(user: User, payload: dict) -> None:
                 "username": username,
                 "payload": {
                     "type": "ai_guess",
+                    "username": user.username,
                     "guess": guess,
                     "scores": score,
                 },
@@ -298,7 +298,7 @@ async def surrender_game(user: User, leave_lobby: bool = False) -> None:
     else:
         print("winner is", winner.username)
         await end_game(game, winner, user.username + " surrendered")
-    print("clining the lobby...")
+    print("closing the lobby...")
     if leave_lobby:
         await cleanup_lobby_on_disconnect(user)
     else:

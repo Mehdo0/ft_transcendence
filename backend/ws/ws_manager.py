@@ -18,7 +18,7 @@ from game.lobby_logic import (
 )
 from schemas.data import Game, User
 from utils.getters import get_opponents, get_user
-from utils.utils import disconnect, send_msg_to_opponents
+from utils.utils import disconnect, remove_from_matchmaking, send_msg_to_opponents
 
 
 class WSManager:
@@ -77,7 +77,7 @@ class WSManager:
                 user,
                 {
                     "type": "opponent_disconnected",
-                    "user": user.username,
+                    "username": user.username,
                 },
             )
             asyncio.create_task(self._handle_disconnect_grace_period(user, game))
@@ -113,6 +113,7 @@ class WSManager:
                 await surrender_game(user, payload.get("leave_lobby", False))
             case "leave":
                 await cleanup_lobby_on_disconnect(user)
+                remove_from_matchmaking(user.username)
             case "get_info":
                 get_game_info(user)
             case _:
@@ -149,4 +150,5 @@ class WSManager:
             return
 
         await surrender_game(user, True)
-        self.game_manager.disconnected_players.remove(user.username)
+        if user.username in self.game_manager.disconnected_players:
+            self.game_manager.disconnected_players.remove(user.username)

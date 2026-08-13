@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { registerUser, login, hashPassword } from '$lib/api';
+	import { registerUser, login } from '$lib/api';
 
 	type Errors = {
 		username?: string;

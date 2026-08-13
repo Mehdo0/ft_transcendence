@@ -255,15 +255,12 @@
 				switch (msg.type) {
 					case 'ai_guess':
 						setPlayerScore(
-							game.me || myUsername || msg.username,
+							msg.username,
 							msg.scores ?? msg.guess?.[game.word] ?? 0
 						);
 						break;
 					case 'player_guess':
 						setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
-						break;
-					case 'opponent_guess':
-						if (msg.username) setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
 						break;
 					case 'opponent_disconnected':
 						disconnectedPlayers[msg.username] = true;

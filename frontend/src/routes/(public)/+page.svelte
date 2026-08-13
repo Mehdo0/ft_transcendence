@@ -11,7 +11,8 @@
 	time_left: 0,
 	is_ranked: false,
 	word: '',
-	scores: [],
+	scores: {},
+	round_wins: {}
 	});
 
 	function clearSessionData() {
@@ -31,10 +32,15 @@
 
 	function rejoin() {
 		sessionStorage.setItem('draw_word', rejoinGame.word);
-		JSON.stringify(rejoinGame.opponents)
+		sessionStorage.setItem('draw_opponents', JSON.stringify(rejoinGame.opponents));
 		sessionStorage.setItem('draw_players', JSON.stringify(rejoinGame.players));
 		sessionStorage.setItem('draw_me', username);
 		sessionStorage.setItem('draw_is_ranked', rejoinGame.is_ranked.toString());
+		sessionStorage.setItem('draw_scores', JSON.stringify(rejoinGame.scores));
+		sessionStorage.setItem('draw_round_wins', JSON.stringify(rejoinGame.round_wins));
+		sessionStorage.setItem('draw_in_progress', '1');
+		if (rejoinGame.time_left > 0)
+			sessionStorage.setItem('draw_ends_at', String(Date.now() + rejoinGame.time_left * 1000));
 		goto('/in-game');
 	}
 
@@ -76,7 +82,8 @@
 						time_left: msg.time_left ?? 0,
 						is_ranked: msg.is_ranked ?? false,
 						word: msg.word || '',
-						scores: msg.scores || []
+						scores: msg.scores || {},
+						round_wins: msg.round_wins || {}
 					};
 				showRejoin = true;
 				});
