@@ -10,6 +10,7 @@ from core.config import (
 )
 from core.database import get_user, update_user_elo
 from core.setup import manager
+from game.lobby_logic import close_lobby, cleanup_lobby_on_disconnect
 from schemas.data import Game, User
 from services.services import make_ai_guess
 from utils.getters import (
@@ -21,12 +22,24 @@ from utils.getters import (
 from utils.utils import calculate_new_elo, cancel_timer, cleanup_game, disconnect
 
 
-async def end_game(game: Game, winner: User, reason: str | None = None):
+async def end_game(
+    game: Game, winner: User, reason: str | None = None, surrender: User | None = None
+):
+    print(
+        "ending game. details:\n",
+        game,
+        "winner:",
+        winner,
+        "reason:",
+        reason,
+        "surrender: ",
+        surrender,
+    )
     users = get_users_unsafe(game.players)
-    losers = users.copy()
-    losers.remove(winner)
+    losers = [u for u in users if u.username != winner.username]
 
     if game.is_ranked and len(losers) == 1:
+        print("ranked game, calculating elo")
         loser = losers[0]
         diff_winner, new_elo_winner = await calculate_new_elo(winner, loser, 1)
         diff_loser, new_elo_loser = await calculate_new_elo(loser, winner, 0)
@@ -35,9 +48,16 @@ async def end_game(game: Game, winner: User, reason: str | None = None):
         await send_end_game(winner.username, "winner", diff_winner, new_elo_winner)
         await send_end_game(loser.username, "looser", diff_loser, new_elo_loser)
     else:
-        for user in users:
-            status = "winner" if user.username == winner.username else "looser"
-            await send_end_game(user.username, status, 0, user.elo, reason)
+        if surrender:  # One person surrendered, all other win
+            print("user surrenderd ending game")
+            for user in users:
+                status = "winner" if user.username != surrender.username else "looser"
+                await send_end_game(user.username, status, 0, user.elo, reason)
+        else:
+            print("ending game, winner : ", winner)
+            for user in users:
+                status = "winner" if user.username == winner.username else "looser"
+                await send_end_game(user.username, status, 0, user.elo, reason)
 
     cancel_timer(game.id)
     cleanup_game(game)
@@ -87,13 +107,7 @@ async def start_next_round(game: Game):
     manager.game_timers[game.id] = asyncio.create_task(game_timer(game.id))
 
 
-async def end_game_by_timeout(game_id: str):
-    print("ending game ", game_id, " by timeout")
-    print("asserting game exists...")
-
-    assert game_id in manager.games
-    game = manager.games[game_id]
-
+def get_round_winner(game: Game) -> User | None:
     print("fetching users...\nusers:")
     users = game.players
     for user in users:
@@ -104,20 +118,40 @@ async def end_game_by_timeout(game_id: str):
         print("\t", score)
     max_score = max(scores.values())
     winners = [user for user in users if scores[user] == max_score]
-    print("winner(s): ", winners)
+    if len(winners) > 1:  # TIE
+        return None
+    print("winner: ", winners[0])
+    return get_user(winners[0])
 
-    assert len(winners) > 0
 
-    if len(winners) > 1:
+def get_game_winner(game: Game) -> User | None:
+    max_round_win = max(game.round_wins)
+    winners = [user for user in game.players if game.round_wins[user] == max_round_win]
+    print("winners:", winners)
+    if len(winners) > 1 or len(winners) == 0:  # TIE
+        print("more than 1 winner -> TIE")
+        return None
+    return get_user(winners[0])
+
+
+async def end_game_by_timeout(game_id: str):
+    print("ending game ", game_id, " by timeout")
+    print("asserting game exists...")
+
+    assert game_id in manager.games
+    game = manager.games[game_id]
+
+    winner = get_round_winner(game)
+
+    if winner is None:  # TIE
         payloads = []
-        for username in users:
+        for username in game.players:
             payloads.append({"username": username, "payload": {"type": "round_tie"}})
         manager._emit("broadcast_to_players", payloads=payloads)
         await start_next_round(game)
         return
     else:
-        assert get_user(winners[0]) is not None  # TODO: remove
-        await handle_round_end(game, get_user(winners[0]))
+        await handle_round_end(game, winner)
 
 
 async def start_game(payload: dict, user: User):
@@ -164,7 +198,8 @@ async def start_game(payload: dict, user: User):
 
 def get_game_info(user: User) -> None:
     game_id = manager.player_games.get(user.username)
-    if not game_id:
+    game = manager.games.get(game_id)
+    if not game:
         manager._emit(
             "broadcast_to_players",
             payloads=[
@@ -174,6 +209,7 @@ def get_game_info(user: User) -> None:
                 }
             ],
         )
+        return
     game = manager.games.get(game_id)
     assert game is not None
     opponents = get_opponents(user, game)
@@ -234,29 +270,43 @@ async def ai_guess(user: User, payload: dict) -> None:
         await handle_round_end(game, user)
 
 
-async def surrender_game(user: User) -> None:
+async def surrender_game(user: User, leave_lobby: bool = False) -> None:
+    print("user", user.username, "is surrendering")
     game_id = manager.player_games.get(user.username)
     if game_id is None:
         raise ValueError("game doesnt exist")
     game = manager.games[game_id]
     opponents = get_opponents(user, game)
-    if len(opponents) == 1:
-        winner = get_user(opponents[0]) if opponents else None
-        assert winner is not None
-        await end_game(game, winner, "opponent_surrendered")
+    print("notifying opponents (", opponents, ")")
+    payloads = []
+    for opponent in opponents:
+        payloads.append(
+            {
+                "username": opponent,
+                "payload": {
+                    "type": "opponent_surrendered",
+                },
+            }
+        )
+    manager._emit("broadcast_to_players", payloads=payloads)
+    winner = get_game_winner(game)
+    if winner is None and len(opponents) == 1:
+        winner = get_user(opponents[0])
+    if winner is None:
+        print("tie, ending game")
+        await end_game(game, user, user.username + " surrendered", user)
     else:
-        payloads = []
-        for player in game.players:
-            payloads.append(
-                {
-                    "username": player,
-                    "payload": {
-                        "type": "opponent_surrendered",
-                    },
-                }
-            )
-        manager._emit("broadcast_to_players", payloads=payloads)
-        disconnect(user)
+        print("winner is", winner.username)
+        await end_game(game, winner, user.username + " surrendered")
+    print("clining the lobby...")
+    if leave_lobby:
+        await cleanup_lobby_on_disconnect(user)
+    else:
+        for code, lobby in list(manager.lobbies.items()):
+            if user.username in lobby["players"] and lobby["host"] == user.username:
+                await close_lobby(code)
+                break
+
 
 
 async def increase_scores(game_id: str):

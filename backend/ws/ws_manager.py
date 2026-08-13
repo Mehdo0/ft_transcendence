@@ -110,7 +110,7 @@ class WSManager:
             case "guess":
                 await ai_guess(user, payload)
             case "surrender":
-                await surrender_game(user)
+                await surrender_game(user, payload.get("leave_lobby", False))
             case "leave":
                 await cleanup_lobby_on_disconnect(user)
             case "get_info":
@@ -129,7 +129,7 @@ class WSManager:
             {
                 "type": "reconnect_game",
                 "game_id": game.id,
-                "opponent": opponents[0] if opponents else "",
+                "opponent": opponents,
                 "players": game.players,
                 "me": user.username,
                 "word": game.word,
@@ -148,22 +148,5 @@ class WSManager:
         if user.username not in self.game_manager.disconnected_players:
             return
 
-        opponents = get_opponents(user, game)
+        await surrender_game(user, True)
         self.game_manager.disconnected_players.remove(user.username)
-        disconnect(user)
-
-        if len(opponents) == 1:
-            winner = get_user(opponents[0])
-            assert winner is not None
-            await end_game(game, winner, "opponent_disconnected")
-
-        await cleanup_lobby_on_disconnect(user)
-
-        await send_msg_to_opponents(
-            game,
-            user,
-            {
-                "type": "opponent_disconnected",
-                "username": user.username,
-            },
-        )

@@ -6,7 +6,7 @@
 	let username = $state('');
 	let showRejoin = $state(false);
 	let rejoinGame = $state({
-	opponent: '',
+	opponents: [],
 	players: [] as string[],
 	time_left: 0,
 	is_ranked: false,
@@ -16,10 +16,8 @@
 
 	function clearSessionData() {
 		sessionStorage.removeItem('draw_stack');
-		sessionStorage.removeItem('draw_my_score');
-		sessionStorage.removeItem('draw_opp_score');
 		sessionStorage.removeItem('draw_word');
-		sessionStorage.removeItem('draw_opponent');
+		sessionStorage.removeItem('draw_opponents');
 		sessionStorage.removeItem('draw_players');
 		sessionStorage.removeItem('draw_me');
 		sessionStorage.removeItem('draw_scores');
@@ -28,11 +26,12 @@
 		sessionStorage.removeItem('draw_in_progress');
 		sessionStorage.removeItem('isHost');
 		sessionStorage.removeItem('players');
+		sessionStorage.removeItem('draw_round_wins')
 	}
 
 	function rejoin() {
 		sessionStorage.setItem('draw_word', rejoinGame.word);
-		sessionStorage.setItem('draw_opponent', rejoinGame.opponent);
+		JSON.stringify(rejoinGame.opponents)
 		sessionStorage.setItem('draw_players', JSON.stringify(rejoinGame.players));
 		sessionStorage.setItem('draw_me', username);
 		sessionStorage.setItem('draw_is_ranked', rejoinGame.is_ranked.toString());
@@ -40,7 +39,7 @@
 	}
 
 	function forfeit() {
-		send({ type: 'surrender' });
+		send({ type: 'surrender', leave_lobby: true});
 		showRejoin = false;
 	}
 
@@ -72,7 +71,7 @@
 					clearTimeout(timeout);
 					unsub();
 					rejoinGame = {
-						opponent: msg.opponent || '',
+						opponents: msg.opponent || [],
 						players: msg.players || [],
 						time_left: msg.time_left ?? 0,
 						is_ranked: msg.is_ranked ?? false,
@@ -93,7 +92,7 @@
  <div class="popup-overlay" role="dialog" aria-label="Game reconnection">
   <div class="popup-card">
    <h2>You have an active game</h2>
-   <p>vs {rejoinGame.opponent || rejoinGame.players.filter((p: string) => p !== username).join(', ') || 'opponent'}</p>
+   <p>vs {rejoinGame.opponents || rejoinGame.players.filter((p: string) => p !== username).join(', ') || 'opponents'}</p>
    {#if rejoinGame.time_left > 0}
     <p>{Math.ceil(rejoinGame.time_left)}s remaining</p>
    {/if}

@@ -1,6 +1,6 @@
 	<script lang="ts">
 		import { game } from '$lib/stores/game.svelte';
-		import { send, subscribe } from '$lib/stores/wsManager';
+		import { send, subscribe, isOpen } from '$lib/stores/wsManager';
 		import { onMount } from 'svelte';
 		import { goto, beforeNavigate } from '$app/navigation';
 
@@ -27,6 +27,8 @@
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
 	let back_lobby = $state(true);
 	let exist = $state(true);
+	let countdownTimers: ReturnType<typeof setTimeout>[] = [];
+	let surrendered= $state(false);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
@@ -77,7 +79,6 @@
 		if (game.players.length > 0) return game.players;
 		const players: string[] = [];
 		if (game.me || myUsername) players.push(game.me || myUsername);
-		if (game.opponent) players.push(game.opponent);
 		return players;
 	}
 
@@ -90,16 +91,14 @@
 	}
 
 	function scoreFor(player: string) {
-		if (isMe(player)) return game.scores[player] ?? game.my_score ?? 0;
-		return game.scores[player] ?? (player === game.opponent ? game.opponent_score : 0);
+		if (isMe(player)) return game.scores[player] ?? 0;
+		return game.scores[player] ?? 0;
 	}
 
 	function setPlayerScore(username: string, score: number) {
 		if (!username) return;
 		const value = Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0;
 		game.scores = { ...game.scores, [username]: value };
-		if (isMe(username)) game.my_score = value;
-		if (username === game.opponent) game.opponent_score = value;
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 	}
 
@@ -107,8 +106,6 @@
 		game.scores = { ...scores };
 		for (const player of scorePlayers()) {
 			const score = scores[player] ?? 0;
-			if (isMe(player)) game.my_score = score;
-			if (player === game.opponent) game.opponent_score = score;
 		}
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 	}
@@ -121,7 +118,6 @@
 
 	function opponentLabel() {
 		const others = scorePlayers().filter((player) => !isMe(player));
-		if (others.length === 0) return 'Solo';
 		if (others.length === 1) return others[0];
 		return `${scorePlayers().length} Players`;
 	}
@@ -142,7 +138,7 @@
 
 	function saveGameData() {
 		sessionStorage.setItem('draw_word', game.word);
-		sessionStorage.setItem('draw_opponent', game.opponent);
+		sessionStorage.setItem('draw_opponents', JSON.stringify(game.opponents));
 		sessionStorage.setItem('draw_players', JSON.stringify(game.players));
 		sessionStorage.setItem('draw_me', game.me);
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
@@ -152,10 +148,8 @@
 
 	function clearSessionData() {
 		sessionStorage.removeItem('draw_stack');
-		sessionStorage.removeItem('draw_my_score');
-		sessionStorage.removeItem('draw_opp_score');
 		sessionStorage.removeItem('draw_word');
-		sessionStorage.removeItem('draw_opponent');
+		sessionStorage.removeItem('draw_opponents');
 		sessionStorage.removeItem('draw_players');
 		sessionStorage.removeItem('draw_me');
 		sessionStorage.removeItem('draw_scores');
@@ -166,20 +160,14 @@
 	}
 
 	function triggerCountdown() {
+    	for (const t of countdownTimers) clearTimeout(t);
+    	countdownTimers = [];
 		showCountdown = true;
-		countdownNum = 3;
-		setTimeout(() => {
-			countdownNum = 2;
-		}, 1000);
-		setTimeout(() => {
-			countdownNum = 1;
-		}, 2000);
-		setTimeout(() => {
-			countdownNum = 0;
-		}, 3000);
-		setTimeout(() => {
-			showCountdown = false;
-		}, 3600);
+    	countdownNum = 3;
+		countdownTimers.push(setTimeout(() => { countdownNum = 2; }, 1000));
+    	countdownTimers.push(setTimeout(() => { countdownNum = 1; }, 2000));
+    	countdownTimers.push(setTimeout(() => { countdownNum = 0; }, 3000));
+    	countdownTimers.push(setTimeout(() => { showCountdown = false; }, 3600));
 	}
 
 	function loadSessionData() {
@@ -199,8 +187,8 @@
 		const savedWord = sessionStorage.getItem('draw_word');
 		if (savedWord) game.word = savedWord;
 
-		const savedOpponent = sessionStorage.getItem('draw_opponent');
-		if (savedOpponent) game.opponent = savedOpponent;
+		const savedOpponents = readJson<string[]>('draw_opponents', []);
+		if (savedOpponents.length > 0) game.opponents = savedOpponents;
 
 		const savedEndsAt = sessionStorage.getItem('draw_ends_at');
 		endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 63000;
@@ -218,8 +206,8 @@
 				if (!game.players.includes(user.username)) applyPlayers([user.username, ...game.players]);
 			})
 			.catch(() => {});
-			if (!game.is_ranked || !game.opponent) return;
-		fetch(`/api/users/${game.opponent}/stats`, { credentials: 'same-origin' })
+			if (!game.is_ranked || game.opponents.length === 0) return;
+			fetch(`/api/users/${game.opponents[0]}/stats`, { credentials: 'same-origin' })
 			.then((response) => (response.ok ? response.json() : null))
 			.then((data) => {
 				if (data) opponentElo = data.Elo;
@@ -236,8 +224,9 @@
 			if (result) return;
 			if (nav.willUnload) return;
 			if (!exist) return;
+			if (surrendered) return;
 			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
-				send({ type: 'surrender' });
+				send({ type: 'surrender' , leave_lobby: true});
 			} else {
 				nav.cancel();
 			}
@@ -245,6 +234,7 @@
 
 		onMount(() => {
 			const isReconnect = sessionStorage.getItem('draw_in_progress') === '1';
+			console.log("isReconnect: ", isReconnect)
 			sessionStorage.setItem('draw_in_progress', '1');
 			loadSessionData();
 			startTimer();
@@ -260,25 +250,26 @@
 			if (code)
 				send({ type: 'get_lobby', code });
 			const unsubscribe = subscribe((msg: any) => {
+				console.log(msg)
 				switch (msg.type) {
 					case 'ai_guess':
 						setPlayerScore(
 							game.me || myUsername || msg.username,
-							msg.score ?? msg.guess?.[game.word] ?? 0
+							msg.scores ?? msg.guess?.[game.word] ?? 0
 						);
 						break;
 					case 'player_guess':
 						setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
 						break;
 					case 'opponent_guess':
-						setPlayerScore(game.opponent, msg.score ?? msg.guess?.[game.word] ?? 0);
+						if (msg.username) setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
 						break;
 					case 'opponent_disconnected':
 						disconnectedPlayers[msg.username] = true;
 						break;
 					case 'reconnect_game':
 						game.id = msg.game_id;
-						game.opponent = msg.opponent;
+						game.opponents = Array.isArray(msg.opponent) ? msg.opponent : (msg.opponent ? [msg.opponent] : []);
 						game.me = msg.me ?? game.me;
 						game.word = msg.word;
 						game.is_ranked = msg.is_ranked ?? game.is_ranked;
@@ -326,16 +317,21 @@
 					case 'game_info':
 						console.log("received game_info");
 						if (!msg.exist) {
-							console.log("game doesnt exist, leaving");
-							goto("/");
+							exist = false;
+							const code = sessionStorage.getItem('private_lobby_code');
+							console.log(code);
+							if (code != '' && back_lobby == true)
+								goto(code ? `/lobby/${code}` : '/lobby');
+							else
+								goto("/");
+							break;
 						}
 						console.log("game exists, loading data: \n" + msg);
 						game.id = msg.game_id;
-						game.opponent = msg.opponent;
+						game.opponents = msg.opponent ?? [];
 						game.me = msg.me;
 						game.word = msg.word;
-						game.is_ranked = msg.is_ranked;
-						disconnectedPlayers = {};
+						game.is_ranked = msg.is_ranked
 						applyPlayers(msg.players);
 						updateScores(msg.scores);
 						updateRoundWins(msg.round_wins);
@@ -356,6 +352,7 @@
 			return () => {
 				unsubscribe();
 				stopTimer();
+				for (const t of countdownTimers) clearTimeout(t);
 			};
 		});
 
@@ -370,11 +367,20 @@
 		}
 	});
 
-		function surrender() {
-			if (confirm('Are you sure you want to forfeit the match?')) {
-				send({ type: 'surrender' });
-			}
+	function surrender() {
+		if (confirm('Are you sure you want to forfeit the match?')) {
+			send({ type: 'surrender' });
+			surrendered = true;
+			const code = sessionStorage.getItem('private_lobby_code');
+			console.log(code);
+			clearSessionData();
+			if (!game.is_ranked && code != '' && back_lobby == true)
+				goto(code ? `/lobby/${code}` : '/lobby');
+			else
+				goto("/");
+				
 		}
+	}
 
 	function resize() {
 		if (!canvas || !context) return;
@@ -486,7 +492,7 @@
 					<span class="cd-pname">{playerLabel(player)}</span>
 					{#if game.is_ranked && isMe(player)}
 						<span class="cd-pelo">{myElo !== null ? myElo : '-'}<em>ELO</em></span>
-					{:else if game.is_ranked && player === game.opponent}
+					{:else if game.is_ranked && !isMe(player)}
 						<span class="cd-pelo">{opponentElo !== null ? opponentElo : '-'}<em>ELO</em></span>
 					{/if}
 				</div>

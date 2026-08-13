@@ -73,7 +73,7 @@
 		}
 		if (msg.type === 'match_found') {
 			game.id = msg.game_id;
-			game.opponent = msg.opponent[0] ?? '';
+			game.opponents = msg.opponent ?? [];
 			game.players = msg.players ?? [];
 			game.me = msg.me ?? '';
 			game.word = msg.word;
