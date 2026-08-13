@@ -141,6 +141,15 @@ class WSManager:
             }
         )
 
+        await send_msg_to_opponents(
+            game,
+            user,
+            {
+                "type": "opponent_reconnected",
+                "username": user.username,
+            },
+        )
+
     async def _handle_disconnect_grace_period(self, user: User, game: Game):
         self.game_manager.disconnected_players.append(user.username)
         print("user", user.username)

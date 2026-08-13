@@ -265,13 +265,16 @@
 					case 'opponent_disconnected':
 						disconnectedPlayers[msg.username] = true;
 						break;
+					case 'opponent_reconnected':
+						delete disconnectedPlayers[msg.username];
+						break;
 					case 'reconnect_game':
 						game.id = msg.game_id;
 						game.opponents = Array.isArray(msg.opponent) ? msg.opponent : (msg.opponent ? [msg.opponent] : []);
 						game.me = msg.me ?? game.me;
 						game.word = msg.word;
 						game.is_ranked = msg.is_ranked ?? game.is_ranked;
-						disconnectedPlayers = {};
+						delete disconnectedPlayers[msg.me];
 						applyPlayers(msg.players ?? []);
 						updateScores(msg.scores ?? {});
 						updateRoundWins(msg.round_wins ?? {});
