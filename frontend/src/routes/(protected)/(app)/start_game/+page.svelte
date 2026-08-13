@@ -46,12 +46,12 @@
 		}
 		onMount(() => {
 			isConnected = isOpen();
-			while (!isConnected){
+			if (!isConnected){
 				connect();
 				isConnected = isOpen();
 				statusMessage = isConnected ? 'Connected' : 'Connecting';
 			}
-
+			statusMessage = isConnected ? 'Connected' : 'Connecting';
 			const unsubscribe = subscribe((message) => {
 				if (message.type === 'match_found') handleMatchFound(message);
 			});
