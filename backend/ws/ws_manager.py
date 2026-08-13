@@ -110,7 +110,7 @@ class WSManager:
             case "guess":
                 await ai_guess(user, payload)
             case "surrender":
-                await surrender_game(user)
+                await surrender_game(user, payload.get("leave_lobby", False))
             case "leave":
                 await cleanup_lobby_on_disconnect(user)
             case "get_info":
@@ -148,5 +148,5 @@ class WSManager:
         if user.username not in self.game_manager.disconnected_players:
             return
 
-        await surrender_game(user)
+        await surrender_game(user, True)
         self.game_manager.disconnected_players.remove(user.username)

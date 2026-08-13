@@ -10,7 +10,7 @@ from core.config import (
 )
 from core.database import get_user, update_user_elo
 from core.setup import manager
-from game.lobby_logic import cleanup_lobby_on_disconnect
+from game.lobby_logic import close_lobby, cleanup_lobby_on_disconnect
 from schemas.data import Game, User
 from services.services import make_ai_guess
 from utils.getters import (
@@ -36,8 +36,7 @@ async def end_game(
         surrender,
     )
     users = get_users_unsafe(game.players)
-    losers = users.copy()
-    losers.remove(winner)
+    losers = [u for u in users if u.username != winner.username]
 
     if game.is_ranked and len(losers) == 1:
         print("ranked game, calculating elo")
@@ -270,7 +269,7 @@ async def ai_guess(user: User, payload: dict) -> None:
         await handle_round_end(game, user)
 
 
-async def surrender_game(user: User) -> None:
+async def surrender_game(user: User, leave_lobby: bool = False) -> None:
     print("user", user.username, "is surrendering")
     game_id = manager.player_games.get(user.username)
     if game_id is None:
@@ -292,14 +291,21 @@ async def surrender_game(user: User) -> None:
     winner = get_game_winner(game)
     if winner is None and len(opponents) == 1:
         winner = get_user(opponents[0])
-    if winner is None:  # TIE
+    if winner is None:
         print("tie, ending game")
         await end_game(game, user, user.username + " surrendered", user)
     else:
         print("winner is", winner.username)
         await end_game(game, winner, user.username + " surrendered")
     print("clining the lobby...")
-    await cleanup_lobby_on_disconnect(user)
+    if leave_lobby:
+        await cleanup_lobby_on_disconnect(user)
+    else:
+        for code, lobby in list(manager.lobbies.items()):
+            if user.username in lobby["players"] and lobby["host"] == user.username:
+                await close_lobby(code)
+                break
+
 
 
 async def increase_scores(game_id: str):

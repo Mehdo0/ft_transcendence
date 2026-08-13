@@ -221,7 +221,7 @@
 			if (!exist) return;
 			if (surrendered) return;
 			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
-				send({ type: 'surrender' });
+				send({ type: 'surrender' , leave_lobby: true});
 			} else {
 				nav.cancel();
 			}

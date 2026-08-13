@@ -77,14 +77,32 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
             )
 
 
+async def close_lobby(code: str) -> None:
+    lobby = manager.lobbies.pop(code, None)
+    if lobby is None:
+        return
+    for player in lobby["players"]:
+        player_ws = manager.connections.get(player)
+        if player_ws:
+            await player_ws.send_json({"type": "lobby_closed"})
+
+
 async def cleanup_lobby_on_disconnect(user: User):
     for code, lobby in list(manager.lobbies.items()):
         if user.username not in lobby["players"]:
             continue
 
-        closed_lobby = manager.lobbies.pop(code)
-        for player in closed_lobby["players"]:
+        if lobby["host"] == user.username:
+            await close_lobby(code)
+            return
+
+        lobby["players"].remove(user.username)
+        for player in lobby["players"]:
             player_ws = manager.connections.get(player)
             if player_ws:
-                await player_ws.send_json({"type": "lobby_closed"})
-        return
+                await player_ws.send_json(
+                    {
+                        "type": "player_left",
+                        "username": user.username,
+                    }
+                )

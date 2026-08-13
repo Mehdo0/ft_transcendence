@@ -39,7 +39,7 @@
 	}
 
 	function forfeit() {
-		send({ type: 'surrender' });
+		send({ type: 'surrender', leave_lobby: true});
 		showRejoin = false;
 	}
 
