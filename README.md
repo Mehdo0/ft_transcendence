@@ -6,18 +6,18 @@ Draw Meter: a real-time multiplayer drawing game. Players race to draw a given w
 
 | Role | Member |
 | --- | --- |
-| Product Owner | [Full Name] |
-| Project Manager / Scrum Master | [Full Name] |
-| Technical Lead / Architect | [Full Name] |
-| Developer | [Full Name] |
+| Product Owner | mmouaffa |
+| Project Manager / Scrum Master | lfaure |
+| Technical Lead / Architect | nbonnet |
+| Developer | kkgiraud |
 
 The team has 4 members, so some members hold multiple roles. Update this table with the actual names and describe each member's responsibilities in one sentence.
 
 ## Project Management
 
-- Communication: [Discord / Slack / other] for daily coordination.
-- Task tracking: [GitHub Issues / Trello / Notion] for the backlog and sprint planning.
-- Meetings: [weekly / bi-weekly] sync to review progress and blockers.
+- Communication: Discord for daily coordination.
+- Task tracking: GitHub Issues for the backlog and sprint planning.
+- Meetings: weekly sync to review progress and blockers.
 - Work breakdown: features were split into small tasks assigned per member.
 - Code reviews: every significant change was reviewed by at least one other member.
 
