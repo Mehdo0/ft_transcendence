@@ -25,7 +25,6 @@
 
 	function clearSessionData() {
 		sessionStorage.removeItem('players');
-		sessionStorage.removeItem('isHost');
 	}
 
 		onMount(() => {

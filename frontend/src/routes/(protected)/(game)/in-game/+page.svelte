@@ -157,6 +157,7 @@
 		sessionStorage.removeItem('draw_is_ranked');
 		sessionStorage.removeItem('draw_ends_at');
 		sessionStorage.removeItem('draw_in_progress');
+		sessionStorage.removeItem('isHost');
 	}
 
 	function triggerCountdown() {
@@ -345,7 +346,7 @@
 						loadUserData();
 						break;
 				default : 
-					console.log("unexpected WS msg: ", msg);
+					console.log("unexpected WS msg: ", msg);
 				}				
 			});
 
@@ -369,12 +370,13 @@
 
 	function surrender() {
 		if (confirm('Are you sure you want to forfeit the match?')) {
-			send({ type: 'surrender' });
+			const isHost = sessionStorage.getItem('isHost') ?? false;
+			send({ type: 'surrender' , leave_lobby: isHost});
 			surrendered = true;
 			const code = sessionStorage.getItem('private_lobby_code');
 			console.log(code);
 			clearSessionData();
-			if (!game.is_ranked && code != '' && back_lobby == true)
+			if (!game.is_ranked && code != '' && back_lobby == true && !isHost)
 				goto(code ? `/lobby/${code}` : '/lobby');
 			else
 				goto("/");
