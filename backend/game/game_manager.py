@@ -10,7 +10,7 @@ from core.config import (
     MATCHMAKING_WAIT_PER_STEP,
     ROUND_DURATION,
 )
-from schemas.data import Game, GameState, User
+from schemas.data import Game, GameState, Lobby, User
 from utils.getters import get_opponents, get_random_word, get_user
 
 
@@ -26,9 +26,9 @@ class GameManager:
     def __init__(self):
         self.connections: dict[str, WebSocket] = {}
 
-        self.games: dict[str, Game] = {}
-        self.player_games: dict[str, str] = {}
-        self.lobbies: dict[str, dict] = {}
+        self.games: dict[str, Game] = {}  # GameId -> Game
+        self.player_games: dict[str, str] = {}  # username -> GameId
+        self.lobbies: dict[str, Lobby] = {}  # LobbyId -> Lobby
 
         self.matchmaking_queue: list[str] = []
         self.disconnected_players: list[str] = []

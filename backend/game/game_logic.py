@@ -10,7 +10,7 @@ from core.config import (
 )
 from core.database import get_user, update_user_elo
 from core.setup import manager
-from game.lobby_logic import close_lobby, cleanup_lobby_on_disconnect
+from game.lobby_logic import cleanup_lobby_on_disconnect, close_lobby
 from schemas.data import Game, User
 from services.services import make_ai_guess
 from utils.getters import (
@@ -19,7 +19,7 @@ from utils.getters import (
     get_total_score,
     get_users_unsafe,
 )
-from utils.utils import calculate_new_elo, cancel_timer, cleanup_game, disconnect
+from utils.utils import calculate_new_elo, cancel_timer, cleanup_game
 
 
 async def end_game(
@@ -161,19 +161,18 @@ async def start_game(payload: dict, user: User):
             code=status.WS_1008_POLICY_VIOLATION, reason="Must provide lobby code"
         )
 
-    lobby: dict[str, dict] = manager.lobbies[code]
-    if lobby["host"] != user.username:
+    lobby = manager.lobbies[code]
+    if lobby.host != user.username:
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION, reason="Only host can start game"
         )
-    assert lobby["players"]
-    if len(lobby["players"]) < 2:
+    if len(lobby.players) < 2:
         raise WebSocketException(
             code=status.WS_1008_POLICY_VIOLATION,
             reason="Cannot start game alone",
         )
 
-    for player in lobby["players"]:
+    for player in lobby.players:
         if manager.player_games.get(player) is not None:
             raise WebSocketException(
                 code=status.WS_1008_POLICY_VIOLATION,
@@ -185,10 +184,8 @@ async def start_game(payload: dict, user: User):
                 reason="Not all players are connected",
             )
 
-    players = lobby["players"]
-
     user_objects = []
-    for username in players:
+    for username in lobby.players:
         player = get_user(username)
         assert player is not None
         user_objects.append(player)
@@ -274,7 +271,8 @@ async def surrender_game(user: User, leave_lobby: bool = False) -> None:
     print("user", user.username, "is surrendering")
     game_id = manager.player_games.get(user.username)
     if game_id is None:
-        raise ValueError("game doesnt exist")
+        print("INFO: game has already ended, cannot surrender")
+        return
     game = manager.games[game_id]
     opponents = get_opponents(user, game)
     print("notifying opponents (", opponents, ")")
@@ -303,10 +301,9 @@ async def surrender_game(user: User, leave_lobby: bool = False) -> None:
         await cleanup_lobby_on_disconnect(user)
     else:
         for code, lobby in list(manager.lobbies.items()):
-            if user.username in lobby["players"] and lobby["host"] == user.username:
+            if user.username in lobby.players and lobby.host == user.username:
                 await close_lobby(code)
                 break
-
 
 
 async def increase_scores(game_id: str):

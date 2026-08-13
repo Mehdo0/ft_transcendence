@@ -54,6 +54,11 @@ class Game(BaseModel):
     timer: asyncio.Task | None = None
 
 
+class Lobby(BaseModel):
+    id: str
+    host: str  # host username
+    players: list[str]
+
 
 class ImagePayload(BaseModel):
     base64_string: str
