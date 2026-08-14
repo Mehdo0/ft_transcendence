@@ -49,7 +49,6 @@
 			if (!isConnected){
 				connect();
 				isConnected = isOpen();
-				statusMessage = isConnected ? 'Connected' : 'Connecting';
 			}
 			statusMessage = isConnected ? 'Connected' : 'Connecting';
 			const unsubscribe = subscribe((message) => {
@@ -60,6 +59,35 @@
 				unsubscribe();
 			};
 		});
+
+		onMount(() => {
+			const unsubscribe = subscribe((message) => {
+			if (message.type === 'match_found') {
+				handleMatchFound(message);
+			}
+		});
+
+		isConnected = isOpen();
+
+		if (isConnected) {
+			statusMessage = 'Connected';
+		} else {
+			statusMessage = 'Connecting';
+
+			connect()
+				.then(() => {
+					isConnected = true;
+					statusMessage = 'Connected';
+				})
+				.catch(() => {
+					isConnected = false;
+					statusMessage = 'Disconnected';
+				});
+		}
+
+		return unsubscribe;
+		});
+
 	</script>
 
 <svelte:head>

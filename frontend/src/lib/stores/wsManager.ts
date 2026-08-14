@@ -1,21 +1,46 @@
 let socket: WebSocket | null = null;
+let connectionPromise: Promise<void> | null = null;
 const subscribers: ((message: any) => void)[] = [];
 
-export function connect() {
-	if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING)
-		return;
-	socket = new WebSocket('/ws/');
+export function connect(): Promise<void> {
+	if (socket?.readyState === WebSocket.OPEN) {
+		return Promise.resolve();
+	}
 
-	socket.onmessage = (event) => {
-		try {
-			const message = JSON.parse(event.data);
-			subscribers.forEach((handler) => handler(message));
-		} catch {}
-	};
+	if (connectionPromise) {
+		return connectionPromise;
+	}
 
-	socket.onclose = () => {
-		socket = null;
-	};
+	connectionPromise = new Promise<void>((resolve, reject) => {
+		socket = new WebSocket('/ws/');
+
+		socket.onopen = () => {
+			connectionPromise = null;
+			resolve();
+		};
+
+		socket.onmessage = (event: MessageEvent) => {
+			try {
+				const message = JSON.parse(event.data);
+				subscribers.forEach((handler) => handler(message));
+			} catch {
+				console.log("invalid msg");
+				// Ignore invalid messages
+			}
+		};
+
+		socket.onerror = (error: Event) => {
+			connectionPromise = null;
+			reject(error);
+		};
+
+		socket.onclose = () => {
+			socket = null;
+			connectionPromise = null;
+		};
+	});
+
+	return connectionPromise;
 }
 
 export function disconnect() {
