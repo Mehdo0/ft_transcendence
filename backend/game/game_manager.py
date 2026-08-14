@@ -49,37 +49,24 @@ class GameManager:
         if user.username in self.matchmaking_queue:
             raise ValueError("player is already in matchmaking")
 
-        self.matchmaking_queue.append(user.username)
+        print("GAME: player '" + user.username + "' is looking for a game...")
 
-        for search_range in range(
-            MATCHMAKING_RANGE_STEP, MATCHMAKING_MAX_RANGE + 1, MATCHMAKING_RANGE_STEP
-        ):
-            for _ in range(MATCHMAKING_WAIT_PER_STEP):
-                if user.username not in self.matchmaking_queue:
-                    return
-
-                candidates = []
-                for queued_name in self.matchmaking_queue:
-                    if queued_name == user.username:
-                        continue
-                    queued_user = get_user(queued_name)
-                    if queued_user and abs(queued_user.elo - user.elo) <= search_range:
-                        candidates.append(queued_user)
-
-                if candidates:
-                    opponent = min(candidates, key=lambda u: abs(u.elo - user.elo))
-                    self.matchmaking_queue.remove(opponent.username)
-                    self.matchmaking_queue.remove(user.username)
-                    await self.create_game([opponent, user], True)
-                    return
-
-                await asyncio.sleep(1)
-
-        self.matchmaking_queue.remove(user.username)
-        self._emit(
-            "broadcast_to_players",
-            payloads=[{"username": user.username, "payload": {"type": "waiting"}}],
-        )
+        if len(self.matchmaking_queue) >= 1:
+            print("\tfound another player to match ", user.username, " against!")
+            opponent_name = self.matchmaking_queue.pop(0)
+            print("\t" + user.username + " vs " + opponent_name)
+            assert get_user(opponent_name) is not None
+            opponent = get_user(opponent_name)
+            assert opponent is not None
+            await self.create_game([opponent, user], True)
+            return
+        else:
+            print("\tno player waiting, adding ", user.username, "to queue")
+            self.matchmaking_queue.append(user.username)
+            self._emit(
+                "broadcast_to_players",
+                payloads=[{"username": user.username, "payload": {"type": "waiting"}}],
+            )
 
     async def create_game(self, players: list[User], is_ranked: bool):
         player_usernames = [player.username for player in players]
