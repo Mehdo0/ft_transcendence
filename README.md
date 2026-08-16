@@ -20,8 +20,8 @@ Draw Meter: a real-time multiplayer drawing game. Players race to draw a given w
     - kgiraud: docker setup, frontend.
     - mmouaffa: AI training, backend.
     - nbonnet: AI training, backend + frontend.
-    - lfaure: project structure setup backend.
-    This was tasks were split at first, as the project moved on, everyone had a chance to work on everything. We all worked on both frontend and backend. No work was fenced off to any team member.
+    - lfaure: project structure, setup backend, websockets.
+    This was how tasks were split at first, as the project moved on, everyone had a chance to work on everything. We all worked on both frontend and backend. No work was fenced off to any team member.
 - Code reviews: every significant change was reviewed by at least one other member. We also had devellopment sessions working together on particularly hard features and fixes. Big architectural changes were discussed by all team members.
 
 ## Technical Stack
@@ -97,10 +97,13 @@ Point calculation: Major = 2 points, Minor = 1 point. Minimum required: 14.
 
 ## Individual Contributions
 
-List each member with the specific features, modules and components they implemented, plus any challenges overcome. Example structure:
+Lucien Faure: implemented major parts of the game and lobby backend, including GameInstance, lobby management and surrender handling; improved authentication, security and WebSocket reliability; refactored the lobby system and fixed edge cases around disconnects, reconnection and invalid games.
 
-- [Full Name]: implemented X, Y and Z, fixed the matchmaking queue, etc.
-- [Full Name]: implemented A, B and C, built the AI inference pipeline, etc.
+Mohamed Mehdi Mouaffak: developed the game manager and matchmaking system, including game-state management and WebSocket communication; implemented and fixed major multiplayer/lobby features such as host departure, surrender, player cleanup and reconnection; also handled backend refactoring, validation, security and dead-code cleanup.
+
+Kim Giraud: focused on frontend gameplay and navigation, implementing navigation guards, WebSocket leave handling and protection against accidental forfeits on page refresh; implemented the server-synchronized round timer and fixed several frontend authentication and navigation issues.
+
+Nils Bonnet: implemented the AI component, including the data pipeline and AI guessing system; integrated AI predictions with the game flow; also worked on ELO, private lobbies and frontend WebSocket management, overcoming connection lifecycle issues across navigation.
 
 ## Setup
 
