@@ -1,5 +1,9 @@
 <script lang="ts">
 	import { login } from '$lib/api';
+	import Button from '$lib/components/Button.svelte';
+	import ErrorBox from '$lib/components/ErrorBox.svelte';
+	import Input from '$lib/components/Input.svelte';
+	import PageTitle from '$lib/components/PageTitle.svelte';
 
 	let username = $state('');
 	let password = $state('');
@@ -31,23 +35,20 @@
 	<title>Log In — Draw Meter</title>
 </svelte:head>
 
-<div class="auth-container">
-	<main class="nb-card auth-card">
-		<h1 class="title">Welcome Back</h1>
-		<p class="subtitle">Log in to play</p>
+<div class="flex flex-1 items-center justify-center py-8">
+	<main class="w-full max-w-[420px] border-4 border-ink bg-bg p-6 shadow-nb-lg">
+		<PageTitle title="Welcome Back" subtitle="Log in to play" class="mb-8" />
 
 		{#if errorMessage}
-			<div class="error-box" role="alert">
-				{errorMessage}
-			</div>
+			<ErrorBox class="mb-6">{errorMessage}</ErrorBox>
 		{/if}
 
-
-		<form onsubmit={handleLogin}>
-			<div class="field">
-				<label for="username">Username</label>
-				<input
-					class="nb-input"
+		<form onsubmit={handleLogin} class="flex flex-col gap-6">
+			<div class="flex flex-col gap-2 text-left">
+				<label for="username" class="font-display text-sm font-bold tracking-[0.02em] uppercase"
+					>Username</label
+				>
+				<Input
 					type="text"
 					id="username"
 					autocomplete="username"
@@ -57,10 +58,11 @@
 				/>
 			</div>
 
-			<div class="field">
-				<label for="password">Password</label>
-				<input
-					class="nb-input"
+			<div class="flex flex-col gap-2 text-left">
+				<label for="password" class="font-display text-sm font-bold tracking-[0.02em] uppercase"
+					>Password</label
+				>
+				<Input
 					type="password"
 					id="password"
 					autocomplete="current-password"
@@ -70,88 +72,14 @@
 				/>
 			</div>
 
-			<button type="submit" class="nb-btn nb-btn--primary submit-btn" disabled={isLoading}>
+			<Button type="submit" variant="primary" disabled={isLoading} class="mt-2 w-full">
 				{isLoading ? 'Logging in...' : 'Log In'}
-			</button>
+			</Button>
 		</form>
 
-		<p class="alt">
-			Don't have an account? <a href="/account/register">Register here</a>
+		<p class="mt-8 text-center text-sm text-muted">
+			Don't have an account?
+			<a href="/account/register" class="font-bold text-primary underline">Register here</a>
 		</p>
 	</main>
 </div>
-
-<style>
-	.auth-container {
-		flex: 1;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		padding: var(--space-6) 0;
-	}
-
-	.auth-card {
-		width: 100%;
-		max-width: 420px;
-		box-shadow: var(--shadow-lg);
-	}
-
-	.title {
-		margin: 0 0 var(--space-1);
-		font-size: var(--fs-2xl);
-		text-transform: uppercase;
-	}
-
-	.subtitle {
-		margin: 0 0 var(--space-6);
-		color: var(--c-muted);
-	}
-
-	.error-box {
-		background: var(--c-danger);
-		color: var(--c-on-danger);
-		font-weight: var(--fw-bold);
-		font-size: var(--fs-sm);
-		padding: var(--space-3) var(--space-4);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		margin-bottom: var(--space-5);
-	}
-
-	form {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-5);
-	}
-
-	.field {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		text-align: left;
-	}
-
-	label {
-		font-family: var(--font-display);
-		font-weight: var(--fw-bold);
-		font-size: var(--fs-sm);
-		text-transform: uppercase;
-		letter-spacing: 0.02em;
-	}
-
-	.submit-btn {
-		width: 100%;
-		margin-top: var(--space-2);
-	}
-
-	.alt {
-		margin: var(--space-6) 0 0;
-		font-size: var(--fs-sm);
-		color: var(--c-muted);
-		text-align: center;
-	}
-
-	.alt a {
-		font-weight: var(--fw-bold);
-	}
-</style>
