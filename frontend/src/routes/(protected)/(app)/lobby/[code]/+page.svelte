@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { game } from '$lib/stores/game.svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
-
+	import Button from '$lib/components/Button.svelte';
 
 	const code = page.params.code ?? '';
 	let players = $state<string[]>([]);
@@ -27,29 +27,29 @@
 		sessionStorage.removeItem('players');
 	}
 
-		onMount(() => {
-			const savedPlayers = sessionStorage.getItem('players');
-			if (savedPlayers) {
-				try {
-					players = JSON.parse(savedPlayers);
-				} catch {
-					players = [];
-				}
+	onMount(() => {
+		const savedPlayers = sessionStorage.getItem('players');
+		if (savedPlayers) {
+			try {
+				players = JSON.parse(savedPlayers);
+			} catch {
+				players = [];
 			}
+		}
 
-			const savedHost = sessionStorage.getItem('isHost');
-			if (savedHost) isHost = savedHost === 'true';
+		const savedHost = sessionStorage.getItem('isHost');
+		if (savedHost) isHost = savedHost === 'true';
 
-			const unsubscribe = subscribe(handleMessage);
+		const unsubscribe = subscribe(handleMessage);
 
-			send({ type: 'get_lobby', code });
+		send({ type: 'get_lobby', code });
 
-			return () => {
-				unsubscribe();
-			};
-		});
+		return () => {
+			unsubscribe();
+		};
+	});
 
-		function handleMessage(msg: any) {
+	function handleMessage(msg: any) {
 		if (msg.type === 'lobby_info') {
 			players = msg.players;
 			me = msg.me;
@@ -94,9 +94,9 @@
 		return name.length > max ? name.slice(0, max) + '…' : name;
 	}
 
-			function startGame() {
-				send({ type: 'start_game', code });
-			}
+	function startGame() {
+		send({ type: 'start_game', code });
+	}
 
 	function copyCode() {
 		if (!code) return;
@@ -110,176 +110,59 @@
 	<title>Lobby {code} — Draw Meter</title>
 </svelte:head>
 
-<div class="room-container">
-	<div class="nb-card room-card">
-		<header class="room-header">
-			<h1 class="title">Private Game</h1>
-			<div class="code-box">
-				<span class="code-label">Room Code</span>
-				<button class="code-value" onclick={copyCode} title="Click to copy">
-					<span class="code-text">{code}</span>
-					<span class="code-copy">{copied ? 'Copied ✓' : 'Copy'}</span>
+<div class="flex flex-1 items-center justify-center py-8">
+	<div class="flex w-full max-w-[600px] flex-col gap-8 border-4 border-ink bg-bg p-6 shadow-nb-lg">
+		<header class="text-center">
+			<h1 class="mb-4 text-3xl uppercase">Private Game</h1>
+			<div
+				class="inline-flex flex-col items-center gap-1 border-4 border-ink bg-bg-alt px-6 py-3 shadow-nb-sm"
+			>
+				<span class="font-mono text-xs font-bold tracking-[0.2em] text-muted uppercase">
+					Room Code
+				</span>
+				<button
+					class="group flex cursor-pointer flex-col items-center gap-1 border-none bg-none p-0 font-mono"
+					onclick={copyCode}
+					title="Click to copy"
+				>
+					<span class="text-3xl font-bold tracking-[0.2em] text-ink uppercase">{code}</span>
+					<span
+						class="text-xs font-bold tracking-[0.1em] text-primary uppercase group-hover:underline"
+					>
+						{copied ? 'Copied ✓' : 'Copy'}
+					</span>
 				</button>
 			</div>
 		</header>
 
-		<div class="players-arena">
+		<div
+			class="flex flex-wrap items-center justify-center gap-4 border-4 border-ink bg-bg-alt px-6 py-8"
+		>
 			{#each players as player (player)}
-				<div class="player-slot">
-					<div class="avatar" title={player}>{shortName(player)}</div>
+				<div class="flex flex-[0_0_96px] flex-col items-center gap-3 text-center">
+					<div
+						class="flex h-20 w-20 items-center justify-center overflow-hidden border-4 border-ink bg-primary px-2 text-center font-display font-extrabold text-on-primary shadow-nb-sm"
+						title={player}
+					>
+						{shortName(player)}
+					</div>
 				</div>
 			{/each}
 		</div>
 
-		<div class="action-footer">
+		<div class="flex justify-center">
 			{#if isHost}
-				<button
-					class="nb-btn nb-btn--primary start-btn"
+				<Button
+					variant="primary"
 					onclick={startGame}
 					disabled={players.length < 2}
+					class="h-14 w-full text-xl"
 				>
 					{players.length < 2 ? 'Waiting for players…' : 'Start game'}
-				</button>
+				</Button>
 			{:else}
-				<p class="hint">Waiting for the host to start…</p>
+				<p class="text-sm text-muted italic">Waiting for the host to start…</p>
 			{/if}
 		</div>
 	</div>
 </div>
-
-<style>
-	.room-container {
-		flex: 1;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		padding: var(--space-6) 0;
-	}
-
-	.room-card {
-		width: 100%;
-		max-width: 600px;
-		box-shadow: var(--shadow-lg);
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-6);
-	}
-
-	.room-header {
-		text-align: center;
-	}
-
-	.title {
-		margin: 0 0 var(--space-4);
-		font-size: var(--fs-2xl);
-		text-transform: uppercase;
-	}
-
-	.code-box {
-		display: inline-flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-1);
-		background: var(--c-bg-alt);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		padding: var(--space-3) var(--space-5);
-	}
-
-	.code-label {
-		font-family: var(--font-mono);
-		font-size: var(--fs-xs);
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-		letter-spacing: 0.2em;
-		color: var(--c-muted);
-	}
-
-	.code-value {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-1);
-		background: none;
-		border: none;
-		padding: 0;
-		cursor: pointer;
-		font-family: var(--font-mono);
-	}
-
-	.code-text {
-		font-size: var(--fs-2xl);
-		font-weight: var(--fw-bold);
-		letter-spacing: 0.2em;
-		color: var(--c-ink);
-		text-transform: uppercase;
-	}
-
-	.code-copy {
-		font-size: var(--fs-xs);
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: var(--c-primary);
-	}
-
-	.code-value:hover .code-copy {
-		text-decoration: underline;
-	}
-
-	.players-arena {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-wrap: wrap;
-		gap: var(--space-4);
-		background: var(--c-bg-alt);
-		border: var(--border);
-		padding: var(--space-6) var(--space-5);
-	}
-
-	.player-slot {
-		flex: 0 0 96px;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-3);
-		text-align: center;
-	}
-
-	.avatar {
-		width: 80px;
-		height: 80px;
-		background: var(--c-primary);
-		color: var(--c-on-primary);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		padding: 0 var(--space-2);
-		font-family: var(--font-display);
-		font-size: var(--fs-md);
-		font-weight: var(--fw-display);
-		text-align: center;
-		overflow: hidden;
-	}
-
-	.action-footer {
-		display: flex;
-		justify-content: center;
-	}
-
-	.start-btn {
-		width: 100%;
-		height: 56px;
-		font-size: var(--fs-lg);
-	}
-
-	.hint {
-		margin: 0;
-		color: var(--c-muted);
-		font-size: var(--fs-sm);
-		font-style: italic;
-	}
-</style>

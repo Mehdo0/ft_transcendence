@@ -29,6 +29,7 @@ Draw Meter: a real-time multiplayer drawing game. Players race to draw a given w
 | Layer | Technology | Justification |
 | --- | --- | --- |
 | Frontend | SvelteKit 5 (Svelte 5, TypeScript, Vite) | Reactive runes, small bundle, fast iteration |
+| Styling | Tailwind CSS v4 (`@tailwindcss/vite`) | Utility-first classes, design tokens declared in `@theme`, only the classes actually used are shipped |
 | Backend | FastAPI (Python 3.11) | Async support, typed models, native WebSocket handling |
 | Database | SQLite + SQLAlchemy ORM | Zero-config persistence, clear relational schema |
 | Real-time | WebSockets | Low-latency game state broadcast between clients |

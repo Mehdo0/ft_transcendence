@@ -2,6 +2,7 @@
 		import { game } from '$lib/stores/game.svelte';
 		import { send, subscribe, isOpen } from '$lib/stores/wsManager';
 		import { onMount } from 'svelte';
+		import Button from '$lib/components/Button.svelte';
 		import { goto, beforeNavigate } from '$app/navigation';
 
 	type Point = { x: number; y: number };
@@ -481,66 +482,115 @@
 		const code = sessionStorage.getItem('private_lobby_code');
 		goto(code ? `/lobby/${code}` : '/lobby');
 	}
+
+	const toolBase =
+		'flex cursor-pointer items-center justify-center border-4 border-ink bg-bg leading-none shadow-nb-sm transition-[translate,box-shadow] duration-[120ms] ease-out h-[var(--tool-size)] w-[var(--tool-size)] p-0 hover:not-disabled:-translate-x-0.5 hover:not-disabled:-translate-y-0.5 hover:not-disabled:shadow-nb active:not-disabled:translate-x-[3px] active:not-disabled:translate-y-[3px] active:not-disabled:shadow-none disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none';
+	const toolIconClasses = `${toolBase} text-[calc(var(--tool-size)*0.25)]`;
+	const toolTextClasses = `${toolBase} font-mono text-[10px] font-bold uppercase`;
 </script>
 
 <svelte:window onresize={resize} />
 
 {#if showCountdown}
-	<div class="cd-page" data-count={countdownNum} aria-live="assertive" aria-atomic="true">
-		<div class="cd-top">
+	<div
+		class="group fixed inset-0 z-[900] grid grid-rows-[32vh_1fr_16vh] overflow-hidden bg-bg sm:grid-rows-[28vh_1fr_18vh]"
+		data-count={countdownNum}
+		aria-live="assertive"
+		aria-atomic="true"
+	>
+		<div class="flex flex-wrap border-b-4 border-ink">
 			{#each scorePlayers() as player, index (player)}
-				<div class="cd-half" class:cd-you={isMe(player)} class:cd-opp={!isMe(player)}>
-					<span class="cd-tag">Player {String(index + 1).padStart(2, '0')}</span>
-					<span class="cd-pname">{playerLabel(player)}</span>
-					{#if game.is_ranked && isMe(player)}
-						<span class="cd-pelo">{myElo !== null ? myElo : '-'}<em>ELO</em></span>
-					{:else if game.is_ranked && !isMe(player)}
-						<span class="cd-pelo">{opponentElo !== null ? opponentElo : '-'}<em>ELO</em></span>
+				<div
+					class="flex min-w-[20%] flex-1 animate-cd-half-in flex-col justify-center gap-2 p-4 sm:px-12 sm:py-6 {isMe(
+						player
+					)
+						? ''
+						: 'items-end text-right [animation-delay:0.06s]'}"
+				>
+					<span class="font-mono text-xs font-bold tracking-[0.22em] text-muted uppercase">
+						Player {String(index + 1).padStart(2, '0')}
+					</span>
+					<span
+						class="max-w-[42vw] overflow-hidden font-display text-[clamp(1.1rem,5.5vw,2rem)] leading-none font-extrabold text-ellipsis whitespace-nowrap uppercase sm:text-[clamp(1.6rem,4.5vw,3.5rem)] {isMe(
+							player
+						)
+							? 'text-primary'
+							: 'text-danger'}"
+					>
+						{playerLabel(player)}
+					</span>
+					{#if game.is_ranked}
+						<span class="font-mono text-2xl font-bold text-ink">
+							{isMe(player) ? (myElo ?? '-') : (opponentElo ?? '-')}<em
+								class="ml-1 text-xs font-normal tracking-[0.12em] text-muted not-italic">ELO</em
+							>
+						</span>
 					{/if}
 				</div>
 			{/each}
 		</div>
 
-		<div class="cd-mid">
+		<div
+			class="flex items-center justify-center border-b-4 border-ink group-data-[count=0]:bg-success group-data-[count=1]:bg-danger group-data-[count=2]:bg-bg-alt group-data-[count=3]:bg-accent"
+		>
 			{#key countdownNum}
-				<div class="cd-num" class:cd-go={countdownNum === 0}>
+				<div
+					class="pointer-events-none font-display leading-none font-extrabold text-ink select-none group-data-[count=1]:text-white {countdownNum ===
+					0
+						? 'animate-cd-go-blast text-[min(20vh,30vw)] sm:text-[min(22vh,18vw)]'
+						: 'animate-cd-num-stamp text-[min(42vh,54vw)] sm:text-[min(48vh,40vw)]'}"
+				>
 					{countdownNum === 0 ? 'GO!' : countdownNum}
 				</div>
 			{/key}
 		</div>
 
-		<div class="cd-bot">
-			<span class="cd-draw-tag">Draw</span>
-			<span class="cd-draw-word">{game.word}</span>
+		<div class="flex animate-cd-bot-in items-center justify-center gap-6 bg-ink px-8">
+			<span class="font-mono text-sm font-bold tracking-[0.28em] text-white/40 uppercase">Draw</span
+			>
+			<span
+				class="font-display text-[clamp(1.4rem,7vw,2.2rem)] font-extrabold tracking-[0.03em] text-accent uppercase sm:text-[clamp(2rem,5vw,4rem)]"
+			>
+				{game.word}
+			</span>
 		</div>
 	</div>
 {/if}
 
-<header class="game-header">
-	<div class="header-left">
-		<h1>Draw!</h1>
-		<div class="match-info">
-			<div class="vs-badge">
-				VS <strong>{opponentLabel()}</strong>
+<header
+	class="mb-6 flex flex-col items-center gap-3 border-b-4 border-ink bg-bg p-4 md:flex-row md:justify-between md:gap-0 md:px-8"
+>
+	<div class="flex flex-none flex-wrap items-center justify-center gap-4 md:flex-1">
+		<h1 class="text-3xl uppercase">Draw!</h1>
+		<div class="flex flex-col gap-2">
+			<div
+				class="border-4 border-ink bg-bg-alt px-3 py-2 font-mono text-sm font-bold text-muted uppercase shadow-nb-sm"
+			>
+				VS <strong class="text-ink">{opponentLabel()}</strong>
 			</div>
 			{#if scorePlayers().length > 1}
-				<div class="bo3-tracker">
-					<span class="round-text">Round {currentRound}</span>
-					<div class="multiplayer-circles">
+				<div class="flex items-start gap-3 font-mono text-xs font-bold text-muted uppercase">
+					<span class="whitespace-nowrap">Round {currentRound}</span>
+					<div class="flex flex-col gap-1">
 						{#each scorePlayers() as player (player)}
-							<div class="player-bo3-row">
-								<span class="bo3-name">{playerLabel(player)}</span>
-								<div class="circles">
-									<div
-										class="circle"
-										class:filled={roundWinFor(player) >= 1}
-										class:opp={!isMe(player)}
-									></div>
-									<div
-										class="circle"
-										class:filled={roundWinFor(player) >= 2}
-										class:opp={!isMe(player)}
-									></div>
+							<div class="flex min-w-[130px] items-center justify-between gap-2">
+								<span class="max-w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">
+									{playerLabel(player)}
+								</span>
+								<div class="flex items-center gap-[5px]">
+									{#each [1, 2] as win (win)}
+										<div
+											class="h-3 w-3 rounded-full border-2 transition-colors duration-300 {isMe(
+												player
+											)
+												? 'border-primary'
+												: 'border-danger'} {roundWinFor(player) >= win
+												? isMe(player)
+													? 'bg-primary'
+													: 'bg-danger'
+												: 'bg-transparent'}"
+										></div>
+									{/each}
 								</div>
 							</div>
 						{/each}
@@ -550,60 +600,85 @@
 		</div>
 	</div>
 
-	<div class="header-center">
-		<div class="timer" class:low={timeLeft <= 10}>
+	<div class="flex flex-none flex-col items-center justify-center gap-1 text-center md:flex-[2]">
+		<div
+			class="font-mono text-3xl font-bold tabular-nums transition-colors duration-[120ms] {timeLeft <=
+			10
+				? 'animate-timer-pulse text-danger'
+				: 'text-ink'}"
+		>
 			{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
 		</div>
-		<span class="word-label">You are drawing</span>
-		<div class="target-word">{game.word}</div>
+		<span class="text-xs font-bold tracking-[0.2em] text-muted uppercase">You are drawing</span>
+		<div
+			class="border-4 border-ink bg-accent px-4 py-1 font-display text-3xl leading-tight font-extrabold tracking-[0.04em] text-ink uppercase shadow-nb-sm"
+		>
+			{game.word}
+		</div>
 	</div>
 
-	<div class="header-right">
-		<button class="nb-btn nb-btn--danger" onclick={surrender}>Surrender</button>
+	<div class="flex flex-none justify-center md:flex-1 md:justify-end">
+		<Button variant="danger" onclick={surrender}>Surrender</Button>
 	</div>
 </header>
 
 {#if result}
-	<div class="overlay">
+	<div class="fixed inset-0 z-[1000] flex items-center justify-center bg-scrim">
 		<div
-			class="modal"
-			class:modal--win={result === 'winner'}
-			class:modal--lose={result === 'looser'}
-			class:modal--draw={result === 'draw'}
+			class="m-4 animate-pop-in border-4 border-ink px-6 py-8 text-center shadow-nb-lg md:px-16 md:py-12 {result ===
+			'winner'
+				? 'bg-success'
+				: result === 'looser'
+					? 'bg-danger text-on-danger'
+					: 'bg-accent'}"
 		>
 			{#if result === 'winner'}
-				<h2 class="result-text">You Won!</h2>
-				{#if game.is_ranked}
-					<p class="elo-text positive">+{elo_diff} Elo</p>
-				{:else}
-					<p class="elo-text">No Elo change</p>
-				{/if}
+				<h2 class="text-5xl uppercase">You Won!</h2>
+				<p class="mt-3 mb-8 font-mono text-xl font-bold">
+					{game.is_ranked ? `+${elo_diff} Elo` : 'No Elo change'}
+				</p>
 			{:else if result === 'draw'}
-				<h2 class="result-text">Draw</h2>
-				<p class="elo-text">No Elo change</p>
+				<h2 class="text-5xl uppercase">Draw</h2>
+				<p class="mt-3 mb-8 font-mono text-xl font-bold">No Elo change</p>
 			{:else}
-				<h2 class="result-text">You Lost</h2>
-				{#if game.is_ranked}
-					<p class="elo-text negative">{elo_diff} Elo</p>
-				{:else}
-					<p class="elo-text">No Elo change</p>
-				{/if}
+				<h2 class="text-5xl uppercase">You Lost</h2>
+				<p class="mt-3 mb-8 font-mono text-xl font-bold">
+					{game.is_ranked ? `${elo_diff} Elo` : 'No Elo change'}
+				</p>
 			{/if}
-			<button class="nb-btn nb-btn--primary" onclick={backAfterGame}>
+			<Button variant="primary" onclick={backAfterGame}>
 				{game.is_ranked ? 'Back to Home' : 'Back to Lobby'}
-			</button>
+			</Button>
 		</div>
 	</div>
 {/if}
 
-<div class="game">
-	<div class="tools">
-		<button onclick={undo} disabled={stack.length === 0} aria-label="Undo" title="Undo">↶</button>
-		<button onclick={redo} disabled={redoStack.length === 0} aria-label="Redo" title="Redo"
-			>↷</button
-		>
+<div
+	class="grid grid-cols-[auto_auto] items-center justify-center justify-items-center gap-3 gap-x-4 p-3 [--canvas-side:78vmin] [--tool-size:calc(var(--canvas-side)*0.1)] md:flex md:gap-8 md:p-4 md:[--canvas-side:50vmin]"
+>
+	<div
+		class="col-start-1 row-start-2 grid grid-cols-[repeat(3,var(--tool-size))] gap-2 md:col-auto md:row-auto"
+	>
 		<button
-			class="clear-btn"
+			class={toolIconClasses}
+			onclick={undo}
+			disabled={stack.length === 0}
+			aria-label="Undo"
+			title="Undo"
+		>
+			↶
+		</button>
+		<button
+			class={toolIconClasses}
+			onclick={redo}
+			disabled={redoStack.length === 0}
+			aria-label="Redo"
+			title="Redo"
+		>
+			↷
+		</button>
+		<button
+			class={toolTextClasses}
 			onclick={clearDrawing}
 			disabled={stack.length === 0 && redoStack.length === 0}
 			aria-label="Clear"
@@ -614,6 +689,7 @@
 	</div>
 
 	<canvas
+		class="col-span-full row-start-1 h-[var(--canvas-side)] w-[var(--canvas-side)] cursor-crosshair touch-none border-4 border-ink bg-bg shadow-nb md:col-auto md:row-auto"
 		bind:this={canvas}
 		onpointerdown={(event) => {
 			const point = canvasPoint(event);
@@ -644,20 +720,37 @@
 		}}
 	></canvas>
 
-	<div class="bars">
+	<div
+		class="col-start-2 row-start-2 flex max-h-[var(--canvas-side)] max-w-[calc(var(--tool-size)*6)] flex-wrap justify-center gap-4 overflow-y-auto md:col-auto md:row-auto"
+	>
 		{#each scorePlayers() as player (player)}
-			<div class="meter" class:offline={disconnectedPlayers[player]}>
-				<span class="meter-value">{Math.round(scoreFor(player) ?? 0)}%</span>
-				<div class="loaderBar" class:loaderBar--opponent={!isMe(player)}>
-					<div class="loaderBar-fill" style="height: {scoreFor(player) ?? 0}%"></div>
+			<div
+				class="flex flex-col items-center gap-2 {disconnectedPlayers[player]
+					? 'opacity-40 grayscale transition-all duration-300'
+					: ''}"
+			>
+				<span class="font-mono text-xl font-bold tabular-nums">
+					{Math.round(scoreFor(player) ?? 0)}%
+				</span>
+				<div
+					class="relative h-[calc(var(--canvas-side)-4rem)] w-[var(--tool-size)] overflow-hidden border-4 border-ink bg-bg-alt shadow-nb-sm"
+				>
+					<div
+						class="absolute bottom-0 left-0 w-full transition-[height] duration-300 {isMe(player)
+							? 'bg-[repeating-linear-gradient(45deg,var(--color-primary)_0_14px,var(--color-primary-dark)_14px_28px)]'
+							: 'bg-[repeating-linear-gradient(45deg,var(--color-danger)_0_14px,var(--color-danger-dark)_14px_28px)]'}"
+						style="height: {scoreFor(player) ?? 0}%"
+					></div>
 				</div>
 				<span
-					class="meter-label"
-					class:meter-label--you={isMe(player)}
-					class:meter-label--opponent={!isMe(player)}
+					class="max-w-[calc(var(--tool-size)*1.6)] overflow-hidden font-display text-xs font-bold tracking-[0.05em] text-ellipsis whitespace-nowrap uppercase {isMe(
+						player
+					)
+						? 'text-primary'
+						: 'text-danger'}"
 				>
 					{#if disconnectedPlayers[player]}
-						<span style="font-size: 0.7em; opacity: 0.8;">(Offline)</span>
+						<span class="text-[0.7em] opacity-80">(Offline)</span>
 					{/if}
 					{playerLabel(player)}
 				</span>
@@ -665,696 +758,3 @@
 		{/each}
 	</div>
 </div>
-
-<style>
-	.match-info {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.bo3-tracker {
-		display: flex;
-		align-items: flex-start;
-		gap: var(--space-3);
-		font-family: var(--font-mono);
-		font-size: var(--fs-xs);
-		color: var(--c-muted);
-		text-transform: uppercase;
-		font-weight: var(--fw-bold);
-	}
-
-	.round-text {
-		white-space: nowrap;
-	}
-
-	.multiplayer-circles {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-1);
-	}
-
-	.player-bo3-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-2);
-		min-width: 130px;
-	}
-
-	.bo3-name {
-		max-width: 90px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.circles {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-	}
-
-	.circle {
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		border: 2px solid var(--c-primary);
-		background: transparent;
-		transition: background 0.3s ease;
-	}
-
-	.circle.filled {
-		background: var(--c-primary);
-	}
-
-	.circle.opp {
-		border-color: var(--c-danger);
-	}
-
-	.circle.opp.filled {
-		background: var(--c-danger);
-	}
-
-	.game-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--space-4) var(--space-6);
-		background: var(--c-bg);
-		border-bottom: var(--border-lg);
-		margin-bottom: var(--space-5);
-	}
-
-	.header-left {
-		display: flex;
-		align-items: center;
-		gap: var(--space-4);
-		flex: 1;
-	}
-
-	.game-header h1 {
-		margin: 0;
-		font-size: var(--fs-2xl);
-		text-transform: uppercase;
-	}
-
-	.vs-badge {
-		background: var(--c-bg-alt);
-		color: var(--c-muted);
-		padding: var(--space-2) var(--space-3);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		font-family: var(--font-mono);
-		font-size: var(--fs-sm);
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-	}
-
-	.vs-badge strong {
-		color: var(--c-ink);
-	}
-
-	.header-center {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		flex: 2;
-		text-align: center;
-		gap: var(--space-1);
-	}
-
-	.timer {
-		font-family: var(--font-mono);
-		font-size: var(--fs-2xl);
-		font-weight: var(--fw-bold);
-		font-variant-numeric: tabular-nums;
-		color: var(--c-ink);
-		transition: color var(--transition);
-	}
-
-	.timer.low {
-		color: var(--c-danger);
-		animation: timer-pulse 1s ease-in-out infinite;
-	}
-
-	@keyframes timer-pulse {
-		0%,
-		100% {
-			transform: scale(1);
-		}
-		50% {
-			transform: scale(1.12);
-		}
-	}
-
-	.word-label {
-		font-size: var(--fs-xs);
-		text-transform: uppercase;
-		font-weight: var(--fw-bold);
-		color: var(--c-muted);
-		letter-spacing: 0.2em;
-	}
-
-	.target-word {
-		font-family: var(--font-display);
-		font-size: var(--fs-2xl);
-		font-weight: var(--fw-display);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		line-height: 1.1;
-		background: var(--c-accent);
-		color: var(--c-ink);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		padding: var(--space-1) var(--space-4);
-	}
-
-	.header-right {
-		display: flex;
-		justify-content: flex-end;
-		flex: 1;
-	}
-
-	.overlay {
-		position: fixed;
-		inset: 0;
-		background: var(--c-scrim);
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		z-index: 1000;
-	}
-
-	.modal {
-		background: var(--c-bg);
-		padding: var(--space-7) var(--space-8);
-		text-align: center;
-		border: var(--border-lg);
-		box-shadow: var(--shadow-lg);
-		animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-	}
-
-	.modal--win {
-		background: var(--c-success);
-	}
-
-	.modal--lose {
-		background: var(--c-danger);
-		color: var(--c-on-danger);
-	}
-
-	.modal--draw {
-		background: var(--c-accent);
-	}
-
-	@keyframes popIn {
-		0% {
-			transform: translate(6px, 6px);
-			box-shadow: none;
-		}
-		100% {
-			transform: translate(0, 0);
-			box-shadow: var(--shadow-lg);
-		}
-	}
-
-	.result-text {
-		font-size: var(--fs-3xl);
-		margin: 0;
-		text-transform: uppercase;
-	}
-
-	.elo-text {
-		font-family: var(--font-mono);
-		font-size: var(--fs-lg);
-		font-weight: var(--fw-bold);
-		margin: var(--space-3) 0 var(--space-6);
-	}
-
-	.game {
-		--canvas-side: 50vmin;
-		--tool-size: calc(var(--canvas-side) * 0.1);
-		--tool-gap: 0.5rem;
-		--meter-bar-height: calc(var(--canvas-side) - var(--space-8));
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		gap: var(--space-6);
-		padding: var(--space-4);
-	}
-
-	canvas {
-		width: var(--canvas-side);
-		height: var(--canvas-side);
-		background: var(--c-bg);
-		border: var(--border-lg);
-		box-shadow: var(--shadow);
-		cursor: crosshair;
-		touch-action: none;
-	}
-
-	.tools {
-		display: grid;
-		grid-template-columns: repeat(3, var(--tool-size));
-		gap: var(--tool-gap);
-	}
-
-	.tools > * {
-		width: var(--tool-size);
-		height: var(--tool-size);
-		margin: 0;
-		padding: 0;
-		border: var(--border);
-		background: var(--c-bg);
-		cursor: pointer;
-		font-size: calc(var(--tool-size) * 0.25);
-		line-height: 1;
-		box-shadow: var(--shadow-sm);
-		transition:
-			transform var(--transition),
-			box-shadow var(--transition);
-	}
-
-	.tools > *:hover:not(:disabled) {
-		transform: translate(calc(-1 * var(--nudge)), calc(-1 * var(--nudge)));
-		box-shadow: var(--shadow);
-	}
-
-	.tools > *:active:not(:disabled) {
-		transform: translate(var(--press), var(--press));
-		box-shadow: none;
-	}
-
-	.tools > *:disabled {
-		opacity: 0.35;
-		box-shadow: none;
-		cursor: not-allowed;
-	}
-
-	.tools > .clear-btn {
-		font-family: var(--font-mono);
-		font-size: 10px;
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-	}
-
-	.bars {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-4);
-		max-width: calc(var(--tool-size) * 6);
-		max-height: var(--canvas-side);
-		overflow-y: auto;
-	}
-
-	.meter {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.meter-value {
-		font-family: var(--font-mono);
-		font-size: var(--fs-lg);
-		font-weight: var(--fw-bold);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.meter-label {
-		font-family: var(--font-display);
-		font-size: var(--fs-xs);
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		max-width: calc(var(--tool-size) * 1.6);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.meter-label--you {
-		color: var(--c-primary);
-	}
-
-	.meter-label--opponent {
-		color: var(--c-danger);
-	}
-
-	.loaderBar {
-		width: var(--tool-size);
-		height: var(--meter-bar-height);
-		background: var(--c-bg-alt);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		position: relative;
-		overflow: hidden;
-	}
-
-	.loaderBar-fill {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		width: 100%;
-		background: repeating-linear-gradient(
-			45deg,
-			var(--c-primary) 0 14px,
-			var(--c-primary-dark) 14px 28px
-		);
-		transition: height 0.3s ease;
-	}
-
-	.loaderBar--opponent .loaderBar-fill {
-		background: repeating-linear-gradient(
-			45deg,
-			var(--c-danger) 0 14px,
-			var(--c-danger-dark) 14px 28px
-		);
-	}
-
-	.meter.offline {
-		opacity: 0.4;
-		filter: grayscale(100%);
-		transition: all 0.3s ease;
-	}
-
-	.meter.offline .loaderBar-fill {
-		transition: none;
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.timer.low {
-			animation: none;
-		}
-
-		.modal {
-			animation: none;
-		}
-	}
-
-	@media (max-width: 760px) {
-		.game-header {
-			flex-direction: column;
-			gap: var(--space-3);
-			padding: var(--space-4);
-		}
-
-		.header-left,
-		.header-center,
-		.header-right {
-			flex: none;
-			justify-content: center;
-		}
-
-		.header-left {
-			flex-wrap: wrap;
-		}
-
-		.game {
-			--canvas-side: 78vmin;
-			display: grid;
-			grid-template-columns: auto auto;
-			gap: var(--space-3) var(--space-4);
-			padding: var(--space-3);
-			justify-content: center;
-			justify-items: center;
-			align-items: center;
-		}
-
-		canvas {
-			grid-column: 1 / -1;
-			grid-row: 1;
-		}
-
-		.tools {
-			grid-column: 1;
-			grid-row: 2;
-		}
-
-		.bars {
-			grid-column: 2;
-			grid-row: 2;
-		}
-
-		.modal {
-			padding: var(--space-6) var(--space-5);
-			margin: var(--space-4);
-		}
-	}
-
-	.cd-page {
-		position: fixed;
-		inset: 0;
-		z-index: 900;
-		display: grid;
-		grid-template-rows: 28vh 1fr 18vh;
-		background: var(--c-bg);
-		overflow: hidden;
-	}
-
-	.cd-top {
-		display: flex;
-		flex-wrap: wrap;
-		border-bottom: var(--border-lg);
-	}
-
-	.cd-half {
-		flex: 1;
-		min-width: 20%;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		padding: var(--space-5) var(--space-7);
-		gap: var(--space-2);
-		animation: cdHalfIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-	}
-
-	.cd-you {
-		animation-delay: 0s;
-	}
-
-	.cd-opp {
-		align-items: flex-end;
-		text-align: right;
-		animation-delay: 0.06s;
-	}
-
-	@keyframes cdHalfIn {
-		from {
-			transform: translateY(-24px);
-			opacity: 0;
-		}
-		to {
-			transform: none;
-			opacity: 1;
-		}
-	}
-
-	.cd-tag {
-		font-family: var(--font-mono);
-		font-size: var(--fs-xs);
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-		letter-spacing: 0.22em;
-		color: var(--c-muted);
-	}
-
-	.cd-pname {
-		font-family: var(--font-display);
-		font-weight: var(--fw-display);
-		font-size: clamp(1.6rem, 4.5vw, 3.5rem);
-		text-transform: uppercase;
-		line-height: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		max-width: 42vw;
-	}
-
-	.cd-you .cd-pname {
-		color: var(--c-primary);
-	}
-
-	.cd-opp .cd-pname {
-		color: var(--c-danger);
-	}
-
-	.cd-pelo {
-		font-family: var(--font-mono);
-		font-weight: var(--fw-bold);
-		font-size: var(--fs-xl);
-		color: var(--c-ink);
-	}
-
-	.cd-pelo em {
-		font-style: normal;
-		font-size: var(--fs-xs);
-		font-weight: var(--fw-regular);
-		color: var(--c-muted);
-		margin-left: var(--space-1);
-		letter-spacing: 0.12em;
-	}
-
-	.cd-mid {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-bottom: var(--border-lg);
-	}
-
-	.cd-page[data-count='3'] .cd-mid {
-		background: var(--c-accent);
-	}
-
-	.cd-page[data-count='2'] .cd-mid {
-		background: var(--c-bg-alt);
-	}
-
-	.cd-page[data-count='1'] .cd-mid {
-		background: var(--c-danger);
-	}
-
-	.cd-page[data-count='0'] .cd-mid {
-		background: var(--c-success);
-	}
-
-	.cd-num {
-		font-family: var(--font-display);
-		font-weight: var(--fw-display);
-		font-size: min(48vh, 40vw);
-		line-height: 1;
-		color: var(--c-ink);
-		user-select: none;
-		pointer-events: none;
-		animation: cdNumStamp 1s cubic-bezier(0.4, 0, 0.2, 1) both;
-	}
-
-	.cd-page[data-count='1'] .cd-num {
-		color: #ffffff;
-	}
-
-	.cd-num.cd-go {
-		font-size: min(22vh, 18vw);
-		animation: cdGoBlast 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
-	}
-
-	@keyframes cdNumStamp {
-		0% {
-			transform: translateY(-22%) scaleY(1.18);
-			opacity: 0;
-		}
-		16% {
-			transform: translateY(2%) scaleY(0.88);
-			opacity: 1;
-		}
-		26% {
-			transform: translateY(0) scale(1);
-			opacity: 1;
-		}
-		80% {
-			transform: translateY(0) scale(1);
-			opacity: 1;
-		}
-		100% {
-			transform: translateY(6%) scaleY(0.94);
-			opacity: 0;
-		}
-	}
-
-	@keyframes cdGoBlast {
-		0% {
-			transform: scale(0.25);
-			opacity: 0;
-			letter-spacing: -0.12em;
-		}
-		38% {
-			transform: scale(1.06);
-			opacity: 1;
-			letter-spacing: 0.04em;
-		}
-		62% {
-			transform: scale(1);
-			opacity: 1;
-		}
-		100% {
-			transform: scale(1.18);
-			opacity: 0;
-		}
-	}
-
-	.cd-bot {
-		background: var(--c-ink);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-5);
-		padding: 0 var(--space-6);
-		animation: cdBotIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s both;
-	}
-
-	@keyframes cdBotIn {
-		from {
-			transform: translateY(24px);
-			opacity: 0;
-		}
-		to {
-			transform: none;
-			opacity: 1;
-		}
-	}
-
-	.cd-draw-tag {
-		font-family: var(--font-mono);
-		font-size: var(--fs-sm);
-		font-weight: var(--fw-bold);
-		letter-spacing: 0.28em;
-		text-transform: uppercase;
-		color: rgba(255, 255, 255, 0.4);
-	}
-
-	.cd-draw-word {
-		font-family: var(--font-display);
-		font-weight: var(--fw-display);
-		font-size: clamp(2rem, 5vw, 4rem);
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: var(--c-accent);
-	}
-
-	@media (max-width: 640px) {
-		.cd-page {
-			grid-template-rows: 32vh 1fr 16vh;
-		}
-
-		.cd-half {
-			padding: var(--space-4);
-		}
-
-		.cd-pname {
-			font-size: clamp(1.1rem, 5.5vw, 2rem);
-		}
-
-		.cd-num {
-			font-size: min(42vh, 54vw);
-		}
-
-		.cd-num.cd-go {
-			font-size: min(20vh, 30vw);
-		}
-
-		.cd-draw-word {
-			font-size: clamp(1.4rem, 7vw, 2.2rem);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.cd-half,
-		.cd-bot,
-		.cd-num {
-			animation: none;
-		}
-	}
-</style>

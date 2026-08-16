@@ -1,11 +1,32 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import ErrorBox from '$lib/components/ErrorBox.svelte';
 
 	type Player = { username: string; elo: number };
 
 	let players = $state<Player[]>([]);
 	let me = $state('');
 	let errorMessage = $state('');
+
+	const rowBase = 'flex items-center gap-3 border-4 bg-bg p-3';
+	const rankBase =
+		'flex h-9 w-9 flex-shrink-0 items-center justify-center border-4 border-ink font-display text-base font-extrabold';
+
+	function rowClasses(index: number, username: string) {
+		const isMe = me && username === me;
+		return [
+			rowBase,
+			index < 3 ? 'shadow-nb-sm' : '',
+			isMe ? 'border-primary shadow-nb-accent' : 'border-ink'
+		].join(' ');
+	}
+
+	function rankClasses(index: number) {
+		if (index === 0) return `${rankBase} bg-accent text-ink`;
+		if (index === 1) return `${rankBase} bg-silver text-ink`;
+		if (index === 2) return `${rankBase} bg-highlight text-on-primary`;
+		return `${rankBase} bg-bg-alt text-muted`;
+	}
 
 	onMount(async () => {
 		try {
@@ -36,185 +57,40 @@
 	<title>Leaderboard — Draw Meter</title>
 </svelte:head>
 
-<div class="leaderboard-container">
-	<div class="nb-card leaderboard-card">
-		<header class="board-header">
-			<h1 class="title">Leaderboard</h1>
-			<p class="subtitle">Top 10 Players</p>
+<div class="flex flex-1 items-start justify-center py-8">
+	<div class="w-full max-w-[480px] border-4 border-ink bg-bg p-6 shadow-nb-lg">
+		<header class="mb-6 text-center">
+			<h1 class="mb-1 text-3xl uppercase">Leaderboard</h1>
+			<p class="font-mono text-sm tracking-[0.1em] text-muted uppercase">Top 10 Players</p>
 		</header>
 
 		{#if errorMessage}
-			<div class="error-box" role="alert">{errorMessage}</div>
+			<ErrorBox class="mb-6 text-center">{errorMessage}</ErrorBox>
 		{/if}
 
-		<ol class="player-list">
+		<ol class="flex list-none flex-col gap-2 p-0">
 			{#each players as player, index (player.username)}
-				<li
-					class="player-row"
-					class:top={index < 3}
-					class:rank-1={index === 0}
-					class:rank-2={index === 1}
-					class:rank-3={index === 2}
-					class:is-me={me && player.username === me}
-				>
-					<span class="rank">{index + 1}</span>
-					<span class="name">
+				<li class={rowClasses(index, player.username)}>
+					<span class={rankClasses(index)}>{index + 1}</span>
+					<span
+						class="flex min-w-0 grow items-center gap-2 overflow-hidden font-display text-xl font-bold text-ellipsis whitespace-nowrap"
+					>
 						{player.username}
-						{#if me && player.username === me}<span class="you-tag">You</span>{/if}
+						{#if me && player.username === me}
+							<span
+								class="flex-shrink-0 border-2 border-ink bg-primary px-2 font-mono text-xs font-bold tracking-[0.05em] text-on-primary uppercase"
+							>
+								You
+							</span>
+						{/if}
 					</span>
-					<span class="score">{player.elo}</span>
+					<span class="flex-shrink-0 font-mono text-xl font-bold tabular-nums">{player.elo}</span>
 				</li>
 			{/each}
 
 			{#if players.length === 0 && !errorMessage}
-				<li class="empty-message">No players ranked yet.</li>
+				<li class="p-6 text-center text-muted italic">No players ranked yet.</li>
 			{/if}
 		</ol>
 	</div>
 </div>
-
-<style>
-	.leaderboard-container {
-		flex: 1;
-		display: flex;
-		justify-content: center;
-		align-items: flex-start;
-		padding: var(--space-6) 0;
-	}
-
-	.leaderboard-card {
-		width: 100%;
-		max-width: 480px;
-		box-shadow: var(--shadow-lg);
-	}
-
-	.board-header {
-		text-align: center;
-		margin-bottom: var(--space-5);
-	}
-
-	.title {
-		margin: 0 0 var(--space-1);
-		font-size: var(--fs-2xl);
-		text-transform: uppercase;
-	}
-
-	.subtitle {
-		margin: 0;
-		color: var(--c-muted);
-		font-family: var(--font-mono);
-		font-size: var(--fs-sm);
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-	}
-
-	.player-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-	}
-
-	.player-row {
-		display: flex;
-		align-items: center;
-		gap: var(--space-3);
-		padding: var(--space-3);
-		border: var(--border);
-		background: var(--c-bg);
-	}
-
-	.player-row.top {
-		box-shadow: var(--shadow-sm);
-	}
-
-	.player-row.top .rank {
-		color: var(--c-ink);
-	}
-
-	.player-row.rank-1 .rank {
-		background: var(--c-accent);
-	}
-	.player-row.rank-2 .rank {
-		background: var(--c-silver);
-	}
-	.player-row.rank-3 .rank {
-		background: var(--c-highlight);
-		color: var(--c-on-primary);
-	}
-
-	.player-row.is-me {
-		border-color: var(--c-primary);
-		box-shadow: var(--shadow-accent);
-	}
-
-	.rank {
-		flex-shrink: 0;
-		width: 2.25rem;
-		height: 2.25rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-family: var(--font-display);
-		font-weight: var(--fw-display);
-		font-size: var(--fs-base);
-		color: var(--c-muted);
-		background: var(--c-bg-alt);
-		border: var(--border);
-	}
-
-	.name {
-		flex-grow: 1;
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-		font-family: var(--font-display);
-		font-weight: var(--fw-bold);
-		font-size: var(--fs-lg);
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.you-tag {
-		flex-shrink: 0;
-		font-family: var(--font-mono);
-		font-size: var(--fs-xs);
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--c-on-primary);
-		background: var(--c-primary);
-		border: 2px solid var(--c-ink);
-		padding: 0 var(--space-2);
-	}
-
-	.score {
-		flex-shrink: 0;
-		font-family: var(--font-mono);
-		font-weight: var(--fw-bold);
-		font-size: var(--fs-lg);
-		font-variant-numeric: tabular-nums;
-	}
-
-	.empty-message {
-		text-align: center;
-		padding: var(--space-5);
-		color: var(--c-muted);
-		font-style: italic;
-	}
-
-	.error-box {
-		background: var(--c-danger);
-		color: var(--c-on-danger);
-		padding: var(--space-3) var(--space-4);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		margin-bottom: var(--space-5);
-		text-align: center;
-		font-weight: var(--fw-bold);
-	}
-</style>
