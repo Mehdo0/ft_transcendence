@@ -13,7 +13,7 @@ from core.exceptions import (
     ImpossibleEmail,
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
-    WeakPassword,
+    BadUsername,
 )
 from core.setup import manager
 from game.game_logic import surrender_game
@@ -125,7 +125,7 @@ async def API_register(request: Request, payload: UserRegister, response: Respon
         UserAlreadyExistsError,
         UsernameAlreadyTakenError,
         EmailAlreadyTakenError,
-        WeakPassword,
+        BadUsername,
         ImpossibleEmail,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e).lower())

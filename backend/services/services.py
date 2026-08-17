@@ -1,20 +1,22 @@
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
-import validators
-import bcrypt
 
+import bcrypt
 import jwt
-from core.database import get_user, get_user_hashed_password, add_user
+import validators
+from fastapi import Cookie, Depends, WebSocketException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from jwt import InvalidTokenError
+
+from core.database import add_user, get_user, get_user_hashed_password
 from core.exceptions import (
+    BadUsername,
+    ImpossibleEmail,
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
     WeakPassword,
-    ImpossibleEmail,
 )
-from fastapi import Depends, WebSocketException, status, Cookie
-from fastapi.security import OAuth2PasswordRequestForm
-from jwt import InvalidTokenError
 from schemas.data import Token, User, UserRegister
 from services.ai_service import internal_make_ai_guess
 from state.config import (
@@ -60,17 +62,24 @@ def validate_password_stength(password: str) -> None:
         raise WeakPassword("Password should have at least one of the symbols $@#%")
 
 
+def validate_username(username: str) -> None:
+    if len(username) < 1 or len(username) > 20:
+        raise BadUsername("Username must be between 3 and 20 characters")
+    if not username.isalnum():
+        raise BadUsername("Username must be only alphanumeric (numbers and letters)")
+
+
 async def register_user(user_register: UserRegister):
     if not validators.email(user_register.email):
         raise ImpossibleEmail("Email is invalid")
+    validate_username(user_register.username)
     validate_password_stength(user_register.password)
     user_exists = get_user(user_register.username)
-    if user_exists:
-        if user_exists.username == user_register.username:
-            if user_exists.email == user_register.email:
-                raise UserAlreadyExistsError("This user already exists")
-            else:
-                raise UsernameAlreadyTakenError("This username is already taken")
+    if user_exists and user_exists.username == user_register.username:
+        if user_exists.email == user_register.email:
+            raise UserAlreadyExistsError("This user already exists")
+        else:
+            raise UsernameAlreadyTakenError("This username is already taken")
     user = add_user(user_register)
     return {"user_created": user.username}
 
@@ -89,10 +98,11 @@ def get_authenticated_user(username: str, password: str) -> User:
         raise ValueError("Passwords dont match")
     return user
 
+
 async def get_session(access_token: str | None = Cookie(default=None)):
     if not access_token:
         return None
-        
+
     try:
         payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
@@ -100,9 +110,10 @@ async def get_session(access_token: str | None = Cookie(default=None)):
             return None
     except InvalidTokenError:
         return None
-        
+
     user = get_user(username)
     return user
+
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -127,4 +138,3 @@ def get_user_from_ws_token(token: str) -> User:
         return user
     except jwt.InvalidTokenError:
         raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-

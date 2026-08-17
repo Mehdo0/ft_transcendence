@@ -17,5 +17,9 @@ class WeakPassword(Exception):
     pass
 
 
+class BadUsername(Exception):
+    pass
+
+
 class ImpossibleEmail(Exception):
     pass
