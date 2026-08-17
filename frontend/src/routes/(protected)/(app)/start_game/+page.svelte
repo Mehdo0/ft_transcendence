@@ -17,7 +17,7 @@
 	beforeNavigate((nav) => {
 		if (!isSearching || leaving) return;
 		if (nav.willUnload) return;
-		if (confirm('Annuler la recherche ?')) {
+		if (confirm('Cancel the matchmaking ?')) {
 			send({ type: 'leave' });
 		} else {
 			nav.cancel();
