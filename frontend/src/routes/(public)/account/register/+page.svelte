@@ -89,7 +89,7 @@
 					aria-invalid={!!errors.username}
 					aria-describedby={errors.username ? 'username-err' : undefined}
 					disabled={loading}
-					placeholder="e.g., Vincent du Bocal"
+					placeholder="e.g., VincentDuBocal"
 					class={invalidClasses}
 				/>
 				{#if errors.username}
