@@ -18,6 +18,7 @@ logs:
 	$(COMPOSE) logs -f
 
 fclean: down
+	rm -rf data/game_data.db
 
 re: fclean up
 
