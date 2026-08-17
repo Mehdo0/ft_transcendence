@@ -124,9 +124,11 @@ def get_round_winner(game: Game) -> User | None:
     return get_user(winners[0])
 
 
-def get_game_winner(game: Game) -> User | None:
+def get_game_winner(game: Game, exclude: User | None) -> User | None:
     max_round_win = max(game.round_wins.values())
     winners = [user for user in game.players if game.round_wins[user] == max_round_win]
+    if exclude:
+        winners.remove(exclude.username)
     print("winners:", winners)
     if len(winners) > 1 or len(winners) == 0:  # TIE
         print("more than 1 winner -> TIE")
@@ -287,7 +289,7 @@ async def surrender_game(user: User, leave_lobby: bool = False) -> None:
             }
         )
     manager._emit("broadcast_to_players", payloads=payloads)
-    winner = get_game_winner(game)
+    winner = get_game_winner(game, user)
     if winner is None and len(opponents) == 1:
         winner = get_user(opponents[0])
     if winner is None:
