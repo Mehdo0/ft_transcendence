@@ -25,7 +25,9 @@ Draw Meter: a real-time multiplayer drawing game. Players race to draw a given w
     - mmouaffa: AI training, backend.
     - nbonnet: AI training, backend + frontend.
     - lfaure: project structure, setup backend, websockets.
-    This was how tasks were split at first, as the project moved on, everyone had a chance to work on everything. We all worked on both frontend and backend. No work was fenced off to any team member.
+
+This was how tasks were split at first, as the project moved on, everyone had a chance to work on everything. We all worked on both frontend and backend. No work was fenced off to any team member.
+
 - Code reviews: every significant change was reviewed by at least one other member. We also had devellopment sessions working together on particularly hard features and fixes. Big architectural changes were discussed by all team members.
 
 ## Technical Stack
@@ -77,11 +79,10 @@ Only the account and its rating are persisted. Games, lobbies and the matchmakin
 
 - Authentication: sign up, log in, log out with JWT stored in an httpOnly cookie.
 - Password security: bcrypt hashing with random salt, server-side strength validation.
-- Matchmaking: ranked 1v1 matchmaking with an expanding ELO range.
 - Private lobbies: create or join a lobby with a 6-character code, up to 4 players.
 - Real-time gameplay: canvas, live scores, round system with moving win target.
 - AI recognition: a QuickDraw transformer guesses each drawing and feeds the score.
-- Reconnection: disconnected players rejoin the ongoing game during a grace period.
+- Reconnection: disconnected players can rejoin the ongoing game during a grace period.
 - Surrender: forfeit a match; host exit closes the lobby, non-host exit returns to the lobby.
 - Ranking: ELO update after ranked games and a top-10 leaderboard.
 - Legal pages: Privacy Policy and Terms of Service.
