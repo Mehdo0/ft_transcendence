@@ -11,9 +11,12 @@ async def websocket_endpoint(websocket: WebSocket):
     await ws_manager.connect(user, websocket)
 
     try:
-        while True:
+         while True:
             payload = await websocket.receive_json()
-            await ws_manager.handle_message(user, payload)
+            try:
+                await ws_manager.handle_message(user, payload)
+            except Exception as e:
+                print("WS: error handling message:", e)
     except WebSocketDisconnect:
         print("user", user.username, "disconnected")
         await ws_manager.disconnect(user)
