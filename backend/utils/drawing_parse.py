@@ -3,22 +3,22 @@ import torch
 
 
 INPUT_SIZE = 4
-MAX_POINTS = 128
+MAX_POINTS = 128 #model trained with max 128 points
 CANVAS_SIZE = 256.0
 SIMPLIFY_EPSILON = 2.0
 MIN_POINT_DISTANCE = 1.0
 
 
-def strokes_to_tensor(strokes: list):
+def strokes_to_tensor(strokes: list): 
     movements = strokes_to_movements(strokes)
 
     if len(movements) == 0:
         src = torch.zeros((1, 1, INPUT_SIZE), dtype=torch.float32)
-        mask = torch.zeros((1, 1), dtype=torch.bool)
+        mask = torch.zeros((1, 1), dtype=torch.bool) 
         return src, mask, False
 
     movements = movements[:MAX_POINTS]
-    src = torch.from_numpy(movements).unsqueeze(0)
+    src = torch.from_numpy(movements).unsqueeze(0) #numpy array to pytorch tensor (array that the model understands)
     mask = torch.zeros((1, len(movements)), dtype=torch.bool)
 
     return src, mask, True
@@ -26,9 +26,9 @@ def strokes_to_tensor(strokes: list):
 
 def strokes_to_movements(strokes: list) -> np.ndarray:
     parsed_strokes = parse_frontend_strokes(strokes)
-    normalized_strokes = normalize_strokes(parsed_strokes, CANVAS_SIZE)
+    normalized_strokes = normalize_strokes(parsed_strokes, CANVAS_SIZE) #so we can draw top left small or bottom right big -> same model guess
     cleaned_strokes = clean_strokes(normalized_strokes, SIMPLIFY_EPSILON, MIN_POINT_DISTANCE)
-    return encode_strokes(cleaned_strokes)
+    return encode_strokes(cleaned_strokes) #from absolute coordinates to relative coordinates
 
 
 def parse_frontend_strokes(strokes: list) -> list[np.ndarray]:
@@ -47,7 +47,7 @@ def parse_frontend_strokes(strokes: list) -> list[np.ndarray]:
             points.append((float(x), float(y)))
 
         if points:
-            parsed_strokes.append(np.array(points, dtype=np.float32))
+            parsed_strokes.append(np.array(points, dtype=np.float32)) # strokes to numpy array (maths between vectors), float 32 -> lighter than 64 -> efficient
 
     return parsed_strokes
 
@@ -56,7 +56,7 @@ def normalize_strokes(strokes: list[np.ndarray], canvas_size: float) -> list[np.
     if not strokes:
         return []
 
-    all_points = np.concatenate(strokes, axis=0)
+    all_points = np.concatenate(strokes, axis=0) #concatenate the strokes arrays because they are separates, necessary to calculate max, min...
     min_xy = all_points.min(axis=0)
     max_xy = all_points.max(axis=0)
     size_xy = max_xy - min_xy
@@ -156,7 +156,7 @@ def encode_strokes(strokes: list[np.ndarray]) -> np.ndarray:
                 dx = 0.0
                 dy = 0.0
             else:
-                delta = point - previous_point
+                delta = point - previous_point #getting delta -> movement from the other point
                 dx = float(delta[0])
                 dy = float(delta[1])
 

@@ -51,7 +51,7 @@ class QuickDrawCleanDataset(Dataset):
         return torch.tensor(points, dtype=torch.float32), self.labels[index]
 
 
-def quickdraw_clean_collate_fn(batch):
+def quickdraw_clean_collate_fn(batch): #update format so each draw has the same ammount of movements in the same batch (requiered by [pytorch])
     points_list = [item[0] for item in batch]
     labels = [item[1] for item in batch]
     lengths = [len(points) for points in points_list]
