@@ -1,4 +1,8 @@
+*This project has been created as part of the 42 curriculum by kgiraud, lfaure, mmouaffa, nbonnet.*
+
 # ft_transcendence
+
+## Description
 
 Draw Meter: a real-time multiplayer drawing game. Players race to draw a given word while a transformer-based AI tries to recognize each drawing. The first one to make the AI guess correctly wins. Draw fast, draw clearly, and climb the leaderboard.
 
@@ -28,12 +32,12 @@ Draw Meter: a real-time multiplayer drawing game. Players race to draw a given w
 
 | Layer | Technology | Justification |
 | --- | --- | --- |
-| Frontend | SvelteKit 5 (Svelte 5, TypeScript, Vite) | Reactive runes, small bundle, fast iteration |
+| Frontend | SvelteKit 2 (Svelte 5, TypeScript, Vite) | Reactive runes, small bundle, fast iteration |
 | Styling | Tailwind CSS v4 (`@tailwindcss/vite`) | Utility-first classes, design tokens declared in `@theme`, only the classes actually used are shipped |
 | Backend | FastAPI (Python 3.11) | Async support, typed models, native WebSocket handling |
 | Database | SQLite + SQLAlchemy ORM | Zero-config persistence, clear relational schema |
 | Real-time | WebSockets | Low-latency game state broadcast between clients |
-| Reverse proxy | nginx | HTTPS termination, routing of `/api`, `/ws` and static assets |
+| Reverse proxy | nginx | HTTPS termination, single exposed entry point, routing of `/api` and `/ws` |
 | Deployment | Docker + Docker Compose | Single-command declarative environment, caching of layers |
 
 ## Architecture
@@ -42,7 +46,7 @@ Three containers behind an nginx reverse proxy:
 
 ```
 [ browser ]
-    |  https://localhost
+    |  https://localhost:8443
     v
 [ nginx ]  ---------->  [ vite (SvelteKit frontend) :5173 ]
     |                     ^
@@ -50,8 +54,8 @@ Three containers behind an nginx reverse proxy:
     +------------------> [ backend (FastAPI) :8000 ]  <-->  [ SQLite (data/game_data.db) ]
 ```
 
-- nginx is the only container exposed on the host (ports 80 and 443).
-- HTTP traffic on port 80 is redirected to HTTPS.
+- nginx is the only container exposed on the host (ports 8080 and 8443, so the project runs without root).
+- HTTP traffic on port 8080 is redirected to HTTPS on 8443.
 - `/api/` and `/ws/` are proxied to the FastAPI backend, with WebSocket upgrade headers.
 - Everything else is served by the frontend.
 - The TLS certificate is self-signed at project initialisation (setup.sh / first make).
@@ -66,6 +70,8 @@ Single `users` table managed by SQLAlchemy ORM:
 | email | String | unique, not null |
 | hashed_password | String | not null (bcrypt, salted) |
 | elo | Integer | starting at 500 |
+
+Only the account and its rating are persisted. Games, lobbies and the matchmaking queue live in the backend memory for the duration of a match, so there is a single table and no foreign key relation.
 
 ## Features
 
@@ -106,22 +112,37 @@ Kim Giraud: focused on frontend gameplay and navigation, implementing navigation
 
 Nils Bonnet: implemented the AI component, including the data pipeline and AI guessing system; integrated AI predictions with the game flow; also worked on ELO, private lobbies and frontend WebSocket management, overcoming connection lifecycle issues across navigation.
 
-## Setup
+## Instructions
 
-Prerequisites: Docker and Docker Compose.
+Prerequisites: Docker, Docker Compose and ports 8080 and 8443 free.
 
 ```sh
 cp .env.example .env
 make
 ```
 
-The `make` command generates the self-signed TLS certificate and starts the containers.
+On the first run `make` calls `setup.sh`, which generates the self-signed TLS certificate and the JWT signing key into `secrets/`, then builds and starts the containers.
 
-## URLs
+`.env` holds non-secret configuration only (database path, cookie flags); `.env.example` is the template and `.env` is git-ignored. The JWT signing key is a Docker secret generated into `secrets/`, also git-ignored.
 
-- https://localhost:8443 - application (accept the self-signed certificate warning once)
-- http://localhost:8080 - redirects to https endpoint
+URLs:
 
-## Makefile targets
+- https://localhost:8443 : the application (accept the self-signed certificate warning once)
+- http://localhost:8080 : redirects to the https endpoint
 
-`make` (alias `make up`) | `down` | `logs` | `ps` | `re` | `fclean`
+Makefile targets: `make` (alias `make up`) | `down` | `logs` | `ps` | `re` | `fclean`
+
+## Resources
+
+- SvelteKit and Svelte 5 runes: https://svelte.dev/docs
+- FastAPI, security and WebSockets sections: https://fastapi.tiangolo.com
+- SQLAlchemy 2.0 ORM: https://docs.sqlalchemy.org
+- PyTorch and the Transformer tutorial: https://pytorch.org/docs
+- "Attention Is All You Need", Vaswani et al., 2017: https://arxiv.org/abs/1706.03762
+- Google Quick Draw dataset: https://github.com/googlecreativelab/quickdraw-dataset
+- Tailwind CSS v4: https://tailwindcss.com/docs
+- nginx TLS and WebSocket proxying: https://nginx.org/en/docs
+- MDN Canvas API and WebSocket API: https://developer.mozilla.org
+- OWASP cheat sheets on password storage and session cookies: https://cheatsheetseries.owasp.org
+
+Use of AI assistants: used as a support tool for looking up documentation, explaining error messages while debugging, writing repetitive frontend styling, and proofreading this README. The architecture, the game logic and the WebSocket protocol were designed and written by the team.
