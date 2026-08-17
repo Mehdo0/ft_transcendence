@@ -15,6 +15,13 @@
 	round_wins: {}
 	});
 
+
+	const tileBase =
+		'group flex items-center justify-between gap-4 border-4 border-ink p-6 font-display text-2xl font-extrabold uppercase no-underline shadow-nb transition-[translate,box-shadow] duration-[120ms] ease-out hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-nb-lg active:translate-x-[3px] active:translate-y-[3px] active:shadow-none';
+
+	const popupBtnBase =
+		'flex-1 cursor-pointer border-4 border-ink p-4 font-display text-sm font-bold text-on-primary uppercase transition-[translate,box-shadow] duration-[120ms] ease-out hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-nb active:translate-x-[3px] active:translate-y-[3px] active:shadow-none';
+
 	function clearSessionData() {
 		sessionStorage.removeItem('draw_stack');
 		sessionStorage.removeItem('draw_word');
@@ -96,230 +103,66 @@
 		</script>
 
 {#if showRejoin}
- <div class="popup-overlay" role="dialog" aria-label="Game reconnection">
-  <div class="popup-card">
-   <h2>You have an active game</h2>
-   <p>vs {rejoinGame.opponents || rejoinGame.players.filter((p: string) => p !== username).join(', ') || 'opponents'}</p>
-   {#if rejoinGame.time_left > 0}
-    <p>{Math.ceil(rejoinGame.time_left)}s remaining</p>
-   {/if}
-   <div class="popup-actions">
-    <button class="popup-btn popup-btn--rejoin" onclick={rejoin}>Rejoin</button>
-    <button class="popup-btn popup-btn--forfeit" onclick={forfeit}>Surrender</button>
-   </div>
-  </div>
- </div>
+	<div
+		class="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70"
+		role="dialog"
+		aria-label="Game reconnection"
+	>
+		<div class="w-[90%] max-w-[400px] border-4 border-ink bg-bg p-12 text-center shadow-nb-lg">
+			<h2 class="mb-4 font-display text-2xl uppercase">You have an active game</h2>
+			<p class="mb-2 text-muted">
+				vs {rejoinGame.opponents ||
+					rejoinGame.players.filter((p: string) => p !== username).join(', ') ||
+					'opponents'}
+			</p>
+			{#if rejoinGame.time_left > 0}
+				<p class="mb-2 text-muted">{Math.ceil(rejoinGame.time_left)}s remaining</p>
+			{/if}
+			<div class="mt-8 flex gap-4">
+				<button class="{popupBtnBase} bg-primary" onclick={rejoin}>Rejoin</button>
+				<button class="{popupBtnBase} bg-danger" onclick={forfeit}>Surrender</button>
+			</div>
+		</div>
+	</div>
 {/if}
 
-<div class="dashboard-wrapper">
-	<header class="dashboard-header">
-		<p class="eyebrow">Draw Meter</p>
-		<h1>Welcome <span class="name-tag">{username || 'Guest'}</span></h1>
-		<p class="tagline">Draw fast. Win first. Outsmart the AI.</p>
+<div class="flex flex-1 flex-col items-center justify-center gap-12 py-8">
+	<header class="max-w-[520px] text-center">
+		<p class="mb-3 font-mono text-xs font-bold tracking-[0.25em] text-muted uppercase">
+			Draw Meter
+		</p>
+		<h1 class="text-3xl uppercase md:text-5xl">
+			Welcome
+			<span class="inline-block -rotate-[1.5deg] border-4 border-ink bg-accent px-2 shadow-nb-sm"
+				>{username || 'Guest'}</span
+			>
+		</h1>
+		<p class="mt-4 text-xl text-muted">Draw fast. Win first. Outsmart the AI.</p>
 	</header>
 
-	<main class="menu-card">
-		<a href="/start_game" class="menu-tile menu-tile--play">
-			<span class="tile-label">Play Now!</span>
-			<span class="tile-arrow" aria-hidden="true">→</span>
+	<main class="flex w-full max-w-[440px] flex-col gap-4">
+		<a href="/start_game" class="{tileBase} bg-primary text-on-primary">
+			<span>Play Now!</span>
+			<span
+				class="text-3xl leading-none transition-[translate] duration-[120ms] group-hover:translate-x-2"
+				aria-hidden="true">→</span
+			>
 		</a>
 
-		<a href="/lobby" class="menu-tile menu-tile--private">
-			<span class="tile-label">Private Game</span>
-			<span class="tile-arrow" aria-hidden="true">→</span>
+		<a href="/lobby" class="{tileBase} bg-accent text-ink">
+			<span>Private Game</span>
+			<span
+				class="text-3xl leading-none transition-[translate] duration-[120ms] group-hover:translate-x-2"
+				aria-hidden="true">→</span
+			>
 		</a>
 
-		<a href="/ranking" class="menu-tile menu-tile--rank">
-			<span class="tile-label">Leaderboard</span>
-			<span class="tile-arrow" aria-hidden="true">→</span>
+		<a href="/ranking" class="{tileBase} bg-highlight text-on-primary">
+			<span>Leaderboard</span>
+			<span
+				class="text-3xl leading-none transition-[translate] duration-[120ms] group-hover:translate-x-2"
+				aria-hidden="true">→</span
+			>
 		</a>
 	</main>
 </div>
-
-<style>
-	.dashboard-wrapper {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-7);
-		padding: var(--space-6) 0;
-	}
-
-	.dashboard-header {
-		text-align: center;
-		max-width: 520px;
-	}
-
-	.eyebrow {
-		font-family: var(--font-mono);
-		font-size: var(--fs-xs);
-		font-weight: var(--fw-bold);
-		text-transform: uppercase;
-		letter-spacing: 0.25em;
-		color: var(--c-muted);
-		margin: 0 0 var(--space-3);
-	}
-
-	.dashboard-header h1 {
-		font-size: var(--fs-3xl);
-		margin: 0;
-		text-transform: uppercase;
-	}
-
-	.name-tag {
-		display: inline-block;
-		background: var(--c-accent);
-		border: var(--border);
-		box-shadow: var(--shadow-sm);
-		padding: 0 var(--space-2);
-		transform: rotate(-1.5deg);
-	}
-
-	.tagline {
-		margin: var(--space-4) 0 0;
-		color: var(--c-muted);
-		font-size: var(--fs-lg);
-	}
-
-	.menu-card {
-		width: 100%;
-		max-width: 440px;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-4);
-	}
-
-	.menu-tile {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		gap: var(--space-4);
-		text-decoration: none;
-		color: var(--c-ink);
-		font-family: var(--font-display);
-		font-weight: var(--fw-display);
-		font-size: var(--fs-xl);
-		text-transform: uppercase;
-		padding: var(--space-5);
-		border: var(--border-lg);
-		box-shadow: var(--shadow);
-		transition:
-			transform var(--transition),
-			box-shadow var(--transition);
-	}
-
-	.menu-tile--play {
-		background: var(--c-primary);
-		color: var(--c-on-primary);
-	}
-
-	.menu-tile--private {
-		background: var(--c-accent);
-	}
-
-	.menu-tile--rank {
-		background: var(--c-highlight);
-		color: var(--c-on-primary);
-	}
-
-	.tile-arrow {
-		font-size: var(--fs-2xl);
-		line-height: 1;
-		transition: transform var(--transition);
-	}
-
-	.menu-tile:hover {
-		transform: translate(calc(-1 * var(--nudge)), calc(-1 * var(--nudge)));
-		box-shadow: var(--shadow-lg);
-	}
-
-	.menu-tile:hover .tile-arrow {
-		transform: translateX(var(--space-2));
-	}
-
-	.menu-tile:active {
-		transform: translate(var(--press), var(--press));
-		box-shadow: none;
-	}
-
-	@media (max-width: 720px) {
-		.dashboard-header h1 {
-			font-size: var(--fs-2xl);
-		}
-	}
-		
-	.popup-overlay {
-	position: fixed;
-	inset: 0;
-	background: rgba(0, 0, 0, 0.7);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	z-index: 1000;
-	}
-
-	.popup-card {
-	background: var(--c-bg);
-	border: var(--border-lg);
-	box-shadow: var(--shadow-lg);
-	padding: var(--space-7);
-	max-width: 400px;
-	width: 90%;
-	text-align: center;
-	}
-
-	.popup-card h2 {
-	font-family: var(--font-display);
-	font-size: var(--fs-xl);
-	text-transform: uppercase;
-	margin: 0 0 var(--space-4);
-	}
-
-	.popup-card p {
-	color: var(--c-muted);
-	margin: 0 0 var(--space-2);
-	}
-
-	.popup-actions {
-	display: flex;
-	gap: var(--space-4);
-	margin-top: var(--space-6);
-	}
-
-	.popup-btn {
-	flex: 1;
-	padding: var(--space-4);
-	font-family: var(--font-display);
-	font-size: var(--fs-sm);
-	font-weight: var(--fw-bold);
-	text-transform: uppercase;
-	border: var(--border);
-	cursor: pointer;
-	transition:
-	transform var(--transition),
-	box-shadow var(--transition);
-	}
-
-	.popup-btn--rejoin {
-	background: var(--c-primary);
-	color: var(--c-on-primary);
-	}
-
-	.popup-btn--forfeit {
-	background: var(--c-danger);
-	color: var(--c-on-primary);
-	}
-
-	.popup-btn:hover {
-	transform: translate(calc(-1 * var(--nudge)), calc(-1 * var(--nudge)));
-	box-shadow: var(--shadow);
-	}
-
-	.popup-btn:active {
-	transform: translate(var(--press), var(--press));
-	box-shadow: none;
-	}
-
-</style>

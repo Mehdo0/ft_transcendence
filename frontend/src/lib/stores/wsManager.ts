@@ -22,12 +22,16 @@ export function connect(): Promise<void> {
 		socket.onmessage = (event: MessageEvent) => {
 			try {
 				const message = JSON.parse(event.data);
+				if (message.type === 'error') {
+					alert(message.message);
+					return;
+				}
 				subscribers.forEach((handler) => handler(message));
 			} catch {
 				console.log("invalid msg");
-				// Ignore invalid messages
 			}
 		};
+
 
 		socket.onerror = (error: Event) => {
 			connectionPromise = null;
