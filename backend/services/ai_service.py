@@ -62,7 +62,7 @@ class QuickDrawTransformer(nn.Module):
         dim_feedforward: int = 512, #size of a layer
         dropout: float = 0.1, #training only, ignore 10% of informations to generalise
     ):
-        super().__init__() #makes this class work as a pytorch model
+        super().__init__() #init read movement, order, scores
         self.input_projection = nn.Linear(input_size, d_model)
         self.pos_encoder = PositionalEncoding(d_model, max_len)
         encoder_layer = nn.TransformerEncoderLayer(
