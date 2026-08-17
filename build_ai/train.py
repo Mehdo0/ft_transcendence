@@ -32,7 +32,7 @@ def make_model_config(num_classes: int) -> dict:
     }
 
 
-def make_loaders(classes: list[str]) -> tuple[DataLoader, DataLoader]:
+def make_loaders(classes: list[str]) -> tuple[DataLoader, DataLoader]: #prepare datas for training and check
     train_dataset = QuickDrawCleanDataset(TRAINING_CONFIG.data_dir, classes, split="train", is_training=True)
     val_dataset = QuickDrawCleanDataset(TRAINING_CONFIG.data_dir, classes, split="val", is_training=False)
 
@@ -68,8 +68,8 @@ def train_one_epoch(
         masks = masks.to(device)
         labels = labels.to(device)
 
-        optimizer.zero_grad(set_to_none=True)
-        outputs = model(inputs, src_key_padding_mask=masks)
+        optimizer.zero_grad(set_to_none=True) #forgot previous calculated corrections
+        outputs = model(inputs, src_key_padding_mask=masks) #model predicts the batch
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -132,13 +132,13 @@ def train() -> None:
     model_config = make_model_config(len(classes))
     train_loader, val_loader = make_loaders(classes)
     model = QuickDrawTransformer(**model_config).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(
+    criterion = nn.CrossEntropyLoss() #rule to check how wrong or right is the model
+    optimizer = torch.optim.AdamW( #hwo to edit the model weights to optimize the model affter each batch
         model.parameters(),
         lr=TRAINING_CONFIG.learning_rate,
         weight_decay=TRAINING_CONFIG.weight_decay,
     )
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(#similar but after eacch epoch
         optimizer,
         mode="max",
         factor=TRAINING_CONFIG.scheduler_factor,
