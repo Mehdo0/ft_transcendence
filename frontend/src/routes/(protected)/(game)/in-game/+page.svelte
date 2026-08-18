@@ -242,6 +242,7 @@
 			startTimer();
 			loadUserData();
 			fetchGameData();
+			sessionStorage.removeItem('draw_stack');
 			
 
 			if (!isReconnect) {
