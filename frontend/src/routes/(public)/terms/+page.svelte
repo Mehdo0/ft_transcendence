@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import LegalPage from '$lib/components/LegalPage.svelte';
 </script>
 
@@ -101,7 +102,9 @@
 		<p class="mb-3 leading-[1.65]">
 			We may update these terms; continued use after a change means you accept the new version. For
 			any question, reach the team through the project repository or your 42 Lausanne contact. See
-			also our <a href="/privacy" class="font-semibold text-primary underline">Privacy Policy</a>.
+			also our <a href={resolve('/privacy')} class="font-semibold text-primary underline">
+				Privacy Policy
+			</a>.
 		</p>
 	</section>
 </LegalPage>

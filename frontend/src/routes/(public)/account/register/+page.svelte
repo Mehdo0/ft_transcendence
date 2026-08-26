@@ -30,7 +30,8 @@
 	function validate(): boolean {
 		const next: Errors = {};
 		if (!username.trim()) next.username = 'Username is required.';
-		else if (!/^[a-zA-Z0-9]+$/.test(username.trim())) next.username = 'Only a-z, A-Z and 0-9 charaters.';
+		else if (!/^[a-zA-Z0-9]+$/.test(username.trim()))
+			next.username = 'Only a-z, A-Z and 0-9 charaters.';
 		if (!email.trim()) next.email = 'Email is required.';
 		else if (!EMAIL_RE.test(email.trim())) next.email = 'Invalid email address.';
 		if (!password) next.password = 'Password is required.';

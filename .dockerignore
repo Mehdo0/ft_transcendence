@@ -9,4 +9,6 @@
 .svelte-kit/
 build_ai/
 data/
+logs/
+secrets/
 venv/

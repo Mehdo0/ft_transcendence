@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { login } from '$lib/api';
 	import Button from '$lib/components/Button.svelte';
 	import ErrorBox from '$lib/components/ErrorBox.svelte';
@@ -79,7 +80,9 @@
 
 		<p class="mt-8 text-center text-sm text-muted">
 			Don't have an account?
-			<a href="/account/register" class="font-bold text-primary underline">Register here</a>
+			<a href={resolve('/account/register')} class="font-bold text-primary underline">
+				Register here
+			</a>
 		</p>
 	</main>
 </div>

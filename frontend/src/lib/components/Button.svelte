@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import type { Pathname } from '$app/types';
 	import type { Snippet } from 'svelte';
 
 	type Variant = 'default' | 'primary' | 'accent' | 'danger';
@@ -35,7 +37,7 @@
 </script>
 
 {#if href}
-	<a {href} class={classes} {...rest}>{@render children()}</a>
+	<a href={resolve(href as Pathname)} class={classes} {...rest}>{@render children()}</a>
 {:else}
 	<button {type} {disabled} class={classes} {...rest}>{@render children()}</button>
 {/if}

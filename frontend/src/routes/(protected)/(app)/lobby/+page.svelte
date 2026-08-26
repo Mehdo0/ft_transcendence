@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { send, subscribe } from '$lib/stores/wsManager';
 	import { onMount } from 'svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -16,7 +17,7 @@
 	onMount(() => {
 		const unsubscribe = subscribe((message) => {
 			if (message.type === 'lobby_created' || message.type === 'lobby_joined') {
-				goto('/lobby/' + message.code);
+				goto(resolve(`/lobby/${message.code}`));
 			} else if (message.type === 'error') {
 				joinError = true;
 				setTimeout(() => (joinError = false), 500);

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { page } from '$app/stores';
+	import type { Pathname } from '$app/types';
 	import favicon from '$lib/draw_meter_logo.svg';
 	import Button from '$lib/components/Button.svelte';
 
@@ -25,7 +27,7 @@
 	<div
 		class="relative mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-6 py-3 nav:gap-6"
 	>
-		<a href="/" class="flex items-center gap-3 font-semibold text-ink no-underline">
+		<a href={resolve('/')} class="flex items-center gap-3 font-semibold text-ink no-underline">
 			<span
 				class="inline-flex shrink-0 items-center justify-center border-4 border-ink bg-accent p-1 shadow-nb-sm"
 			>
@@ -74,7 +76,7 @@
 						{@const isActive = $page.url.pathname === link.href}
 						<li>
 							<a
-								href={link.href}
+								href={resolve(link.href as Pathname)}
 								class="{linkBase} {isActive
 									? 'after:scale-x-100 after:bg-ink'
 									: 'after:scale-x-0 after:bg-accent hover:after:scale-x-100 focus-visible:after:scale-x-100'}"
