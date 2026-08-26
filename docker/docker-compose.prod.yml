@@ -13,6 +13,21 @@ services:
       - trsc_net
     secrets:
       - secret_key
+    environment:
+      BACKEND_HEALTHCHECK_URL: ${BACKEND_HEALTHCHECK_URL:-http://127.0.0.1:8000/api/health}
+      HEALTHCHECK_REQUEST_TIMEOUT_SECONDS: ${HEALTHCHECK_REQUEST_TIMEOUT_SECONDS:-2}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os, urllib.request; urllib.request.urlopen(os.environ['BACKEND_HEALTHCHECK_URL'], timeout=float(os.environ['HEALTHCHECK_REQUEST_TIMEOUT_SECONDS'])).read()",
+        ]
+      interval: ${HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-3}
+      start_period: ${HEALTHCHECK_START_PERIOD:-60s}
 
   backup:
     image: ${BACKEND_IMAGE:-drawmeter-backend}
@@ -25,7 +40,8 @@ services:
       - ../data:/app/data:ro
       - ../backups:/app/backups
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   nginx:
     build:
@@ -39,9 +55,18 @@ services:
     ports:
       - "127.0.0.1:${APP_PORT:?APP_PORT must be configured}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - trsc_net
+    environment:
+      NGINX_HEALTHCHECK_URL: ${NGINX_HEALTHCHECK_URL:-http://127.0.0.1/api/health}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null \"$${NGINX_HEALTHCHECK_URL}\""]
+      interval: ${HEALTHCHECK_INTERVAL:-30s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-3}
+      start_period: ${HEALTHCHECK_START_PERIOD:-60s}
 
 networks:
   trsc_net:
