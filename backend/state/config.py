@@ -15,7 +15,6 @@ def read_secret_key():
         return os.urandom(32).hex()
 
 
-DB_NAME = "data/game_data.db"
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = read_secret_key()
 ALGORITHM = read_non_empty_string("JWT_ALGORITHM", "HS256")

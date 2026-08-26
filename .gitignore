@@ -23,6 +23,7 @@ env/
 
 # SQLite
 *.db
+backups/
 data/
 
 # OS

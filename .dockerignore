@@ -8,6 +8,7 @@
 .vscode/
 .svelte-kit/
 build_ai/
+backups/
 data/
 logs/
 secrets/

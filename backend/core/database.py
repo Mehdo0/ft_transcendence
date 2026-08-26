@@ -1,19 +1,17 @@
 import bcrypt
 
+from core.database_config import DATABASE_PATH, DATABASE_URL
+from core.exceptions import EmailAlreadyTakenError
 from models.models import Base, UserModel
 from schemas.data import User, UserRegister
 from sqlalchemy import and_, create_engine, func, or_, select
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
-from core.exceptions import EmailAlreadyTakenError
-
-DB_NAME = "data/game_data.db"
-DATABASE_URL = f"sqlite+pysqlite:///{DB_NAME}"
+from sqlalchemy.orm import sessionmaker
 
 engine = create_engine(
     DATABASE_URL,
-    echo=False,  # debug logs
-    connect_args={"check_same_thread": False},  # Necessary for fastAPI
+    echo=False,
+    connect_args={"check_same_thread": False},
 )
 
 SessionLocal = sessionmaker(
@@ -24,6 +22,7 @@ SessionLocal = sessionmaker(
 
 
 def setup_database():
+    DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
 
     with SessionLocal() as session:

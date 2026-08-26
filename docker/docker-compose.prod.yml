@@ -1,5 +1,6 @@
 services:
   backend:
+    image: ${BACKEND_IMAGE:-drawmeter-backend}
     build:
       context: ..
       dockerfile: docker/backend.Dockerfile
@@ -12,6 +13,19 @@ services:
       - trsc_net
     secrets:
       - secret_key
+
+  backup:
+    image: ${BACKEND_IMAGE:-drawmeter-backend}
+    restart: unless-stopped
+    network_mode: none
+    command: ["python", "-m", "maintenance.database_backup"]
+    env_file:
+      - ../.env
+    volumes:
+      - ../data:/app/data:ro
+      - ../backups:/app/backups
+    depends_on:
+      - backend
 
   nginx:
     build:

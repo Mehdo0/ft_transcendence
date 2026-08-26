@@ -1,9 +1,6 @@
-import os
 from fastapi import APIRouter
 from game.game_manager import GameManager
 
-
-os.makedirs("data", exist_ok=True)
 
 manager = GameManager()
 

@@ -31,9 +31,12 @@ prod-down:
 prod-logs:
 	$(PROD_COMPOSE) logs -f
 
+prod-backup:
+	$(PROD_COMPOSE) run --rm backup python -m maintenance.database_backup --once
+
 fclean: down
 	rm -rf data/game_data.db
 
 re: fclean up
 
-.PHONY: all up down logs prod-up prod-down prod-logs fclean re
+.PHONY: all up down logs prod-up prod-down prod-logs prod-backup fclean re
