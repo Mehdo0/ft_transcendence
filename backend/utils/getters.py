@@ -15,12 +15,16 @@ def get_opponents(user: User, game: Game) -> list[str]:
     return opponents
 
 
-def get_users_unsafe(usernames: list[str]) -> list[User]:
+def get_game_user(game: Game, username: str) -> User | None:
+    return game.player_data.get(username) or get_user(username)
+
+
+def get_game_users(game: Game) -> list[User]:
     users = []
-    assert len(usernames) >= 1
-    for username in usernames:
-        assert get_user(username) is not None
-        user = get_user(username)
+    for username in game.players:
+        user = get_game_user(game, username)
+        if user is None:
+            raise ValueError(f"Player {username} does not exist")
         users.append(user)
     return users
 

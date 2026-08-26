@@ -6,10 +6,13 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM nginx:alpine
-RUN apk add --no-cache openssl
-COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
+ARG NGINX_CONFIG=docker/nginx/default.conf
+RUN apk add --no-cache gettext \
+    && mkdir -p /etc/nginx/templates
+COPY ${NGINX_CONFIG} /etc/nginx/templates/default.conf.template
 COPY docker/nginx/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 COPY --from=builder /app/build /usr/share/nginx/html
 EXPOSE 80 443
 ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]

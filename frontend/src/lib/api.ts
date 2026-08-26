@@ -14,25 +14,22 @@ async function readError(res: Response): Promise<string> {
 		const body = await res.json();
 		if (body && typeof body.detail === 'string') return body.detail;
 	} catch {
-		// not JSON, fall through
+		return res.statusText || 'Erreur inconnue';
 	}
 	return res.statusText || 'Erreur inconnue';
 }
-	
-export async function asResult<T>(res: Response) {
-    if (res.ok) {
-        const data = await res.json();
-        return { ok: true, data: data as T };
-    } else {
-        // Parse the error JSON from FastAPI
-        const errorData = await res.json().catch(() => ({}));
-        
-        return { 
-            ok: false, 
-            // Extract the specific 'detail' string we wrote in Python
-            detail: errorData.detail || "An unexpected error occurred." 
-        };
-    }
+
+export async function asResult<T>(res: Response): Promise<ApiResult<T>> {
+	if (res.ok) {
+		const data = (await res.json()) as T;
+		return { ok: true, data };
+	}
+
+	return {
+		ok: false,
+		status: res.status,
+		detail: await readError(res)
+	};
 }
 
 export async function registerUser(

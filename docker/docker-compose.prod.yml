@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    volumes:
+      - ../data:/app/data
+    networks:
+      - trsc_net
+    secrets:
+      - secret_key
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: docker/nginx.Dockerfile
+      args:
+        NGINX_CONFIG: docker/nginx/production.conf
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "127.0.0.1:${APP_PORT:?APP_PORT must be configured}:80"
+    depends_on:
+      - backend
+    networks:
+      - trsc_net
+
+networks:
+  trsc_net:
+    driver: bridge
+
+secrets:
+  secret_key:
+    file: ../secrets/secret_key

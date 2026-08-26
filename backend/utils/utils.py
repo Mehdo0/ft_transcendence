@@ -1,12 +1,11 @@
+import asyncio
+
 from schemas.data import Game, User
 from core.setup import manager
 
-GRACE_PERIOD = 10
-
-
 def cancel_timer(game_id: str) -> None:
     task = manager.game_timers.pop(game_id, None)
-    if task is not None:
+    if task is not None and task is not asyncio.current_task():
         task.cancel()
 
 
@@ -29,6 +28,7 @@ def cleanup_game(game: Game) -> None:
 
 def disconnect(user: User):
     manager.connections.pop(user.username, None)
+    manager.connected_users.pop(user.username, None)
     manager.player_games.pop(user.username, None)
     try:
         manager.disconnected_players.remove(user.username)

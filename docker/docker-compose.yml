@@ -37,6 +37,8 @@ services:
       dockerfile: docker/nginx.Dockerfile
     container_name: trsc_nginx
     restart: unless-stopped
+    environment:
+      TLS_ENABLED: "true"
     volumes:
       - ../logs:/var/log/nginx;
     ports:

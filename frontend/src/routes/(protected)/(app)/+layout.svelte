@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
+	import { getSession } from '$lib/session';
 
 	let { children } = $props();
 
@@ -19,8 +20,7 @@
 	}
 
 	$effect(() => {
-		$page.url.pathname;
-		menuOpen = false;
+		if ($page.url.pathname) menuOpen = false;
 	});
 
 	async function handleLogout() {
@@ -40,15 +40,8 @@
 	];
 
 	onMount(async () => {
-		const response = await fetch('/api/session/', {
-			method: 'GET',
-			credentials: 'same-origin'
-		});
-		const session = await response.json();
-		if (session.authenticated) {
-			login = true;
-		}
-
+		const session = await getSession();
+		login = session.authenticated && !session.user.is_guest;
 	});
 </script>
 

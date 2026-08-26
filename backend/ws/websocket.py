@@ -8,18 +8,22 @@ from services.services import get_user_from_ws_token
 @router.websocket("/ws/")
 async def websocket_endpoint(websocket: WebSocket):
     user = await authenticate_user_trough_ws(websocket)
-    await ws_manager.connect(user, websocket)
 
     try:
-         while True:
+        await ws_manager.connect(user, websocket)
+        while True:
             payload = await websocket.receive_json()
+            if not ws_manager.owns_connection(user, websocket):
+                break
             try:
                 await ws_manager.handle_message(user, payload)
             except Exception as e:
                 print("WS: error handling message:", e)
-    except WebSocketDisconnect:
-        print("user", user.username, "disconnected")
-        await ws_manager.disconnect(user)
+    except (RuntimeError, WebSocketDisconnect):
+        if ws_manager.owns_connection(user, websocket):
+            print("user", user.username, "disconnected")
+    finally:
+        await ws_manager.disconnect(user, websocket)
 
 
 async def authenticate_user_trough_ws(websocket) -> User:

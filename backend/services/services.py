@@ -1,4 +1,3 @@
-import random
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -19,6 +18,7 @@ from core.exceptions import (
 )
 from schemas.data import Token, User, UserRegister
 from services.ai_service import internal_make_ai_guess
+from services.guest_service import is_guest_username
 from state.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
@@ -67,6 +67,8 @@ def validate_username(username: str) -> None:
         raise BadUsername("Username must be between 3 and 20 characters")
     if not username.isalnum():
         raise BadUsername("Username must be only alphanumeric (numbers and letters)")
+    if is_guest_username(username):
+        raise BadUsername("Usernames starting with Guest are reserved")
 
 
 async def register_user(user_register: UserRegister):
@@ -105,14 +107,9 @@ async def get_session(access_token: str | None = Cookie(default=None)):
 
     try:
         payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username is None:
-            return None
+        return get_user_from_token_payload(payload)
     except InvalidTokenError:
         return None
-
-    user = get_user(username)
-    return user
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
@@ -126,13 +123,21 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
+def get_user_from_token_payload(payload: dict) -> User | None:
+    username = payload.get("sub")
+    if not isinstance(username, str):
+        return None
+    if payload.get("guest") is True:
+        if not is_guest_username(username):
+            return None
+        return User(username=username, email="", elo=0, is_guest=True)
+    return get_user(username)
+
+
 def get_user_from_ws_token(token: str) -> User:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if username is None:
-            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
-        user = get_user(username)
+        user = get_user_from_token_payload(payload)
         if user is None:
             raise WebSocketException(code=status.HTTP_404_NOT_FOUND)
         return user

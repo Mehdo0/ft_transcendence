@@ -2,13 +2,17 @@
 	import { send, subscribe } from '$lib/stores/wsManager';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 	import { game } from '$lib/stores/game.svelte';
 	import { goto, beforeNavigate } from '$app/navigation';
 	import Button from '$lib/components/Button.svelte';
+	import LobbyPlayerCard from '$lib/components/lobby/LobbyPlayerCard.svelte';
+	import { saveRoundTiming } from '$lib/game/roundTiming';
+	import type { ServerMessage } from '$lib/websocket/serverMessage';
 
 	const code = page.params.code ?? '';
 	let players = $state<string[]>([]);
-	let me = $state('');
+	let hostUsername = $state('');
 	let isHost = $state(false);
 	let copied = $state(false);
 	let leaving = false;
@@ -49,10 +53,11 @@
 		};
 	});
 
-	function handleMessage(msg: any) {
+	function handleMessage(msg: ServerMessage) {
 		if (msg.type === 'lobby_info') {
+			if (!msg.exist) return;
 			players = msg.players;
-			me = msg.me;
+			hostUsername = msg.host;
 			isHost = msg.host === msg.me;
 			sessionStorage.setItem('isHost', isHost.toString());
 			sessionStorage.setItem('players', JSON.stringify(players));
@@ -68,7 +73,7 @@
 		if (msg.type === 'lobby_closed') {
 			clearSessionData();
 			leaving = true;
-			goto('/lobby');
+			goto(resolve('/lobby'));
 		}
 		if (msg.type === 'match_found') {
 			game.id = msg.game_id;
@@ -77,21 +82,15 @@
 			game.me = msg.me ?? '';
 			game.word = msg.word;
 			game.scores = {};
+			game.round_number = msg.round_number ?? 1;
 			game.is_ranked = msg.is_ranked ?? false;
 			clearSessionData();
 			sessionStorage.setItem('private_lobby_code', code);
 			sessionStorage.removeItem('draw_in_progress');
-			sessionStorage.setItem(
-				'draw_ends_at',
-				String(Date.now() + ((msg.duration ?? 60) + (msg.countdown ?? 0)) * 1000)
-			);
+			saveRoundTiming(msg.duration + msg.countdown, msg.countdown);
 			leaving = true;
-			goto('/in-game');
+			goto(resolve('/in-game'));
 		}
-	}
-
-	function shortName(name: string, max = 6) {
-		return name.length > max ? name.slice(0, max) + '…' : name;
 	}
 
 	function startGame() {
@@ -136,17 +135,10 @@
 		</header>
 
 		<div
-			class="flex flex-wrap items-center justify-center gap-4 border-4 border-ink bg-bg-alt px-6 py-8"
+			class="grid grid-cols-[repeat(auto-fit,minmax(104px,1fr))] items-start gap-5 border-4 border-ink bg-bg-alt px-4 py-8 sm:px-6"
 		>
 			{#each players as player (player)}
-				<div class="flex flex-[0_0_96px] flex-col items-center gap-3 text-center">
-					<div
-						class="flex h-20 w-20 items-center justify-center overflow-hidden border-4 border-ink bg-primary px-2 text-center font-display font-extrabold text-on-primary shadow-nb-sm"
-						title={player}
-					>
-						{shortName(player)}
-					</div>
-				</div>
+				<LobbyPlayerCard username={player} isHost={player === hostUsername} />
 			{/each}
 		</div>
 

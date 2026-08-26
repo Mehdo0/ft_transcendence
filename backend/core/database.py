@@ -2,7 +2,7 @@ import bcrypt
 
 from models.models import Base, UserModel
 from schemas.data import User, UserRegister
-from sqlalchemy import create_engine, select
+from sqlalchemy import and_, create_engine, func, or_, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from core.exceptions import EmailAlreadyTakenError
@@ -59,15 +59,45 @@ def add_user(user: UserRegister) -> User:
             raise EmailAlreadyTakenError("This email is already taken.")
 
 
-def get_ranking():
+def get_ranking(limit: int) -> list[dict[str, str | int]]:
     with SessionLocal() as session:
         stmt = (
             select(UserModel.username, UserModel.elo)
-            .order_by(UserModel.elo.desc())
-            .limit(10)
+            .order_by(UserModel.elo.desc(), UserModel.username.asc())
+            .limit(limit)
         )
         rows = session.execute(stmt).mappings().all()
-        return list(rows)
+        return [
+            {"rank": index, "username": row.username, "elo": row.elo}
+            for index, row in enumerate(rows, start=1)
+        ]
+
+
+def get_user_rank(username: str) -> dict[str, str | int] | None:
+    with SessionLocal() as session:
+        user = session.get(UserModel, username)
+        if user is None:
+            return None
+
+        preceding_users = select(func.count()).select_from(UserModel).where(
+            or_(
+                UserModel.elo > user.elo,
+                and_(UserModel.elo == user.elo, UserModel.username < user.username),
+            )
+        )
+        rank = session.scalar(preceding_users) or 0
+        return {"rank": rank + 1, "username": user.username, "elo": user.elo}
+
+
+def get_usernames_by_prefix(prefix: str) -> set[str]:
+    with SessionLocal() as session:
+        usernames = session.scalars(select(UserModel.username)).all()
+        normalized_prefix = prefix.casefold()
+        return {
+            username
+            for username in usernames
+            if username.casefold().startswith(normalized_prefix)
+        }
 
 
 def get_user(username: str) -> User | None:

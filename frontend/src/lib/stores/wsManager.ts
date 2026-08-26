@@ -1,80 +1,194 @@
+import { reconnectBaseDelay, reconnectMaxDelay } from '$lib/websocket/config';
+import { parseServerMessage, type ServerMessage } from '$lib/websocket/serverMessage';
+
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'replaced';
+
+type MessageHandler = (message: ServerMessage) => void;
+type StatusHandler = (status: ConnectionStatus) => void;
+
 let socket: WebSocket | null = null;
 let connectionPromise: Promise<void> | null = null;
-const subscribers: ((message: any) => void)[] = [];
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
+let reconnectEnabled = false;
+let connectionStatus: ConnectionStatus = 'disconnected';
 
-export function connect(): Promise<void> {
-	if (socket?.readyState === WebSocket.OPEN) {
-		return Promise.resolve();
-	}
+const messageHandlers: MessageHandler[] = [];
+const statusHandlers: StatusHandler[] = [];
 
-	if (connectionPromise) {
-		return connectionPromise;
-	}
+function setConnectionStatus(status: ConnectionStatus) {
+	if (connectionStatus === status) return;
+	connectionStatus = status;
+	statusHandlers.forEach((handler) => handler(status));
+}
 
-	connectionPromise = new Promise<void>((resolve, reject) => {
-		socket = new WebSocket('/ws/');
+function clearReconnectTimer() {
+	if (reconnectTimer === null) return;
+	clearTimeout(reconnectTimer);
+	reconnectTimer = null;
+}
 
-		socket.onopen = () => {
-			connectionPromise = null;
+function scheduleReconnect() {
+	if (!reconnectEnabled || reconnectTimer !== null || connectionStatus === 'replaced') return;
+
+	const delay = Math.min(reconnectBaseDelay * 2 ** reconnectAttempt, reconnectMaxDelay);
+	reconnectAttempt += 1;
+	reconnectTimer = setTimeout(() => {
+		reconnectTimer = null;
+		void connect().catch(() => undefined);
+	}, delay);
+}
+
+function dispatchMessage(message: ServerMessage) {
+	messageHandlers.forEach((handler) => handler(message));
+}
+
+function openSocket(): Promise<void> {
+	const candidate = new WebSocket('/ws/');
+	socket = candidate;
+	setConnectionStatus('connecting');
+
+	return new Promise<void>((resolve, reject) => {
+		let settled = false;
+
+		function resolveConnection() {
+			if (settled) return;
+			settled = true;
 			resolve();
-		};
+		}
 
-		socket.onmessage = (event: MessageEvent) => {
+		function rejectConnection() {
+			if (settled) return;
+			settled = true;
+			reject(new Error('WebSocket connection failed'));
+		}
+
+		candidate.onmessage = (event: MessageEvent) => {
 			try {
-				const message = JSON.parse(event.data);
-				if (message.type === 'error') {
-					alert(message.message);
+				const message = parseServerMessage(JSON.parse(event.data));
+				if (!message || socket !== candidate) return;
+
+				if (message.type === 'connection_ready') {
+					reconnectAttempt = 0;
+					setConnectionStatus('connected');
+					resolveConnection();
 					return;
 				}
-				subscribers.forEach((handler) => handler(message));
+
+				if (message.type === 'connection_replaced') {
+					reconnectEnabled = false;
+					clearReconnectTimer();
+					setConnectionStatus('replaced');
+					return;
+				}
+
+				dispatchMessage(message);
 			} catch {
-				console.log("invalid msg");
+				console.log('invalid msg');
 			}
 		};
 
+		candidate.onerror = () => rejectConnection();
 
-		socket.onerror = (error: Event) => {
-			connectionPromise = null;
-			reject(error);
-		};
-
-		socket.onclose = () => {
+		candidate.onclose = () => {
+			rejectConnection();
+			if (socket !== candidate) return;
 			socket = null;
-			connectionPromise = null;
+			if (connectionStatus === 'replaced') return;
+			setConnectionStatus('disconnected');
+			scheduleReconnect();
 		};
 	});
+}
 
-	return connectionPromise;
+export function connect(): Promise<void> {
+	if (connectionStatus === 'replaced') {
+		return Promise.reject(new Error('Connection active in another tab'));
+	}
+
+	if (socket?.readyState === WebSocket.OPEN && connectionStatus === 'connected') {
+		return Promise.resolve();
+	}
+
+	if (connectionPromise) return connectionPromise;
+
+	reconnectEnabled = true;
+	clearReconnectTimer();
+
+	const pendingConnection = openSocket();
+	connectionPromise = pendingConnection;
+	pendingConnection.then(
+		() => {
+			if (connectionPromise === pendingConnection) connectionPromise = null;
+		},
+		() => {
+			if (connectionPromise === pendingConnection) connectionPromise = null;
+		}
+	);
+	return pendingConnection;
+}
+
+export function takeOverConnection(): Promise<void> {
+	const previousSocket = socket;
+	socket = null;
+	connectionPromise = null;
+	reconnectEnabled = true;
+	reconnectAttempt = 0;
+	clearReconnectTimer();
+	setConnectionStatus('disconnected');
+	previousSocket?.close();
+	return connect();
 }
 
 export function disconnect() {
-	socket?.close();
+	reconnectEnabled = false;
+	clearReconnectTimer();
+	const previousSocket = socket;
 	socket = null;
+	connectionPromise = null;
+	setConnectionStatus('disconnected');
+	previousSocket?.close();
 }
 
 export function send(message: object) {
-	connect();
-	if (!socket) return;
+	if (connectionStatus === 'replaced') return;
 
 	const data = JSON.stringify(message);
+	const sendWhenConnected = () => {
+		if (socket?.readyState === WebSocket.OPEN && connectionStatus === 'connected') {
+			socket.send(data);
+		}
+	};
 
-	if (socket.readyState === WebSocket.OPEN) {
-		socket.send(data);
+	if (socket?.readyState === WebSocket.OPEN && connectionStatus === 'connected') {
+		sendWhenConnected();
 		return;
 	}
 
-	socket.addEventListener('open', () => socket?.send(data), { once: true });
+	void connect()
+		.then(sendWhenConnected)
+		.catch(() => undefined);
 }
 
-export function subscribe(handler: (message: any) => void) {
-	subscribers.push(handler);
+export function subscribe(handler: MessageHandler) {
+	messageHandlers.push(handler);
 
 	return () => {
-		const index = subscribers.indexOf(handler);
-		if (index !== -1) subscribers.splice(index, 1);
+		const index = messageHandlers.indexOf(handler);
+		if (index !== -1) messageHandlers.splice(index, 1);
+	};
+}
+
+export function subscribeConnection(handler: StatusHandler) {
+	statusHandlers.push(handler);
+	handler(connectionStatus);
+
+	return () => {
+		const index = statusHandlers.indexOf(handler);
+		if (index !== -1) statusHandlers.splice(index, 1);
 	};
 }
 
 export function isOpen() {
-	return socket?.readyState === WebSocket.OPEN;
+	return socket?.readyState === WebSocket.OPEN && connectionStatus === 'connected';
 }

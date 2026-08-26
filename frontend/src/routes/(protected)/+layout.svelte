@@ -1,24 +1,49 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
+	import { createGuestSession, getSession } from '$lib/session';
 	import { connect } from '$lib/stores/wsManager';
 
 	let { children } = $props();
 	let checking = $state(true);
+	let navigationVersion = 0;
 
-	onMount(async () => {
-		const response = await fetch('/api/session/', {
-			method: 'GET',
-			credentials: 'same-origin'
-		});
-		const session = await response.json();
+	function isLobbyPath(pathname: string): boolean {
+		return pathname === '/lobby' || pathname.startsWith('/lobby/');
+	}
 
-		if (!session.authenticated) {
-			goto('/account/login');
-			return;
+	function allowsGuest(pathname: string): boolean {
+		return isLobbyPath(pathname) || pathname === '/ranking' || pathname === '/in-game';
+	}
+
+	function needsWebSocket(pathname: string): boolean {
+		return isLobbyPath(pathname) || pathname === '/in-game' || pathname === '/start_game';
+	}
+
+	async function initialize(pathname: string, version: number): Promise<void> {
+		try {
+			let session = await getSession();
+			if (!session.authenticated && allowsGuest(pathname)) {
+				session = await createGuestSession();
+			}
+
+			if (!session.authenticated || (session.user.is_guest && !allowsGuest(pathname))) {
+				await goto(resolve('/account/login'));
+				return;
+			}
+			if (needsWebSocket(pathname)) await connect();
+			if (version === navigationVersion) checking = false;
+		} catch {
+			await goto(resolve('/'));
 		}
-		connect();
-		checking = false;
+	}
+
+	$effect(() => {
+		const pathname = page.url.pathname;
+		const version = ++navigationVersion;
+		checking = true;
+		void initialize(pathname, version);
 	});
 </script>
 

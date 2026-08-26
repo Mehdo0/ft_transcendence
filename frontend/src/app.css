@@ -38,7 +38,6 @@
 	--animate-cd-half-in: cd-half-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
 	--animate-cd-bot-in: cd-bot-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s both;
 	--animate-cd-num-stamp: cd-num-stamp 1s cubic-bezier(0.4, 0, 0.2, 1) both;
-	--animate-cd-go-blast: cd-go-blast 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
 
 	@keyframes timer-pulse {
 		0%,
@@ -102,27 +101,6 @@
 		}
 		100% {
 			transform: translateY(6%) scaleY(0.94);
-			opacity: 0;
-		}
-	}
-
-	@keyframes cd-go-blast {
-		0% {
-			transform: scale(0.25);
-			opacity: 0;
-			letter-spacing: -0.12em;
-		}
-		38% {
-			transform: scale(1.06);
-			opacity: 1;
-			letter-spacing: 0.04em;
-		}
-		62% {
-			transform: scale(1);
-			opacity: 1;
-		}
-		100% {
-			transform: scale(1.18);
 			opacity: 0;
 		}
 	}

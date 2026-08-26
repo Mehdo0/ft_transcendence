@@ -7,6 +7,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from core.database import (
     get_ranking,
     get_user,
+    get_user_rank,
+    get_usernames_by_prefix,
 )
 from core.exceptions import (
     EmailAlreadyTakenError,
@@ -18,18 +20,49 @@ from core.exceptions import (
 from core.setup import manager
 from game.game_logic import surrender_game
 from schemas.data import User, UserRegister
+from services.guest_service import create_guest_user
 from services.services import (
     create_access_token,
     get_access_token,
     get_session,
     register_user,
 )
-from state.config import ACCESS_TOKEN_EXPIRE_MINUTES, COOKIE_SECURE, limiter
+from state.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    COOKIE_SECURE,
+    GUEST_ACCESS_TOKEN_EXPIRE_MINUTES,
+    GUEST_USERNAME_PREFIX,
+    LEADERBOARD_LIMIT,
+    limiter,
+)
 
 router = APIRouter()
 
 
-# get user stats
+def set_access_cookie(response: Response, token: str, max_age_minutes: int) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        path="/",
+        httponly=True,
+        samesite="strict",
+        secure=COOKIE_SECURE,
+        max_age=max_age_minutes * 60,
+    )
+
+
+def get_reserved_usernames() -> set[str]:
+    usernames = (
+        set(manager.connected_users)
+        | set(manager.player_games)
+        | manager.guest_usernames
+        | get_usernames_by_prefix(GUEST_USERNAME_PREFIX)
+    )
+    for lobby in manager.lobbies.values():
+        usernames.update(lobby.players)
+    return usernames
+
+
 @router.get("/api/users/{username}/stats")
 async def API_get_user_stats(username: str):
     user = get_user(username)
@@ -39,12 +72,47 @@ async def API_get_user_stats(username: str):
 
 
 @router.get("/api/get_ranking")
-async def API_get_ranking():
+async def API_get_ranking(
+    current_user: Annotated[User | None, Depends(get_session)],
+):
     try:
-        return get_ranking()
+        current_rank = None
+        if current_user is not None and not current_user.is_guest:
+            current_rank = get_user_rank(current_user.username)
+        return {
+            "players": get_ranking(LEADERBOARD_LIMIT),
+            "current": current_rank,
+            "limit": LEADERBOARD_LIMIT,
+        }
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/guest")
+@limiter.limit("30/minute")
+async def API_create_guest(
+    request: Request,
+    response: Response,
+    current_user: Annotated[User | None, Depends(get_session)],
+):
+    if current_user is not None:
+        if current_user.is_guest:
+            manager.guest_usernames.add(current_user.username)
+        return {"user": current_user}
+
+    try:
+        guest = create_guest_user(get_reserved_usernames())
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail=str(error))
+
+    manager.guest_usernames.add(guest.username)
+    token = create_access_token(
+        data={"sub": guest.username, "guest": True},
+        expires_delta=timedelta(minutes=GUEST_ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    set_access_cookie(response, token, GUEST_ACCESS_TOKEN_EXPIRE_MINUTES)
+    return {"user": guest}
 
 
 @router.post("/api/token")
@@ -59,15 +127,7 @@ async def API_login(
     except ValueError as e:
         print(str(e))
         raise HTTPException(401, str(e))
-    response.set_cookie(
-        key="access_token",
-        value=token.access_token,
-        path="/",
-        httponly=True,
-        samesite="strict",
-        secure=COOKIE_SECURE,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    set_access_cookie(response, token.access_token, ACCESS_TOKEN_EXPIRE_MINUTES)
     return {"ok": True}
 
 
@@ -136,15 +196,7 @@ async def API_register(request: Request, payload: UserRegister, response: Respon
         data={"sub": payload.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        path="/",
-        httponly=True,
-        samesite="strict",
-        secure=COOKIE_SECURE,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    set_access_cookie(response, access_token, ACCESS_TOKEN_EXPIRE_MINUTES)
     return result
 
 

@@ -1,9 +1,15 @@
-	<script lang="ts">
-		import { game } from '$lib/stores/game.svelte';
-		import { send, subscribe, isOpen } from '$lib/stores/wsManager';
-		import { onMount } from 'svelte';
-		import Button from '$lib/components/Button.svelte';
-		import { goto, beforeNavigate } from '$app/navigation';
+<script lang="ts">
+	import { game } from '$lib/stores/game.svelte';
+	import { send, subscribe } from '$lib/stores/wsManager';
+	import { onMount } from 'svelte';
+	import Button from '$lib/components/Button.svelte';
+	import GameResultOverlay from '$lib/components/game/GameResultOverlay.svelte';
+	import MatchCountdownOverlay from '$lib/components/game/MatchCountdownOverlay.svelte';
+	import RoundResultOverlay from '$lib/components/game/RoundResultOverlay.svelte';
+	import { parseRoundResult, type RoundResult } from '$lib/game/roundResult';
+	import { clearRoundTiming, loadRoundTiming, saveRoundTiming } from '$lib/game/roundTiming';
+	import { goto, beforeNavigate } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	type Point = { x: number; y: number };
 	type Trait = { color: string; width: number; points: Point[] };
@@ -13,31 +19,34 @@
 	let last = $state<Point | null>(null);
 	let stack = $state<Trait[]>([]);
 	let redoStack = $state<Trait[]>([]);
-	let result = $state<'winner' | 'looser' | 'draw' | null>(null);
+	let result = $state<'winner' | 'loser' | 'draw' | null>(null);
+	let resultReason = $state<string | null>(null);
+	let roundResult = $state<RoundResult | null>(null);
 	let elo_diff = $state(0);
 	let timeLeft = $state(60);
 	let showCountdown = $state(false);
-	let countdownNum = $state(3);
+	let countdownNum = $state(0);
 	let myUsername = $state('');
 	let myElo = $state<number | null>(null);
 	let opponentElo = $state<number | null>(null);
 	let endsAt = 0;
+	let countdownEndsAt = 0;
 	let timerId: ReturnType<typeof setInterval> | null = null;
+	let countdownTimerId: ReturnType<typeof setInterval> | null = null;
 	let pointsSinceLastGuess = $state(0);
 	let roundWins = $state<Record<string, number>>({});
 	let disconnectedPlayers = $state<Record<string, boolean>>({});
 	let back_lobby = $state(true);
 	let exist = $state(true);
-	let countdownTimers: ReturnType<typeof setTimeout>[] = [];
-	let surrendered= $state(false);
+	let surrendered = $state(false);
 
 	const GUESS_EVERY_POINTS = 10;
 	const DRAW_COLOR = '#000000';
 	const DRAW_WIDTH = 0.01;
+	const COUNTDOWN_REFRESH_INTERVAL = 100;
 
-	let currentRound = $derived(
-		Object.values(roundWins).reduce((total, wins) => total + wins, 0) + 1
-	);
+	let currentRound = $derived(game.round_number);
+	let drawingLocked = $derived(showCountdown || roundResult !== null || result !== null);
 
 	function readJson<T>(key: string, fallback: T) {
 		const value = sessionStorage.getItem(key);
@@ -62,6 +71,38 @@
 	function stopTimer() {
 		if (timerId) clearInterval(timerId);
 		timerId = null;
+	}
+
+	function updateCountdown() {
+		const remaining = countdownEndsAt - Date.now();
+		if (remaining <= 0) {
+			stopCountdown();
+			return;
+		}
+		showCountdown = true;
+		countdownNum = Math.ceil(remaining / 1000);
+	}
+
+	function startCountdown() {
+		stopCountdown();
+		updateCountdown();
+		if (!showCountdown) return;
+		countdownTimerId = setInterval(updateCountdown, COUNTDOWN_REFRESH_INTERVAL);
+	}
+
+	function stopCountdown() {
+		if (countdownTimerId) clearInterval(countdownTimerId);
+		countdownTimerId = null;
+		showCountdown = false;
+		countdownNum = 0;
+	}
+
+	function applyRoundTiming(totalSeconds: number, countdownSeconds: number) {
+		const timing = saveRoundTiming(totalSeconds, countdownSeconds);
+		endsAt = timing.roundEndsAt;
+		countdownEndsAt = timing.countdownEndsAt;
+		startTimer();
+		startCountdown();
 	}
 
 	function applyPlayers(players: string[]) {
@@ -105,9 +146,6 @@
 
 	function updateScores(scores: Record<string, number>) {
 		game.scores = { ...scores };
-		for (const player of scorePlayers()) {
-			const score = scores[player] ?? 0;
-		}
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 	}
 
@@ -144,6 +182,7 @@
 		sessionStorage.setItem('draw_me', game.me);
 		sessionStorage.setItem('draw_scores', JSON.stringify(game.scores));
 		sessionStorage.setItem('draw_round_wins', JSON.stringify(roundWins));
+		sessionStorage.setItem('draw_round_number', String(game.round_number));
 		sessionStorage.setItem('draw_is_ranked', game.is_ranked.toString());
 	}
 
@@ -155,27 +194,21 @@
 		sessionStorage.removeItem('draw_me');
 		sessionStorage.removeItem('draw_scores');
 		sessionStorage.removeItem('draw_round_wins');
+		sessionStorage.removeItem('draw_round_number');
 		sessionStorage.removeItem('draw_is_ranked');
-		sessionStorage.removeItem('draw_ends_at');
+		clearRoundTiming();
 		sessionStorage.removeItem('draw_in_progress');
 		sessionStorage.removeItem('isHost');
-	}
-
-	function triggerCountdown() {
-    	for (const t of countdownTimers) clearTimeout(t);
-    	countdownTimers = [];
-		showCountdown = true;
-    	countdownNum = 3;
-		countdownTimers.push(setTimeout(() => { countdownNum = 2; }, 1000));
-    	countdownTimers.push(setTimeout(() => { countdownNum = 1; }, 2000));
-    	countdownTimers.push(setTimeout(() => { countdownNum = 0; }, 3000));
-    	countdownTimers.push(setTimeout(() => { showCountdown = false; }, 3600));
 	}
 
 	function loadSessionData() {
 		stack = readJson<Trait[]>('draw_stack', []);
 		game.scores = readJson<Record<string, number>>('draw_scores', {});
 		roundWins = readJson<Record<string, number>>('draw_round_wins', {});
+		const savedRoundNumber = Number(sessionStorage.getItem('draw_round_number'));
+		if (Number.isInteger(savedRoundNumber) && savedRoundNumber > 0) {
+			game.round_number = savedRoundNumber;
+		}
 
 		const savedPlayers = readJson<string[]>('draw_players', []);
 		if (savedPlayers.length > 0) applyPlayers(savedPlayers);
@@ -192,8 +225,11 @@
 		const savedOpponents = readJson<string[]>('draw_opponents', []);
 		if (savedOpponents.length > 0) game.opponents = savedOpponents;
 
-		const savedEndsAt = sessionStorage.getItem('draw_ends_at');
-		endsAt = savedEndsAt ? parseInt(savedEndsAt) : Date.now() + 63000;
+		const timing = loadRoundTiming();
+		if (timing) {
+			endsAt = timing.roundEndsAt;
+			countdownEndsAt = timing.countdownEndsAt;
+		}
 	}
 
 	function loadUserData() {
@@ -208,8 +244,8 @@
 				if (!game.players.includes(user.username)) applyPlayers([user.username, ...game.players]);
 			})
 			.catch(() => {});
-			if (!game.is_ranked || game.opponents.length === 0) return;
-			fetch(`/api/users/${game.opponents[0]}/stats`, { credentials: 'same-origin' })
+		if (!game.is_ranked || game.opponents.length === 0) return;
+		fetch(`/api/users/${game.opponents[0]}/stats`, { credentials: 'same-origin' })
 			.then((response) => (response.ok ? response.json() : null))
 			.then((data) => {
 				if (data) opponentElo = data.Elo;
@@ -219,145 +255,147 @@
 
 	function fetchGameData() {
 		send({ type: 'get_info' });
-		console.log("called get info");
+		console.log('called get info');
 	}
 
-		beforeNavigate((nav) => {
-			if (result) return;
-			if (nav.willUnload) return;
-			if (!exist) return;
-			if (surrendered) return;
-			if (confirm('Quitter la partie ? Tu déclares forfait.')) {
-				send({ type: 'surrender' , leave_lobby: true});
-			} else {
-				nav.cancel();
+	function showRoundResult(value: unknown) {
+		const parsedResult = parseRoundResult(value);
+		if (!parsedResult) return;
+		roundResult = parsedResult;
+		game.round_number = parsedResult.round_number;
+		updateScores(parsedResult.scores);
+		updateRoundWins(parsedResult.round_wins);
+		stopTimer();
+		saveGameData();
+	}
+
+	beforeNavigate((nav) => {
+		if (result) return;
+		if (nav.willUnload) return;
+		if (!exist) return;
+		if (surrendered) return;
+		if (confirm('Quitter la partie ? Tu déclares forfait.')) {
+			send({ type: 'surrender', leave_lobby: true });
+		} else {
+			nav.cancel();
+		}
+	});
+
+	onMount(() => {
+		sessionStorage.setItem('draw_in_progress', '1');
+		loadSessionData();
+		startTimer();
+		startCountdown();
+		loadUserData();
+		fetchGameData();
+		sessionStorage.removeItem('draw_stack');
+
+		const code = sessionStorage.getItem('private_lobby_code');
+		if (code) send({ type: 'get_lobby', code });
+		const unsubscribe = subscribe((msg) => {
+			console.log(msg);
+			switch (msg.type) {
+				case 'ai_guess':
+					setPlayerScore(msg.username, msg.scores ?? msg.guess?.[game.word] ?? 0);
+					break;
+				case 'player_guess':
+					setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
+					break;
+				case 'opponent_disconnected':
+					disconnectedPlayers[msg.username] = true;
+					break;
+				case 'opponent_reconnected':
+					delete disconnectedPlayers[msg.username];
+					break;
+				case 'reconnect_game':
+					game.id = msg.game_id;
+					game.opponents = Array.isArray(msg.opponent)
+						? msg.opponent
+						: msg.opponent
+							? [msg.opponent]
+							: [];
+					game.me = msg.me ?? game.me;
+					game.word = msg.word;
+					game.is_ranked = msg.is_ranked ?? game.is_ranked;
+					delete disconnectedPlayers[msg.me];
+					applyPlayers(msg.players ?? []);
+					updateScores(msg.scores ?? {});
+					updateRoundWins(msg.round_wins ?? {});
+					game.round_number = msg.round_number ?? game.round_number;
+					saveGameData();
+					if (msg.time_left != null) {
+						applyRoundTiming(msg.time_left, msg.countdown_left);
+					}
+					if (msg.round_result) showRoundResult(msg.round_result);
+					break;
+				case 'round_result':
+					showRoundResult(msg);
+					break;
+				case 'next_round':
+					roundResult = null;
+					game.word = msg.word;
+					game.round_number = msg.round_number ?? game.round_number + 1;
+					if (msg.scores) updateScores(msg.scores);
+					else resetScores();
+					updateRoundWins(msg.round_wins ?? roundWins);
+					sessionStorage.setItem('draw_word', game.word);
+					stack = [];
+					redoStack = [];
+					last = null;
+					pointsSinceLastGuess = 0;
+					if (context) redraw();
+					applyRoundTiming(msg.duration + msg.countdown, msg.countdown);
+					break;
+				case 'end_game':
+					roundResult = null;
+					stopTimer();
+					elo_diff = msg.elo_diff;
+					result = msg.status === 'looser' ? 'loser' : msg.status;
+					resultReason = msg.reason ?? null;
+					clearSessionData();
+					break;
+				case 'lobby_closed':
+					back_lobby = false;
+					break;
+				case 'game_info':
+					console.log('received game_info');
+					if (!msg.exist) {
+						exist = false;
+						const code = sessionStorage.getItem('private_lobby_code');
+						console.log(code);
+						if (code != '' && back_lobby == true)
+							goto(code ? resolve('/(protected)/(app)/lobby/[code]', { code }) : resolve('/lobby'));
+						else goto(resolve('/'));
+						break;
+					}
+					console.log('game exists, loading data: \n' + msg);
+					game.id = msg.game_id;
+					game.opponents = msg.opponent ?? [];
+					game.me = msg.me;
+					game.word = msg.word;
+					game.is_ranked = msg.is_ranked;
+					applyPlayers(msg.players);
+					updateScores(msg.scores);
+					updateRoundWins(msg.round_wins);
+					game.round_number = msg.round_number ?? game.round_number;
+					if (msg.time_left != null) {
+						applyRoundTiming(msg.time_left, msg.countdown_left);
+					}
+					saveGameData();
+					loadUserData();
+					if (msg.round_result) showRoundResult(msg.round_result);
+					break;
+				default:
+					console.log('unexpected WS msg: ', msg);
 			}
 		});
 
-		onMount(() => {
-			const isReconnect = sessionStorage.getItem('draw_in_progress') === '1';
-			console.log("isReconnect: ", isReconnect)
-			sessionStorage.setItem('draw_in_progress', '1');
-			loadSessionData();
-			startTimer();
-			loadUserData();
-			fetchGameData();
-			sessionStorage.removeItem('draw_stack');
-			
-
-			if (!isReconnect) {
-				triggerCountdown();
-			}
-			send({ type: 'get_info' });
-			const code = sessionStorage.getItem('private_lobby_code');
-			if (code)
-				send({ type: 'get_lobby', code });
-			const unsubscribe = subscribe((msg: any) => {
-				console.log(msg)
-				switch (msg.type) {
-					case 'ai_guess':
-						setPlayerScore(
-							msg.username,
-							msg.scores ?? msg.guess?.[game.word] ?? 0
-						);
-						break;
-					case 'player_guess':
-						setPlayerScore(msg.username, msg.score ?? msg.guess?.[game.word] ?? 0);
-						break;
-					case 'opponent_disconnected':
-						disconnectedPlayers[msg.username] = true;
-						break;
-					case 'opponent_reconnected':
-						delete disconnectedPlayers[msg.username];
-						break;
-					case 'reconnect_game':
-						game.id = msg.game_id;
-						game.opponents = Array.isArray(msg.opponent) ? msg.opponent : (msg.opponent ? [msg.opponent] : []);
-						game.me = msg.me ?? game.me;
-						game.word = msg.word;
-						game.is_ranked = msg.is_ranked ?? game.is_ranked;
-						delete disconnectedPlayers[msg.me];
-						applyPlayers(msg.players ?? []);
-						updateScores(msg.scores ?? {});
-						updateRoundWins(msg.round_wins ?? {});
-						saveGameData();
-						if (msg.time_left != null) {
-							endsAt = Date.now() + msg.time_left * 1000;
-							sessionStorage.setItem('draw_ends_at', String(endsAt));
-							startTimer();
-						}
-						break;
-					case 'next_round':
-						game.word = msg.word;
-						if (msg.scores) updateScores(msg.scores);
-						else resetScores();
-						updateRoundWins(msg.round_wins ?? roundWins);
-						sessionStorage.setItem('draw_word', game.word);
-						stack = [];
-						redoStack = [];
-						last = null;
-						pointsSinceLastGuess = 0;
-						if (context) redraw();
-						if (msg.duration != null) {
-							endsAt = Date.now() + (msg.duration + (msg.countdown ?? 0)) * 1000;
-							sessionStorage.setItem('draw_ends_at', String(endsAt));
-							startTimer();
-						}
-						triggerCountdown();
-						break;
-					case 'end_game':
-						stopTimer();
-						elo_diff = msg.elo_diff;
-						result = msg.status;
-						setTimeout(() => {
-							backAfterGame();
-						}, 3000);
-						clearSessionData();
-						break;
-					case 'lobby_closed':
-						back_lobby = false;
-						break;
-					case 'game_info':
-						console.log("received game_info");
-						if (!msg.exist) {
-							exist = false;
-							const code = sessionStorage.getItem('private_lobby_code');
-							console.log(code);
-							if (code != '' && back_lobby == true)
-								goto(code ? `/lobby/${code}` : '/lobby');
-							else
-								goto("/");
-							break;
-						}
-						console.log("game exists, loading data: \n" + msg);
-						game.id = msg.game_id;
-						game.opponents = msg.opponent ?? [];
-						game.me = msg.me;
-						game.word = msg.word;
-						game.is_ranked = msg.is_ranked
-						applyPlayers(msg.players);
-						updateScores(msg.scores);
-						updateRoundWins(msg.round_wins);
-						if (msg.time_left != null) {
-							endsAt = Date.now() + msg.time_left * 1000;
-							sessionStorage.setItem('draw_ends_at', String(endsAt));
-							startTimer();
-						}
-						saveGameData();
-						startTimer();
-						loadUserData();
-						break;
-				default : 
-					console.log("unexpected WS msg: ", msg);
-				}				
-			});
-
-			return () => {
-				unsubscribe();
-				stopTimer();
-				for (const t of countdownTimers) clearTimeout(t);
-			};
-		});
+		return () => {
+			unsubscribe();
+			stopTimer();
+			stopCountdown();
+		};
+	});
 
 	$effect(() => {
 		sessionStorage.setItem('draw_stack', JSON.stringify(stack));
@@ -373,16 +411,14 @@
 	function surrender() {
 		if (confirm('Are you sure you want to forfeit the match?')) {
 			const isHost = sessionStorage.getItem('isHost') === 'true';
-			send({ type: 'surrender' , leave_lobby: isHost});
+			send({ type: 'surrender', leave_lobby: isHost });
 			surrendered = true;
 			const code = sessionStorage.getItem('private_lobby_code');
 			console.log(code);
 			clearSessionData();
 			if (!game.is_ranked && code != '' && back_lobby == true && !isHost)
-				goto(code ? `/lobby/${code}` : '/lobby');
-			else
-				goto("/");
-				
+				goto(code ? resolve('/(protected)/(app)/lobby/[code]', { code }) : resolve('/lobby'));
+			else goto(resolve('/'));
 		}
 	}
 
@@ -439,6 +475,7 @@
 	}
 
 	function undo() {
+		if (drawingLocked) return;
 		const trait = stack.pop();
 		if (!trait) return;
 		redoStack.push(trait);
@@ -447,6 +484,7 @@
 	}
 
 	function redo() {
+		if (drawingLocked) return;
 		const trait = redoStack.pop();
 		if (!trait) return;
 		stack.push(trait);
@@ -455,6 +493,7 @@
 	}
 
 	function clearDrawing() {
+		if (drawingLocked) return;
 		stack = [];
 		redoStack = [];
 		last = null;
@@ -463,9 +502,10 @@
 		makeAiGuess();
 	}
 
-		function makeAiGuess() {
-			send({ type: 'guess', strokes: stack });
-		}
+	function makeAiGuess() {
+		if (showCountdown || roundResult || result) return;
+		send({ type: 'guess', strokes: stack });
+	}
 
 	function finishStroke() {
 		if (!last) return;
@@ -475,13 +515,48 @@
 		makeAiGuess();
 	}
 
+	function startStroke(event: PointerEvent) {
+		if (drawingLocked) return;
+		const point = canvasPoint(event);
+		stack.push({
+			color: DRAW_COLOR,
+			width: DRAW_WIDTH,
+			points: [point]
+		});
+		redoStack = [];
+		last = point;
+	}
+
+	function continueStroke(event: PointerEvent) {
+		if (drawingLocked || event.buttons !== 1 || !last) return;
+		const point = canvasPoint(event);
+		const trait = stack[stack.length - 1];
+		drawLine(last, point, trait);
+		trait.points.push(point);
+		last = point;
+		pointsSinceLastGuess += 1;
+
+		if (pointsSinceLastGuess >= GUESS_EVERY_POINTS) {
+			pointsSinceLastGuess = 0;
+			makeAiGuess();
+		}
+	}
+
 	function backAfterGame() {
-		if (game.is_ranked || !back_lobby) {
-			goto('/');
+		if (game.is_ranked) {
+			goto(resolve('/start_game'));
 			return;
 		}
 		const code = sessionStorage.getItem('private_lobby_code');
-		goto(code ? `/lobby/${code}` : '/lobby');
+		goto(
+			code && back_lobby ? resolve('/(protected)/(app)/lobby/[code]', { code }) : resolve('/lobby')
+		);
+	}
+
+	function resultActionLabel() {
+		if (game.is_ranked) return 'Return to Matchmaking';
+		if (back_lobby) return 'Return to Lobby';
+		return 'Browse Lobbies';
 	}
 
 	const toolBase =
@@ -493,69 +568,21 @@
 <svelte:window onresize={resize} />
 
 {#if showCountdown}
-	<div
-		class="group fixed inset-0 z-[900] grid grid-rows-[32vh_1fr_16vh] overflow-hidden bg-bg sm:grid-rows-[28vh_1fr_18vh]"
-		data-count={countdownNum}
-		aria-live="assertive"
-		aria-atomic="true"
-	>
-		<div class="flex flex-wrap border-b-4 border-ink">
-			{#each scorePlayers() as player, index (player)}
-				<div
-					class="flex min-w-[20%] flex-1 animate-cd-half-in flex-col justify-center gap-2 p-4 sm:px-12 sm:py-6 {isMe(
-						player
-					)
-						? ''
-						: 'items-end text-right [animation-delay:0.06s]'}"
-				>
-					<span class="font-mono text-xs font-bold tracking-[0.22em] text-muted uppercase">
-						Player {String(index + 1).padStart(2, '0')}
-					</span>
-					<span
-						class="max-w-[42vw] overflow-hidden font-display text-[clamp(1.1rem,5.5vw,2rem)] leading-none font-extrabold text-ellipsis whitespace-nowrap uppercase sm:text-[clamp(1.6rem,4.5vw,3.5rem)] {isMe(
-							player
-						)
-							? 'text-primary'
-							: 'text-danger'}"
-					>
-						{playerLabel(player)}
-					</span>
-					{#if game.is_ranked}
-						<span class="font-mono text-2xl font-bold text-ink">
-							{isMe(player) ? (myElo ?? '-') : (opponentElo ?? '-')}<em
-								class="ml-1 text-xs font-normal tracking-[0.12em] text-muted not-italic">ELO</em
-							>
-						</span>
-					{/if}
-				</div>
-			{/each}
-		</div>
+	<MatchCountdownOverlay
+		value={countdownNum}
+		players={scorePlayers()}
+		me={game.me || myUsername}
+		word={game.word}
+		isRanked={game.is_ranked}
+		{myElo}
+		{opponentElo}
+	/>
+{/if}
 
-		<div
-			class="flex items-center justify-center border-b-4 border-ink group-data-[count=0]:bg-success group-data-[count=1]:bg-danger group-data-[count=2]:bg-bg-alt group-data-[count=3]:bg-accent"
-		>
-			{#key countdownNum}
-				<div
-					class="pointer-events-none font-display leading-none font-extrabold text-ink select-none group-data-[count=1]:text-white {countdownNum ===
-					0
-						? 'animate-cd-go-blast text-[min(20vh,30vw)] sm:text-[min(22vh,18vw)]'
-						: 'animate-cd-num-stamp text-[min(42vh,54vw)] sm:text-[min(48vh,40vw)]'}"
-				>
-					{countdownNum === 0 ? 'GO!' : countdownNum}
-				</div>
-			{/key}
-		</div>
-
-		<div class="flex animate-cd-bot-in items-center justify-center gap-6 bg-ink px-8">
-			<span class="font-mono text-sm font-bold tracking-[0.28em] text-white/40 uppercase">Draw</span
-			>
-			<span
-				class="font-display text-[clamp(1.4rem,7vw,2.2rem)] font-extrabold tracking-[0.03em] text-accent uppercase sm:text-[clamp(2rem,5vw,4rem)]"
-			>
-				{game.word}
-			</span>
-		</div>
-	</div>
+{#if roundResult}
+	{#key roundResult.round_number}
+		<RoundResultOverlay result={roundResult} players={game.players} me={game.me || myUsername} />
+	{/key}
 {/if}
 
 <header
@@ -618,40 +645,20 @@
 		</div>
 	</div>
 
-	<div class="flex flex-none justify-center md:flex-1 md:justify-end">
+	<div class="flex flex-none items-center justify-center gap-3 md:flex-1 md:justify-end">
 		<Button variant="danger" onclick={surrender}>Surrender</Button>
 	</div>
 </header>
 
 {#if result}
-	<div class="fixed inset-0 z-[1000] flex items-center justify-center bg-scrim">
-		<div
-			class="m-4 animate-pop-in border-4 border-ink px-6 py-8 text-center shadow-nb-lg md:px-16 md:py-12 {result ===
-			'winner'
-				? 'bg-success'
-				: result === 'looser'
-					? 'bg-danger text-on-danger'
-					: 'bg-accent'}"
-		>
-			{#if result === 'winner'}
-				<h2 class="text-5xl uppercase">You Won!</h2>
-				<p class="mt-3 mb-8 font-mono text-xl font-bold">
-					{game.is_ranked ? `+${elo_diff} Elo` : 'No Elo change'}
-				</p>
-			{:else if result === 'draw'}
-				<h2 class="text-5xl uppercase">Draw</h2>
-				<p class="mt-3 mb-8 font-mono text-xl font-bold">No Elo change</p>
-			{:else}
-				<h2 class="text-5xl uppercase">You Lost</h2>
-				<p class="mt-3 mb-8 font-mono text-xl font-bold">
-					{game.is_ranked ? `${elo_diff} Elo` : 'No Elo change'}
-				</p>
-			{/if}
-			<Button variant="primary" onclick={backAfterGame}>
-				{game.is_ranked ? 'Back to Home' : 'Back to Lobby'}
-			</Button>
-		</div>
-	</div>
+	<GameResultOverlay
+		{result}
+		isRanked={game.is_ranked}
+		eloDiff={elo_diff}
+		reason={resultReason}
+		actionLabel={resultActionLabel()}
+		onaction={backAfterGame}
+	/>
 {/if}
 
 <div
@@ -663,7 +670,7 @@
 		<button
 			class={toolIconClasses}
 			onclick={undo}
-			disabled={stack.length === 0}
+			disabled={drawingLocked || stack.length === 0}
 			aria-label="Undo"
 			title="Undo"
 		>
@@ -672,7 +679,7 @@
 		<button
 			class={toolIconClasses}
 			onclick={redo}
-			disabled={redoStack.length === 0}
+			disabled={drawingLocked || redoStack.length === 0}
 			aria-label="Redo"
 			title="Redo"
 		>
@@ -681,7 +688,7 @@
 		<button
 			class={toolTextClasses}
 			onclick={clearDrawing}
-			disabled={stack.length === 0 && redoStack.length === 0}
+			disabled={drawingLocked || (stack.length === 0 && redoStack.length === 0)}
 			aria-label="Clear"
 			title="Clear"
 		>
@@ -690,35 +697,14 @@
 	</div>
 
 	<canvas
-		class="col-span-full row-start-1 h-[var(--canvas-side)] w-[var(--canvas-side)] cursor-crosshair touch-none border-4 border-ink bg-bg shadow-nb md:col-auto md:row-auto"
+		class="col-span-full row-start-1 h-[var(--canvas-side)] w-[var(--canvas-side)] touch-none border-4 border-ink bg-bg shadow-nb md:col-auto md:row-auto {drawingLocked
+			? 'cursor-not-allowed'
+			: 'cursor-crosshair'}"
 		bind:this={canvas}
-		onpointerdown={(event) => {
-			const point = canvasPoint(event);
-			stack.push({
-				color: DRAW_COLOR,
-				width: DRAW_WIDTH,
-				points: [point]
-			});
-			redoStack = [];
-			last = point;
-		}}
+		onpointerdown={startStroke}
 		onpointerup={finishStroke}
 		onpointerleave={finishStroke}
-		onpointermove={(event) => {
-			if (event.buttons !== 1 || !last) return;
-
-			const point = canvasPoint(event);
-			const trait = stack[stack.length - 1];
-			drawLine(last, point, trait);
-			trait.points.push(point);
-			last = point;
-			pointsSinceLastGuess += 1;
-
-			if (pointsSinceLastGuess >= GUESS_EVERY_POINTS) {
-				pointsSinceLastGuess = 0;
-				makeAiGuess();
-			}
-		}}
+		onpointermove={continueStroke}
 	></canvas>
 
 	<div

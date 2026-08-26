@@ -1,9 +1,17 @@
 import shortuuid
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 from core.setup import manager
 from schemas.data import Lobby, User
 from utils.utils import remove_from_matchmaking
+
+
+async def send_lobby_message(websocket: WebSocket, payload: dict) -> bool:
+    try:
+        await websocket.send_json(payload)
+        return True
+    except (RuntimeError, WebSocketDisconnect):
+        return False
 
 
 async def get_lobby_info(payload: dict, websocket: WebSocket, user: User):
@@ -75,11 +83,12 @@ async def join_lobby(user: User, code: str, websocket: WebSocket):
     for player in lobby.players:
         player_ws = manager.connections.get(player)
         if player != user.username and player_ws:
-            await player_ws.send_json(
+            await send_lobby_message(
+                player_ws,
                 {
                     "type": "player_joined",
                     "username": user.username,
-                }
+                },
             )
 
 
@@ -90,7 +99,7 @@ async def close_lobby(code: str) -> None:
     for player in lobby.players:
         player_ws = manager.connections.get(player)
         if player_ws:
-            await player_ws.send_json({"type": "lobby_closed"})
+            await send_lobby_message(player_ws, {"type": "lobby_closed"})
 
 
 async def cleanup_lobby_on_disconnect(user: User):
@@ -106,9 +115,10 @@ async def cleanup_lobby_on_disconnect(user: User):
         for player in lobby.players:
             player_ws = manager.connections.get(player)
             if player_ws:
-                await player_ws.send_json(
+                await send_lobby_message(
+                    player_ws,
                     {
                         "type": "player_left",
                         "username": user.username,
-                    }
+                    },
                 )

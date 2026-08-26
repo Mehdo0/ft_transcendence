@@ -5,5 +5,6 @@ export const game = $state({
 	me: '',
 	word: '',
 	scores: {} as Record<string, number>,
+	round_number: 1,
 	is_ranked: true
 });

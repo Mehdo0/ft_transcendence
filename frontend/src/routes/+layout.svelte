@@ -3,8 +3,10 @@
 	import '@fontsource-variable/hanken-grotesk/index.css';
 	import '@fontsource-variable/jetbrains-mono/index.css';
 	import '../app.css';
+	import ConnectionNotice from '$lib/components/ConnectionNotice.svelte';
 
 	let { children } = $props();
 </script>
 
 {@render children()}
+<ConnectionNotice />
