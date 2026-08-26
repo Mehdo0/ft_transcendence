@@ -49,6 +49,9 @@ services:
       dockerfile: docker/nginx.Dockerfile
       args:
         NGINX_CONFIG: docker/nginx/production.conf
+        VITE_WS_PATH: ${VITE_WS_PATH:-/ws/}
+        VITE_WS_RECONNECT_BASE_DELAY: ${VITE_WS_RECONNECT_BASE_DELAY:-500}
+        VITE_WS_RECONNECT_MAX_DELAY: ${VITE_WS_RECONNECT_MAX_DELAY:-4000}
     restart: unless-stopped
     env_file:
       - ../.env

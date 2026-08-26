@@ -1,4 +1,4 @@
-import { reconnectBaseDelay, reconnectMaxDelay } from '$lib/websocket/config';
+import { getWebSocketUrl, reconnectBaseDelay, reconnectMaxDelay } from '$lib/websocket/config';
 import { parseServerMessage, type ServerMessage } from '$lib/websocket/serverMessage';
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'replaced';
@@ -44,7 +44,7 @@ function dispatchMessage(message: ServerMessage) {
 }
 
 function openSocket(): Promise<void> {
-	const candidate = new WebSocket('/ws/');
+	const candidate = new WebSocket(getWebSocketUrl());
 	socket = candidate;
 	setConnectionStatus('connecting');
 

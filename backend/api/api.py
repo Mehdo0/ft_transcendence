@@ -11,11 +11,12 @@ from core.database import (
     get_usernames_by_prefix,
 )
 from core.exceptions import (
+    BadUsername,
     EmailAlreadyTakenError,
     ImpossibleEmail,
     UserAlreadyExistsError,
     UsernameAlreadyTakenError,
-    BadUsername,
+    WeakPassword,
 )
 from core.setup import manager
 from game.game_logic import surrender_game
@@ -187,6 +188,7 @@ async def API_register(request: Request, payload: UserRegister, response: Respon
         EmailAlreadyTakenError,
         BadUsername,
         ImpossibleEmail,
+        WeakPassword,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e).lower())
     except Exception as e:
